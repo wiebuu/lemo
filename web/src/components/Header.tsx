@@ -1,4 +1,4 @@
-import { CircleHelp, Info, LogOut, Mic, MicOff, Music2, PencilLine, Settings, Shield } from 'lucide-react'
+import { CircleHelp, Info, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
 import { signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
 import { navigate } from '../pages/router'
@@ -6,12 +6,13 @@ import { studio } from '../state/studio'
 import { Wordmark } from './Brand'
 import { DjIcon } from './DjIcon'
 import { WiecodesCredit } from './Credit'
-import { IconToggle, Menu, MenuItem, Tip, useStudio, cx } from './ui'
+import { IconToggle, Menu, MenuItem, Tip, useStudio, usePhone, cx } from './ui'
 
 export type Panel = 'load' | 'settings' | 'lyrics' | 'fixlyrics' | 'tutorial' | 'calibrate' | null
 
 export function Header({ open }: { open: (p: Panel) => void }) {
   const s = useStudio()
+  const phone = usePhone()
   const t = s.track
   return (
     <header className="flex items-center gap-2 sm:gap-4 pt-5 pb-3 shrink-0">
@@ -43,19 +44,16 @@ export function Header({ open }: { open: (p: Panel) => void }) {
           </div>
         </Tip>
       )}
-      <Tip tip={s.settings.disco ? 'Disco lights · on' : 'Disco lights'}>
-        <button type="button" aria-label="disco lights" aria-pressed={s.settings.disco}
-          onClick={() => studio.updateSettings({ disco: !s.settings.disco })}
-          className="p-0.5 shrink-0 transition-transform hover:scale-110 active:scale-95">
-          <DjIcon on={s.settings.disco} beating={!s.playing} />
-        </button>
-      </Tip>
+      {!phone && (
+        <Tip tip={s.settings.disco ? 'Disco lights · on' : 'Disco lights'}>
+          <button type="button" aria-label="disco lights" aria-pressed={s.settings.disco}
+            onClick={() => studio.updateSettings({ disco: !s.settings.disco })}
+            className="p-0.5 shrink-0 transition-transform hover:scale-110 active:scale-95">
+            <DjIcon on={s.settings.disco} beating={!s.playing} />
+          </button>
+        </Tip>
+      )}
       <Account />
-      <Tip tip={s.micError ?? (s.mic === 'on' ? (s.muted ? 'Microphone muted' : 'Microphone on — listening') : s.mic === 'starting' ? 'Starting microphone…' : 'Microphone off')}>
-        <span className={cx('flex items-center text-xs shrink-0 p-1', s.mic === 'on' ? (s.muted ? 'text-sub' : 'text-main') : s.mic === 'error' ? 'text-error' : 'text-sub')}>
-          {s.mic === 'on' && !s.muted ? <Mic size={15} /> : <MicOff size={15} />}
-        </span>
-      </Tip>
     </header>
   )
 }

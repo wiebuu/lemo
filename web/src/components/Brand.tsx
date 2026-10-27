@@ -18,7 +18,7 @@ export function Wave({ className, draw }: { className?: string; /** draws itself
 export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   return (
     <span className="flex items-center gap-2 select-none">
-      <Wave className={size === 'lg' ? 'w-11 h-6' : 'w-8 h-4'} />
+      <Wave className={cx('hidden sm:block', size === 'lg' ? 'w-11 h-6' : 'w-8 h-4')} />
       <span className={cx('font-semibold tracking-[-0.03em] leading-none text-text', size === 'lg' ? 'text-[30px]' : 'text-[20px]')}>lemody</span>
     </span>
   )

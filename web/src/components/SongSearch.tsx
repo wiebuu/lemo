@@ -3,7 +3,7 @@ import { ArrowRight, Link2, Loader2, Pause, Play, Search, X } from 'lucide-react
 import { analyzer, type CatalogItem } from '../api/analyzer'
 import { formatTime } from '../lib/music'
 import { searchSongs, youtubeId } from '../lib/songSearch'
-import { cx, Tip } from './ui'
+import { cx, Tip, usePhone } from './ui'
 
 /**
  * The start box: type a song or a singer to find it among the songs Lemody already
@@ -26,6 +26,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
   /** something is typed: the results take the song list's place */
   onTyping?: (typing: boolean) => void
 }) {
+  const phone = usePhone()
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
   const preview = usePreview()
@@ -64,7 +65,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
           <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-sub pointer-events-none" />
         )}
         <input
-          autoFocus
+          autoFocus={!phone} // phones: the keyboard would cover the page
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {

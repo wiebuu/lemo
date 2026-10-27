@@ -9,7 +9,7 @@ import { LoadPanel } from './components/LoadPanel'
 import { Lyrics } from './components/Lyrics'
 import { PlayerBar } from './components/PlayerBar'
 import { ResultsPanel } from './components/Results'
-import { BusyCard, cx, Modal, Tip, useStudio } from './components/ui'
+import { BusyCard, cx, Modal, Tip, usePhone, useStudio } from './components/ui'
 import { Keyboard } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { studio } from './state/studio'
@@ -25,6 +25,7 @@ const Tutorial = lazy(() => import('./components/Tutorial').then((m) => ({ defau
 
 export default function App() {
   const s = useStudio()
+  const phone = usePhone()
   const [panel, setPanel] = useState<Panel>(null)
   const headphones = useHeadphoneCheck(s.mic === 'on')
   const close = useCallback(() => setPanel(null), [])
@@ -159,7 +160,7 @@ export default function App() {
       )}
       <Suspense fallback={null}>
         {headphones.note && <HeadphoneNote kind={headphones.note} onDone={headphones.done} />}
-        {s.settings.disco && s.track && <Disco />}
+        {s.settings.disco && s.track && !phone && <Disco />}
       </Suspense>
       {(s.error || s.micError) && (
         <button

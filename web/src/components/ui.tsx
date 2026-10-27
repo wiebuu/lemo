@@ -3,6 +3,15 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { studio, type Snapshot } from '../state/studio'
 
+/** A phone-sized screen (below Tailwind's sm breakpoint); follows rotation and resizing. */
+const PHONE = '(max-width: 639px)'
+export function usePhone(): boolean {
+  return useSyncExternalStore(
+    (fn) => { const m = matchMedia(PHONE); m.addEventListener('change', fn); return () => m.removeEventListener('change', fn) },
+    () => matchMedia(PHONE).matches,
+  )
+}
+
 export function useStudio(): Snapshot {
   return useSyncExternalStore(studio.subscribe, studio.getSnapshot)
 }
@@ -305,7 +314,8 @@ export function Menu({ button, tip, children, active, disabled, buttonClassName 
 }) {
   const ref = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  // y: the panel's top edge, or (up) its bottom edge measured from the bottom of the screen
+  const [pos, setPos] = useState<{ x: number; y: number; up: boolean } | null>(null)
   useEffect(() => {
     if (!pos) return
     const close = (e: Event) => {
@@ -323,7 +333,9 @@ export function Menu({ button, tip, children, active, disabled, buttonClassName 
   const toggle = () => {
     if (pos) return setPos(null)
     const r = ref.current!.getBoundingClientRect()
-    setPos({ x: r.left + r.width / 2, y: r.bottom + 8 })
+    // a button low on the screen (the player bar on phones) opens its menu upwards, so it stays on screen
+    const up = r.top > window.innerHeight / 2
+    setPos({ x: r.left + r.width / 2, y: up ? window.innerHeight - r.top + 8 : r.bottom + 8, up })
   }
   return (
     <>
@@ -336,7 +348,7 @@ export function Menu({ button, tip, children, active, disabled, buttonClassName 
       {pos &&
         createPortal(
           <div ref={panel} className="pop-in fixed z-[90] modal-card rounded-xl p-3 shadow-2xl border border-line w-64"
-            style={{ left: Math.min(Math.max(pos.x, 136), window.innerWidth - 136), top: pos.y, transform: 'translateX(-50%)' }}>
+            style={{ left: Math.min(Math.max(pos.x, 136), window.innerWidth - 136), ...(pos.up ? { bottom: pos.y } : { top: pos.y }), transform: 'translateX(-50%)' }}>
             {typeof children === 'function' ? children(() => setPos(null)) : children}
           </div>,
           document.body,

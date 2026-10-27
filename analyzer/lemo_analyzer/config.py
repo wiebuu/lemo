@@ -35,6 +35,11 @@ class Config:
     port: int = int(os.environ.get("LEMO_PORT", "8787"))
     data_dir: Path = Path(os.environ.get("LEMO_DATA_DIR", str(ROOT / "data"))).expanduser()
     enable_youtube: bool = _bool("LEMO_ENABLE_YOUTUBE", False)
+    # Analyse new songs here (Demucs + CREPE: needs ~4 GB of RAM). Off on a small server:
+    # new songs are then analysed in the singer's browser and only checked here.
+    server_analysis: bool = _bool("LEMO_SERVER_ANALYSIS", True)
+    # sites (besides localhost) whose pages may call the analyzer, e.g. https://lemodysounds.online
+    cors_origins: tuple[str, ...] = tuple(o.strip().rstrip("/") for o in os.environ.get("LEMO_CORS_ORIGINS", "").split(",") if o.strip())
     max_upload_mb: int = int(os.environ.get("LEMO_MAX_UPLOAD_MB", "80"))
     max_duration_min: float = float(os.environ.get("LEMO_MAX_DURATION_MIN", "15"))
     # crepe-full (best), crepe-tiny (fast), or pyin (no neural net)

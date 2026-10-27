@@ -188,10 +188,11 @@ def backfill() -> None:
     rebuild()
     root = storage.songs_root()
     local = {r.parent.name for r in root.glob("*/reference.json")} if root.exists() else set()
+    known = load()
     for sid in sorted(local | remote.index()):
         d = root / sid
-        if sid in local and (d / PREVIEW).exists() and sid in load():
-            continue
+        if sid in known and (sid not in local or (d / PREVIEW).exists()):
+            continue  # already listed (a song only on the VPS isn't fetched back again)
         if sid not in local and not remote.pull(d):
             continue
         made = not (d / PREVIEW).exists() and make_preview(d)

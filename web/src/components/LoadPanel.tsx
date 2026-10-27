@@ -143,7 +143,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
     void start(analyzer.analyzeUrl(u)) // when storage is full the analyzer says so (a song already stored still opens)
   }
   const submitUrl = (u: string) => {
-    if (!health) return setErr('The analyzer is offline. Start it with `npm run analyzer` (see README).')
+    if (!health) return setErr('Lemody\u2019s server can\u2019t be reached right now. Try again in a minute.')
     if (!health.youtube) return setErr(health.youtubeReason ?? 'YouTube import is disabled in the analyzer.')
     setErr(null)
     const vid = youtubeId(u)
@@ -172,9 +172,11 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       />
 
       <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
-        <Btn onClick={() => audioInput.current?.click()} disabled={!!running || !health} title={health ? 'upload audio and extract its melody' : 'needs the analyzer'}>
-          <Upload size={13} /> upload & analyse
-        </Btn>
+        {health?.separation && (
+          <Btn onClick={() => audioInput.current?.click()} disabled={!!running} title="upload audio and extract its melody">
+            <Upload size={13} /> upload & analyse
+          </Btn>
+        )}
         <Btn
           primary
           disabled={!!running}
@@ -188,7 +190,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         <span className="ml-auto">
           <Tip tip={health
             ? `Ready to analyse songs${health.youtube ? ', including YouTube links' : ''}.`
-            : health === null ? 'The analyzer isn\u2019t running. Start it with npm run dev — the demo still works without it.' : 'Checking…'}>
+            : health === null ? 'Lemody\u2019s server can\u2019t be reached right now. The demo still works.' : 'Checking…'}>
             <span className="flex items-center gap-2 text-sub">
               <span className={cx('w-1.5 h-1.5 rounded-full transition-colors', health ? 'bg-main' : health === null ? 'bg-error' : 'bg-sub')} />
               {health === undefined ? 'checking…' : health ? 'analyzer ready' : 'analyzer offline'}
@@ -213,7 +215,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           url={onDevice}
           serverSec={serverSec}
           onDone={(id) => { setOnDevice(null); void open(id) }}
-          onUseServer={() => useServer(onDevice)}
+          onUseServer={health?.separation ? () => useServer(onDevice) : undefined}
           onCancel={() => setOnDevice(null)}
         />
       )}
@@ -266,8 +268,9 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         opening={opening}
         loading={listsLoading}
         onOpen={(id) => void open(id)}
+        canPrepare={!!health?.separation}
         onPrepare={async (now) => { await analyzer.prepareFeatured(now).catch((e) => setErr((e as Error).message)); void refresh() }}
-        onFetch={(id) => void start(analyzer.analyzeUrl(`https://www.youtube.com/watch?v=${id.slice(3)}`))}
+        onFetch={(id) => submitUrl(`https://www.youtube.com/watch?v=${id.slice(3)}`)}
         onRemove={async (id) => {
           // off your list; a file you uploaded is also deleted from the server (YouTube songs stay for everyone)
           events.emit('songRemoved', id)
@@ -351,8 +354,10 @@ const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : 
  * hindi, kanye. Explore has every song, most played first. "your songs" are the ones you added
  * (kept in your account; the songs themselves live on Lemody's server).
  */
-function SongList({ featured, catalog, online, fill, opening, loading, onOpen, onFetch, onPrepare, onRemove }: {
+function SongList({ featured, catalog, online, canPrepare, fill, opening, loading, onOpen, onFetch, onPrepare, onRemove }: {
   featured: FeaturedItem[]
+  /** the server analyses songs itself (featured ones can be prepared there) */
+  canPrepare: boolean
   /** every stored song (Explore: most played first) */
   catalog: CatalogItem[]
   /** id of the song being opened */
@@ -409,7 +414,7 @@ function SongList({ featured, catalog, online, fill, opening, loading, onOpen, o
                 <FeaturedShelf key={g.id} label={g.label} items={items} plays={plays} opening={opening} preview={preview} onOpen={(id) => { preview.stop(); onOpen(id) }} />
               ) : null
             })}
-            {online && idle && (
+            {online && canPrepare && idle && (
               <Tip tip="Prepares them one at a time in the background.">
                 <button type="button" onClick={() => onPrepare(true)} className="mt-3 px-2 text-xs text-sub hover:text-main">
                   {`prepare the ${waiting.length} songs that aren\u2019t ready →`}

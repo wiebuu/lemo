@@ -24,7 +24,8 @@ export function AnalyseChoice({ health, onDevice, onServer, onCancel }: {
   const ahead = health?.queue?.songs ?? 0
   const serverSec = (health?.queue?.waitSec ?? 0) + (health?.analysisRate ?? 1.4) * SONG_SEC + (health?.analysisFixedSec ?? 8)
   const deviceSec = sup ? deviceRate(sup.phone) * SONG_SEC + 30 : 0
-  const pickDevice = !!sup?.ok && ahead >= 3 // a long queue: this device is quicker
+  const serverOk = !!health?.separation // a small server may not analyse songs at all
+  const pickDevice = !!sup?.ok && (!serverOk || ahead >= 3) // a long queue: this device is quicker
   const Icon = sup?.phone ? Smartphone : Cpu
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
@@ -36,10 +37,10 @@ export function AnalyseChoice({ health, onDevice, onServer, onCancel }: {
         <Option
           icon={<Server size={15} />}
           title="Lemody's server"
-          time={mins(serverSec)}
-          note={ahead ? `${ahead} song${ahead > 1 ? 's' : ''} ahead` : 'no queue'}
-          recommended={!pickDevice}
-          disabled={!health}
+          time={serverOk ? mins(serverSec) : '—'}
+          note={!serverOk ? 'not available' : ahead ? `${ahead} song${ahead > 1 ? 's' : ''} ahead` : 'no queue'}
+          recommended={serverOk && !pickDevice}
+          disabled={!serverOk}
           onClick={onServer}
         />
         <Option
@@ -100,7 +101,8 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onCancel }: {
   /** how long the server would take (for the "this device is slow" hint) */
   serverSec: number
   onDone: (id: string) => void
-  onUseServer: () => void
+  /** undefined when the server doesn't analyse songs */
+  onUseServer?: () => void
   onCancel: () => void
 }) {
   const [p, setP] = useState<DeviceProgress>({ stage: 'models', progress: 0, detail: 'starting', eta: null })
@@ -121,7 +123,7 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onCancel }: {
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('beforeunload', onLeave)
     analyseOnDevice(url, setP, ac.signal).then(
-      (r) => (r.kind === 'server' ? onUseServer() : onDone(r.id)),
+      (r) => (r.kind !== 'server' ? onDone(r.id) : onUseServer ? onUseServer() : setErr('This browser can\u2019t analyse songs. Try Chrome or Edge on a computer.')),
       (e) => {
         if ((e as Error).name === 'AbortError') return
         setErr(e instanceof ApiError && e.code === 'rejected' ? `The result didn't pass Lemody's checks: ${e.message}` : (e as Error).message)
@@ -172,14 +174,14 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onCancel }: {
         <div role="alert" className="mt-4 rounded-xl border border-error/30 bg-error/8 p-3.5">
           <div className="flex gap-2 text-[13px] text-text"><AlertTriangle size={15} className="text-error shrink-0 mt-0.5" />{err}</div>
           <div className="mt-3 flex gap-2">
-            <button type="button" onClick={onUseServer} className="rounded-full bg-main text-bg text-xs font-medium px-4 py-1.5">use Lemody's server instead</button>
+            {onUseServer && <button type="button" onClick={onUseServer} className="rounded-full bg-main text-bg text-xs font-medium px-4 py-1.5">use Lemody's server instead</button>}
             <button type="button" onClick={onCancel} className="rounded-full surface text-xs px-4 py-1.5 text-sub hover:text-text">close</button>
           </div>
         </div>
       ) : (
         <div className="mt-3 text-[12px] text-main">Keep Lemody open until it's done.</div>
       )}
-      {slow && (
+      {slow && onUseServer && (
         <div className="mt-2.5 text-[12px] text-sub leading-relaxed fade-in">
           Server would be faster ({mins(serverSec)}).{' '}
           <button type="button" className="text-main hover:underline" onClick={() => { ctl.current?.abort(); onUseServer() }}>switch</button>

@@ -33,13 +33,23 @@ def enabled() -> bool:
 
 
 def _host_path() -> tuple[str, str]:
+    """("user@host", "/path"), or ("", "/path") when the store is on this machine
+    (the analyzer running on the VPS itself)."""
+    if ":" not in CONFIG.remote_store:
+        return "", CONFIG.remote_store.rstrip("/")
     host, _, path = CONFIG.remote_store.partition(":")
     return host, path.rstrip("/")
 
 
+def _at(sub: str) -> str:
+    """rsync address of something in the store."""
+    host, path = _host_path()
+    return f"{host}:{path}/{sub}" if host else f"{path}/{sub}"
+
+
 def _ssh(cmd: str, timeout: float = 30) -> str:
     host, _ = _host_path()
-    r = subprocess.run(["ssh", *SSH_OPTS.split(), host, cmd],
+    r = subprocess.run(["ssh", *SSH_OPTS.split(), host, cmd] if host else ["sh", "-c", cmd],
                        capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0:
         raise RuntimeError(f"VPS: {(r.stderr or r.stdout).strip()[-200:]}")
@@ -107,11 +117,9 @@ def push(song_dir: Path) -> bool:
     """Copy a finished song to the VPS. True when it's safely there."""
     if not enabled() or not (song_dir / "reference.json").exists():
         return False
-    _, path = _host_path()
-    host, _ = _host_path()
     with _lock:
         try:
-            _rsync(f"{song_dir}/", f"{host}:{path}/{song_dir.name}/")
+            _rsync(f"{song_dir}/", _at(f"{song_dir.name}/"))
         except Exception as e:
             print(f"could not copy {song_dir.name} to the VPS: {e}", flush=True)
             return False
@@ -150,11 +158,10 @@ def pull(song_dir: Path) -> bool:
     """Fetch a song back from the VPS (this machine needs its files)."""
     if not enabled() or not has(song_dir.name):
         return False
-    host, path = _host_path()
     song_dir.mkdir(parents=True, exist_ok=True)
     with _lock:
         try:
-            _rsync(f"{host}:{path}/{song_dir.name}/", f"{song_dir}/")
+            _rsync(_at(f"{song_dir.name}/"), f"{song_dir}/")
         except Exception as e:
             print(f"could not fetch {song_dir.name} from the VPS: {e}", flush=True)
             return False
@@ -195,12 +202,11 @@ def has_model(name: str, local: Path) -> bool:
 def push_models(models_dir: Path) -> None:
     """Copy the models to the VPS once, so browsers download them from there (fast)
     instead of from this machine."""
-    if not enabled() or not models_dir.exists():
-        return
-    host, path = _host_path()
+    if not enabled() or not models_dir.exists() or models_dir.resolve() == Path(_at("_models")).resolve():
+        return  # on the VPS itself the models are already in place
     with _lock:
         try:
-            r = subprocess.run(["rsync", "-a", "--partial", "--timeout=60", "-e", f"ssh {SSH_OPTS}", f"{models_dir}/", f"{host}:{path}/_models/"],
+            r = subprocess.run(["rsync", "-a", "--partial", "--timeout=60", "-e", f"ssh {SSH_OPTS}", f"{models_dir}/", _at("_models/")],
                                capture_output=True, text=True, timeout=3600)
             if r.returncode == 0:
                 _models["at"] = 0  # re-list

@@ -24,6 +24,7 @@ from .config import CONFIG, FFMPEG, RUBBERBAND, device_name
 app = FastAPI(title="Lemody analyzer", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=list(CONFIG.cors_origins),
     allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,8 +58,19 @@ def _startup() -> None:
         # every 5 minutes after, so a dropped connection sorts itself out
         remote.keep_in_sync(storage.songs_root())
         catalog.backfill()  # previews + search entries for songs from before search existed
+        # songs another machine added to the VPS since: listed within 10 minutes
+        def relist() -> None:
+            while True:
+                time.sleep(600)
+                try:
+                    catalog.backfill()
+                    storage.trim()
+                except Exception as e:
+                    print(f"could not refresh the song list: {e}", flush=True)
+
+        threading.Thread(target=relist, daemon=True, name="lemo-relist").start()
         remote.push_models(CONFIG.data_dir / "models")  # for browsers that analyse songs themselves
-        if CONFIG.enable_youtube:
+        if CONFIG.enable_youtube and CONFIG.server_analysis:
             # resume featured songs that weren't finished, and look again every 10 minutes
             # (newly added ones, or one that failed earlier)
             while True:
@@ -98,7 +110,7 @@ def health() -> dict:
         yt_ok, yt_reason = False, "YouTube import is off. Set LEMO_ENABLE_YOUTUBE=true in analyzer/.env and restart the analyzer."
     import importlib.util
 
-    separation = importlib.util.find_spec("demucs") is not None
+    separation = CONFIG.server_analysis and importlib.util.find_spec("demucs") is not None
 
     return {
         "ok": True,
@@ -149,6 +161,14 @@ def _make_room(song_id: str) -> None:
             jobs.MANAGER.cancel(sid)
 
 
+def _no_server_analysis() -> None:
+    if not CONFIG.server_analysis:
+        raise HTTPException(503, {
+            "code": "server_analysis_off",
+            "message": "Lemody's server doesn't analyse new songs. Paste the song's YouTube link and choose \u201cthis computer\u201d or \u201cthis phone\u201d to analyse it on your device.",
+        })
+
+
 @app.post("/api/songs/analyze")
 async def analyze(url: str | None = Form(None), file: UploadFile | None = None) -> dict:
     if url:
@@ -157,6 +177,9 @@ async def analyze(url: str | None = Form(None), file: UploadFile | None = None) 
         vid = youtube.video_id(url)
         if not vid:
             raise HTTPException(400, "Not a valid YouTube video URL.")
+        if not CONFIG.server_analysis and (st := jobs.MANAGER.status(f"yt-{vid}")) and st["stage"] == "done":
+            return st  # already in Lemody
+        _no_server_analysis()
         _require_space(f"yt-{vid}")
         _make_room(f"yt-{vid}")
         return jobs.MANAGER.submit(f"yt-{vid}", {"kind": "youtube", "videoId": vid})
@@ -184,6 +207,7 @@ async def analyze(url: str | None = Form(None), file: UploadFile | None = None) 
         if (d / "reference.json").exists():
             tmp.unlink()
             return jobs.MANAGER.status(song_id)
+        _no_server_analysis()
         _require_space(song_id)  # the upload is discarded (finally below) when storage is full
         d.mkdir(parents=True, exist_ok=True)
         dest = d / f"source{ext or '.audio'}"
@@ -574,6 +598,7 @@ def featured_prepare(now: bool = False) -> dict:
     now=true: start right away, even while someone is practising."""
     if not CONFIG.enable_youtube:
         raise HTTPException(403, "YouTube import is disabled (LEMO_ENABLE_YOUTUBE=false).")
+    _no_server_analysis()
     if now:
         _prepare_now["on"] = True
 
@@ -655,6 +680,8 @@ def align_plain_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     cache = d / f"align-{key}.json"
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
+    if not _can_align():
+        return {"status": "failed", "error": "word timing isn't available on this server"}
     with _align_lock:
         job = _align_jobs.get(key)
         if job and job["status"] == "failed":
@@ -678,6 +705,13 @@ def align_plain_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     return {"status": "running", "message": "timing the lyrics to the singer"}
 
 
+def _can_align() -> bool:
+    """Word timing runs the MMS model (torch): only where torch is installed."""
+    import importlib.util
+
+    return importlib.util.find_spec("torchaudio") is not None
+
+
 @app.post("/api/songs/{song_id}/align")
 def align_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     """Idempotent: call again with the same lines to poll. Returns per-line words (or null)."""
@@ -693,6 +727,8 @@ def align_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     cache = d / f"align-{key}.json"
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
+    if not _can_align():
+        return {"status": "failed", "error": "word timing isn't available on this server"}
     with _align_lock:
         job = _align_jobs.get(key)
         if job and job["status"] == "failed":

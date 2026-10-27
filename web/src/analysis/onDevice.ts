@@ -5,7 +5,7 @@
 // the two models, which the browser keeps so the next song starts straight away.
 
 import { ApiError } from '../api/analyzer'
-import { idToken } from '../auth/firebase'
+import { apiUrl, idToken } from '../auth/firebase'
 import type { WorkerIn, WorkerOut } from './analysis.worker'
 
 export type DeviceStage = 'models' | 'fetching' | 'separating' | 'melody' | 'encoding' | 'uploading' | 'checking' | 'finishing'
@@ -269,7 +269,7 @@ async function upload(url: string, body: FormData, onFrac: (f: number) => void, 
   const token = await idToken()
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', url)
+    xhr.open('POST', apiUrl(url))
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     xhr.upload.onprogress = (e) => e.lengthComputable && onFrac(e.loaded / e.total)
     xhr.onload = () => {

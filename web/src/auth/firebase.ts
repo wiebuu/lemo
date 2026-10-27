@@ -98,17 +98,19 @@ function friendly(code: string, message: string): string {
   return message.replace(/^Firebase: /, '')
 }
 
-/** Every request to the analyzer (/api/…) carries the signed-in user's Google ID token. */
+/** The analyzer's address: this site's own (dev, with Vite's proxy) or VITE_API_URL. */
+export const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+export const apiUrl = (path: string) => API_URL + path
+
+/** Every request to the analyzer (/api/…) goes to its address and carries the signed-in user's Google ID token. */
 function installApiAuth() {
   const original = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, location.href)
+    if (url.origin !== location.origin || !url.pathname.startsWith('/api/')) return original(input, init)
+    const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
     const user = auth?.currentUser
-    if (url.origin === location.origin && url.pathname.startsWith('/api/') && user) {
-      const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
-      headers.set('Authorization', `Bearer ${await user.getIdToken()}`)
-      return original(input, { ...init, headers })
-    }
-    return original(input, init)
+    if (user) headers.set('Authorization', `Bearer ${await user.getIdToken()}`)
+    return original(apiUrl(url.pathname + url.search), { ...init, headers })
   }
 }

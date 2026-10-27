@@ -48,13 +48,36 @@ def contour_from_device(vocals_path: Path, f0: np.ndarray, periodicity: np.ndarr
     """The same contour as extract_contour(crepe), from pitch a browser worked out
     (CREPE "full", Viterbi-decoded — before the filters, which are applied here)."""
     import librosa
-    import torch
-    import torchcrepe
 
     y, _ = librosa.load(str(vocals_path), sr=SR, mono=True)
-    per = torchcrepe.filter.median(torch.from_numpy(periodicity.astype(np.float32))[None], 3)[0].numpy()
-    pitch = torchcrepe.filter.mean(torch.from_numpy(f0.astype(np.float32))[None], 3)[0].numpy()
+    per = nan_median3(periodicity.astype(np.float32))
+    pitch = nan_mean3(f0.astype(np.float32))
     return gate_contour(y, pitch, per, per > 0.45)
+
+
+def nan_median3(x: np.ndarray) -> np.ndarray:
+    """torchcrepe.filter.median(x, 3) without torch: NaN-aware, edges reflected."""
+    mask = ~np.isnan(x)
+    v = np.pad(np.where(mask, x, 0), 1, mode="reflect")
+    m = np.pad(mask, 1, mode="constant")
+    w = np.lib.stride_tricks.sliding_window_view(v, 3)
+    wm = np.lib.stride_tricks.sliding_window_view(m, 3)
+    srt = np.sort(np.where(wm, w, np.inf), axis=-1)
+    idx = np.clip((wm.sum(-1) - 1) // 2, 0, None)
+    out = np.take_along_axis(srt, idx[:, None], -1)[:, 0]
+    out[np.isinf(out)] = np.nan
+    return out.astype(np.float32)
+
+
+def nan_mean3(x: np.ndarray) -> np.ndarray:
+    """torchcrepe.filter.mean(x, 3) without torch: NaN-aware moving average."""
+    mask = ~np.isnan(x)
+    k = np.ones(3, np.float32)
+    total = np.convolve(np.where(mask, x, 0), k, mode="same")
+    count = np.maximum(np.convolve(mask.astype(np.float32), k, mode="same"), 1)
+    out = (total / count).astype(np.float32)
+    out[out == 0] = np.nan
+    return out
 
 
 def gate_contour(y: np.ndarray, f0: np.ndarray, conf: np.ndarray, voiced: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

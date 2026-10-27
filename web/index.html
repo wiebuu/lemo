@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#131313" />
+    <title>Lemody</title>
+    <meta name="description" content="Lemody: practise singing along to your favourite songs, see your pitch live on the melody and get honest scores. A Wiecodes product." />
+    <meta name="author" content="Wiecodes" />
+    <meta name="application-name" content="Lemody" />
+    <meta name="apple-mobile-web-app-title" content="Lemody" />
+    <link rel="canonical" href="https://lemodysounds.online/" />
+    <meta property="og:site_name" content="Lemody" />
+    <meta property="og:title" content="Lemody · sing along, see your pitch" />
+    <meta property="og:description" content="Practise singing with any song: see your pitch live on the melody and get honest scores. A Wiecodes product." />
+    <meta property="og:url" content="https://lemodysounds.online/" />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <!-- Loading screen before any script runs (React's own <Splash> takes over, same look). -->
+    <div id="root">
+      <div id="boot">
+        <svg viewBox="0 0 48 24" aria-hidden="true"><path d="M2 14 C7 14 8 5 13 5 S20 19 26 19 S33 8 38 8 S44 13 46 13" pathLength="100" /></svg>
+        <div class="name">lemody</div>
+        <div class="bar"><i></i></div>
+        <div class="by"><b>Wiecodes</b></div>
+      </div>
+    </div>
+    <style>
+      #boot { --bg: #131313; --main: #d8b36f; --text: #ededea; --sub: #7d7d82; --track: #1c1c1d;
+        position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center;
+        font-family: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+      #boot svg { width: 96px; height: 48px; overflow: visible; }
+      #boot path { fill: none; stroke: var(--main); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100;
+        animation: boot-draw 1.6s cubic-bezier(.65,0,.35,1) infinite alternate; }
+      #boot .name { margin-top: 20px; color: var(--text); font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+      #boot .bar { margin-top: 24px; width: 112px; height: 2px; border-radius: 2px; background: var(--track); overflow: hidden; }
+      #boot .bar i { display: block; width: 33%; height: 100%; border-radius: 2px; background: var(--main); animation: boot-slide 1.1s cubic-bezier(.45,0,.55,1) infinite; }
+      #boot .by { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); color: var(--sub); font-size: 11px; }
+      #boot .by b { color: var(--text); opacity: .8; font-weight: 600; letter-spacing: .025em; }
+      @keyframes boot-draw { 0% { stroke-dashoffset: 100 } 70%, 100% { stroke-dashoffset: 0 } }
+      @keyframes boot-slide { from { transform: translateX(-100%) } to { transform: translateX(300%) } }
+    </style>
+    <script>
+      // match the saved theme's colours, so the loading screen doesn't flash a different background
+      try {
+        var t = (JSON.parse(localStorage.getItem('lemo.settings') || '{}') || {}).theme
+        var c = { ink: ['#0d1117', '#8fb4f6', '#e6edf3', '#6f7c8d', '#161c25'], sage: ['#111412', '#a3c9a8', '#e7ece8', '#76837b', '#191e1b'],
+          velvet: ['#151114', '#e3a7b6', '#f0e9ee', '#857784', '#1f181d'], mono: ['#111111', '#f0f0f0', '#eeeeee', '#7a7a7a', '#1a1a1a'] }[t]
+        if (c) {
+          var b = document.getElementById('boot').style
+          ;['--bg', '--main', '--text', '--sub', '--track'].forEach(function (k, i) { b.setProperty(k, c[i]) })
+          document.querySelector('meta[name=theme-color]').setAttribute('content', c[0])
+        }
+      } catch (e) {}
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

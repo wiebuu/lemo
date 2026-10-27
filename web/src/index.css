@@ -1,0 +1,645 @@
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
+@import 'tailwindcss';
+
+/* Themes — restrained palettes: a neutral dark base and one refined accent.
+   --main-2 is a close shade of the accent (never a different hue family), so
+   the few gradients read as a sheen, not a rainbow. "studio" is the default. */
+:root,
+:root[data-theme='studio'] {
+  --bg: #131313;
+  --sub-alt: #1c1c1d;
+  --text: #ededea;
+  --sub: #7d7d82;
+  --main: #d8b36f;
+  --main-2: #c99a62;
+  --voice: #7ccbc2; /* your line on the graph — always unlike the original's */
+  --error: #e5675f;
+  --sharp: #e3a368;
+  --flat: #7da6d9;
+  color-scheme: dark;
+}
+/* ink — blue-black, soft periwinkle */
+:root[data-theme='ink'] {
+  --bg: #0d1117;
+  --sub-alt: #161c25;
+  --text: #e6edf3;
+  --sub: #6f7c8d;
+  --main: #8fb4f6;
+  --main-2: #a3a9f2;
+  --voice: #f2c27d; /* your line on the graph — always unlike the original's */
+  --error: #f47067;
+  --sharp: #f0b072;
+  --flat: #79c0ff;
+}
+/* sage — green-grey, muted sage */
+:root[data-theme='sage'] {
+  --bg: #111412;
+  --sub-alt: #191e1b;
+  --text: #e7ece8;
+  --sub: #76837b;
+  --main: #a3c9a8;
+  --main-2: #8bbcae;
+  --voice: #efb388; /* your line on the graph — always unlike the original's */
+  --error: #e57373;
+  --sharp: #e0b070;
+  --flat: #82aadf;
+}
+/* velvet — aubergine, dusty rose */
+:root[data-theme='velvet'] {
+  --bg: #151114;
+  --sub-alt: #1f181d;
+  --text: #f0e9ee;
+  --sub: #857784;
+  --main: #e3a7b6;
+  --main-2: #cfa5d6;
+  --voice: #8fd3c5; /* your line on the graph — always unlike the original's */
+  --error: #ef7a7a;
+  --sharp: #f0b27a;
+  --flat: #93b2ea;
+}
+/* mono — no colour at all, white on charcoal */
+:root[data-theme='mono'] {
+  --bg: #111111;
+  --sub-alt: #1a1a1a;
+  --text: #eeeeee;
+  --sub: #7a7a7a;
+  --main: #f0f0f0;
+  --main-2: #c4c4c4;
+  --voice: #8cc8ff; /* your line on the graph — always unlike the original's */
+  --error: #ff6b6b;
+  --sharp: #e9a06a;
+  --flat: #7fa7e0;
+}
+
+/* derived from each theme */
+:root {
+  --grad: linear-gradient(135deg, var(--main), var(--main-2));
+  --line: color-mix(in srgb, var(--text) 9%, transparent);
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-main: var(--main);
+  --color-main-2: var(--main-2);
+  --color-voice: var(--voice);
+  --color-line: var(--line);
+  --color-sub: var(--sub);
+  --color-sub-alt: var(--sub-alt);
+  --color-text: var(--text);
+  --color-error: var(--error);
+  --color-sharp: var(--sharp);
+  --color-flat: var(--flat);
+  --font-sans: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv11';
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.25s ease;
+}
+/* ---- gradient helpers ------------------------------------------------------- */
+.text-grad {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bg-grad {
+  background: var(--grad);
+}
+/* a hairline in the accent colour */
+.ring-grad {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--main) 45%, transparent);
+}
+.surface {
+  background: var(--sub-alt);
+  border: 1px solid var(--line);
+}
+
+::selection {
+  background: var(--main);
+  color: var(--bg);
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}
+
+/* Thin, theme-coloured range inputs */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 16px;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--sub-alt);
+  border-radius: 2px;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--sub);
+  transition: background 0.15s;
+}
+input[type='range']:hover::-webkit-slider-thumb {
+  background: var(--grad);
+}
+input[type='range']::-moz-range-track {
+  height: 3px;
+  background: var(--sub-alt);
+}
+input[type='range']::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--sub);
+}
+
+.caret-blink {
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.fade-in {
+  animation: fadein 0.2s ease;
+}
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* equaliser bars — loading indicator */
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.eq span {
+  width: 3px;
+  background: var(--main);
+  border-radius: 1px;
+  animation: eq 0.9s ease-in-out infinite;
+}
+.eq span:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.eq span:nth-child(3) {
+  animation-delay: -0.6s;
+}
+@keyframes eq {
+  0%, 100% {
+    height: 25%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+/* collapsible rows used by the listening layout */
+.fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.45s ease, opacity 0.3s ease, margin 0.45s ease;
+}
+.fold > * {
+  overflow: hidden;
+  min-height: 0;
+}
+.fold[data-closed='true'] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- app feel: no document-y browser defaults ---------------------------- */
+html,
+body {
+  overscroll-behavior: none; /* no rubber-band bounce */
+  touch-action: manipulation; /* no double-tap zoom */
+}
+* {
+  scrollbar-width: none; /* Firefox */
+  -webkit-tap-highlight-color: transparent;
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome / Safari — content still scrolls */
+}
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: default;
+}
+input:not([type='range']),
+textarea,
+[contenteditable='true'] {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+input[type='range'] {
+  cursor: pointer;
+}
+img,
+svg,
+canvas {
+  -webkit-user-drag: none;
+}
+/* focus rings only for keyboard navigation, in the theme colour */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--main);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+input:not([type='range']):focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+/* ---- lyric ticker ---------------------------------------------------------- */
+.lyric-ticker {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+/* no colour fade: a word leaving "now" goes from clipped-transparent text to solid
+   and would vanish for the length of the fade */
+.lyric-word[data-state='past'] {
+  color: var(--text);
+  opacity: 0.55;
+}
+/* default (and upcoming): grey */
+.lyric-word,
+.lyric-word[data-state='next'] {
+  color: var(--sub);
+}
+/* the word being sung fills left→right as it's sung */
+.lyric-word[data-state='now'] {
+  color: transparent;
+  /* the sung part fills with the theme gradient, the rest waits in grey */
+  background:
+    linear-gradient(90deg, var(--main), var(--main-2)) left / calc(var(--p, 0) * 100%) 100% no-repeat,
+    linear-gradient(var(--sub), var(--sub));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+/* a pause: a straight line as long as the pause, filling up as it passes */
+.lyric-gap {
+  display: inline-block;
+  height: 3px;
+  margin: 0 0.45em;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--sub) 45%, transparent);
+  overflow: hidden;
+  flex: none;
+}
+.lyric-gap > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--grad);
+}
+.lyric-gap[data-state='now'] > span {
+  width: calc(var(--p, 0) * 100%);
+}
+.lyric-gap[data-state='past'] > span {
+  width: 100%;
+  opacity: 0.55;
+}
+
+/* dialog content fades out at the bottom edge so it reads as scrollable */
+.modal-body {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+/* three-row lyrics: previous / current / next */
+.lyric-side {
+  color: var(--sub);
+  opacity: 0.7;
+}
+.lyric-next {
+  opacity: 0.9;
+}
+.lyric-rows {
+  animation: lyric-rows-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes lyric-rows-in {
+  from {
+    transform: translateY(14px);
+    opacity: 0.4;
+  }
+}
+
+/* ---- motion: short, eased, consistent ------------------------------------- */
+button,
+a,
+input {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+/* disabled controls still receive hover so their tooltip can say why */
+button:disabled {
+  pointer-events: none;
+}
+.tip-in {
+  animation: tip-in 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    margin-top: 3px;
+  }
+}
+.pop-in {
+  animation: pop-in 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transform-origin: top center;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+.overlay-in {
+  animation: overlay-in 0.2s ease-out;
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+.modal-in {
+  animation: modal-in 0.24s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+.fade-in {
+  animation: fadein 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.toast-in {
+  animation: toast-in 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ---- tracklist rows (start page) ---------------------------------------------- */
+.track {
+  transition: background-color 180ms ease;
+  /* long lists: rows off screen aren't laid out or painted until scrolled to */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 34px;
+}
+.track:not(:disabled):hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.track:disabled {
+  cursor: default;
+}
+/* the track number turns into a little equaliser on hover */
+.track-eq {
+  opacity: 0;
+}
+.track:hover .track-eq {
+  opacity: 1;
+}
+.track:hover .track-no:has(+ .track-eq) {
+  opacity: 0;
+}
+.track .eq span {
+  animation-play-state: paused;
+  background: var(--main);
+}
+.track:hover .eq span {
+  animation-play-state: running;
+}
+
+/* short windows: the start page keeps room for the tracklist */
+@media (max-height: 760px) {
+  .hero-staff,
+  .hero-sub {
+    display: none;
+  }
+  .hero {
+    margin-bottom: 1.25rem;
+  }
+  .hero-title {
+    font-size: 40px;
+  }
+}
+
+/* dialogs and menus */
+.modal-card {
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+/* a bar that moves while the amount of work isn't known yet */
+.busy-indeterminate {
+  animation: busy-slide 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes busy-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+/* Urdu lyrics run right to left: the sung part fills from the right */
+[dir='rtl'] .lyric-word[data-state='now'] {
+  background:
+    linear-gradient(270deg, var(--main), var(--main-2)) right / calc(var(--p, 0) * 100%) 100% no-repeat,
+    linear-gradient(var(--sub), var(--sub));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+[dir='rtl'] .lyric-gap > span {
+  margin-left: auto;
+}
+
+/* rows that scroll sideways on small screens fade at the right edge, so it's clear there's more */
+@media (max-width: 639px) {
+  .edge-fade {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    padding-right: 24px;
+  }
+}
+
+/* phones: dialogs rise from the bottom edge */
+@media (max-width: 639px) {
+  .sheet-in {
+    animation: sheet-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* the live voice note during a test: slides down softly */
+.coach-in {
+  animation: coach-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+/* placeholder rows while something loads */
+.skeleton {
+  display: block;
+  background: linear-gradient(90deg, var(--sub-alt) 0%, color-mix(in srgb, var(--sub-alt), var(--text) 9%) 50%, var(--sub-alt) 100%);
+  background-size: 200% 100%;
+  animation: skeleton 1.3s ease-in-out infinite;
+}
+@keyframes skeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* ---- loading screen: the wave draws itself, then keeps flowing ---------------- */
+.wave-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: wave-draw 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+@keyframes wave-draw {
+  0% { stroke-dashoffset: 100; }
+  70%, 100% { stroke-dashoffset: 0; }
+}
+.splash { animation: fadein 0.4s ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .wave-draw { animation: none; stroke-dashoffset: 0; }
+}
+
+/* ---- site pages (about, help, privacy …) -------------------------------------- */
+.page-in { animation: page-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.prose-lemody { color: var(--sub); font-size: 15px; line-height: 1.7; }
+.prose-lemody h1 { color: var(--text); font-size: clamp(28px, 6vw, 38px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 1.25rem; }
+.prose-lemody h2 { color: var(--text); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 2.25rem 0 0.6rem; }
+.prose-lemody p { margin: 0 0 1rem; }
+.prose-lemody .lead { color: var(--text); font-size: 17px; line-height: 1.6; opacity: 0.9; }
+.prose-lemody .updated { font-size: 12px; margin-bottom: 1.5rem; }
+.prose-lemody b { color: var(--text); font-weight: 500; }
+.prose-lemody a { color: var(--main); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.prose-lemody ul, .prose-lemody ol { margin: 0 0 1rem; padding-left: 1.25rem; }
+.prose-lemody ul { list-style: disc; }
+.prose-lemody ol { list-style: decimal; }
+.prose-lemody li { margin: 0.4rem 0; padding-left: 0.25rem; }
+.prose-lemody li::marker { color: var(--main); }
+.prose-lemody .faq { margin: 1.5rem 0 2rem; border-top: 1px solid var(--line); }
+.prose-lemody details { border-bottom: 1px solid var(--line); }
+.prose-lemody summary {
+  list-style: none; cursor: pointer; color: var(--text); font-weight: 500; padding: 0.95rem 2rem 0.95rem 0; position: relative;
+}
+.prose-lemody summary::-webkit-details-marker { display: none; }
+.prose-lemody summary::after {
+  content: '+'; position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 18px; font-weight: 400; transition: transform 0.2s;
+}
+.prose-lemody details[open] summary::after { transform: translateY(-50%) rotate(45deg); color: var(--main); }
+.prose-lemody details p { margin: -0.25rem 0 1rem; }
+.prose-lemody .card { background: var(--sub-alt); border: 1px solid var(--line); border-radius: 16px; padding: 1.25rem 1.4rem; margin: 1.5rem 0; }
+.prose-lemody .card-title { color: var(--text); font-weight: 600; font-size: 16px; margin-bottom: 0.3rem; }
+.prose-lemody .card .button {
+  display: inline-block; margin-top: 0.25rem; background: var(--main); color: var(--bg); text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 999px; padding: 0.5rem 1.2rem;
+}
+/* pages are for reading: text can be selected and copied there */
+.prose-lemody { user-select: text; -webkit-user-select: text; cursor: auto; }
+.prose-lemody summary, .prose-lemody a { cursor: pointer; }
+
+/* voice-effects sliders: a visible track filled up to the thumb, and a thumb big enough for fingers */
+input[type='range'].fx-range { height: 22px; }
+input[type='range'].fx-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(to right, var(--main) 0 var(--p, 0%), color-mix(in srgb, var(--text) 16%, transparent) var(--p, 0%) 100%);
+}
+input[type='range'].fx-range::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; background: var(--text); }
+input[type='range'].fx-range::-moz-range-track { height: 4px; background: color-mix(in srgb, var(--text) 16%, transparent); }
+input[type='range'].fx-range::-moz-range-progress { height: 4px; background: var(--main); }
+input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; background: var(--text); }
+
+/* featured rows: scroll sideways, no visible scrollbar */
+.shelf { scrollbar-width: none; }
+.shelf::-webkit-scrollbar { display: none; }
+
+/* disco lights: a canvas light show on the edges (Disco.tsx); the middle stays clear */
+.disco {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: -1; /* behind the page (the app is its own layer group): graph, lines and lyrics draw on top */
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 58% 52% at 50% 48%, transparent 40%, #000 92%);
+  mask-image: radial-gradient(ellipse 58% 52% at 50% 48%, transparent 40%, #000 92%);
+}
+
+/* the disco button's colours flow round while the lights are on (no glow) */
+.dj-flow { animation: dj-flow 3s linear infinite; }
+@keyframes dj-flow { to { filter: hue-rotate(360deg); } }
+.dj-flow.dj-bounce { animation: dj-flow 3s linear infinite, dj-bounce 0.6s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+/* a heartbeat-like pulse: quick grow on the beat, then settle */
+@keyframes dj-bounce { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.18); } 30% { transform: scale(0.96); } 45% { transform: scale(1.04); } 60% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .dj-flow, .dj-flow.dj-bounce { animation: none; } }

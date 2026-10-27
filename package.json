@@ -1,0 +1,18 @@
+{
+  "name": "lemo",
+  "private": true,
+  "description": "Lemody (lemodysounds.online) — sing along, see your pitch, get better. A Wiecodes product.",
+  "scripts": {
+    "setup": "npm --prefix web install && npm run setup:analyzer",
+    "setup:analyzer": "cd analyzer && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp -n .env.example .env || true",
+    "dev": "concurrently -n web,analyzer -c yellow,gray \"npm --prefix web run dev\" \"npm run analyzer\"",
+    "web": "npm --prefix web run dev",
+    "analyzer": "cd analyzer && .venv/bin/python -m lemo_analyzer",
+    "test": "npm --prefix web test && npm run test:analyzer",
+    "test:analyzer": "cd analyzer && .venv/bin/python -m unittest discover -s tests",
+    "build": "npm --prefix web run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

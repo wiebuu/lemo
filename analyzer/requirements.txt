@@ -1,0 +1,16 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+numpy>=1.26
+scipy>=1.11
+soundfile>=0.12
+librosa>=0.10
+torch>=2.2
+torchaudio>=2.2
+torchcrepe>=0.0.22
+demucs>=4.0
+yt-dlp>=2024.1
+google-auth==2.40.3  # verifies Firebase (Google) sign-in tokens
+httpx==0.28.1  # tests only: FastAPI test client
+psycopg[binary]==3.3.6  # per-user data in local PostgreSQL (DATABASE_URL)
+psycopg-pool==3.2.6

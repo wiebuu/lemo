@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+analyzer/.venv
+analyzer/data
+analyzer/.env
+__pycache__
+*.pyc
+web/.claude
+web/.env.local
+web/.env.*.local

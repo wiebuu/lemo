@@ -19,9 +19,11 @@ export function Header({ open }: { open: (p: Panel) => void }) {
         <Wordmark />
       </button>
       <nav className={cx('flex items-center ml-1 sm:ml-3 transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')}>
-        <IconToggle tip="Load a song" onClick={() => open('load')}>
-          <Music2 size={17} />
-        </IconToggle>
+        {t && (
+          <IconToggle tip="Load a song" onClick={() => open('load')}>
+            <Music2 size={17} />
+          </IconToggle>
+        )}
         <IconToggle tip="Lyrics & breath marks" onClick={() => open('lyrics')} disabled={!t} why="Load a song first.">
           <PencilLine size={17} />
         </IconToggle>

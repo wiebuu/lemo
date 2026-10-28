@@ -15,7 +15,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
   const phone = usePhone()
   const t = s.track
   return (
-    <header className="flex items-center gap-2 sm:gap-4 pt-5 pb-3 shrink-0">
+    <header className="flex items-center gap-2 sm:gap-4 pt-3 pb-1.5 sm:pt-5 sm:pb-3 shrink-0">
       <button type="button" onClick={() => { open(null); studio.goHome() }} className="shrink-0" aria-label="home">
         <Wordmark />
       </button>

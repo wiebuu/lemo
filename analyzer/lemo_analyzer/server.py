@@ -292,6 +292,36 @@ async def device_upload(file: UploadFile) -> dict:
         raise
 
 
+@app.post("/api/songs/device/link")
+def device_link(url: str = Form(...)) -> dict:
+    """Step 1, from a link to an audio file (Google Drive, Dropbox, OneDrive, a direct
+    link): fetched here, then handed to the browser to analyse — like an upload."""
+    from . import links
+
+    if links.kind(url) is None:
+        raise HTTPException(400, {"code": "not_a_file_link", "message": "That isn't a link to an audio file."})
+    tmpdir = Path(tempfile.mkdtemp(dir=CONFIG.data_dir))
+    try:
+        try:
+            f, name = links.download(url, tmpdir, CONFIG.max_upload_mb * 1024 * 1024)
+        except links.LinkError as e:
+            raise HTTPException(422, {"code": "link_failed", "message": str(e)}) from e
+        h = hashlib.sha1()
+        with f.open("rb") as fh:
+            while chunk := fh.read(1 << 20):
+                h.update(chunk)
+        song_id = f"up-{h.hexdigest()[:16]}"
+        if (jobs.song_dir(song_id) / "reference.json").exists() or remote.has(song_id):
+            return {"id": song_id, "state": "done", "progress": 1, "message": "ready"}
+        _require_space(song_id)
+        _active()
+        kept = CONFIG.data_dir / f"{song_id}-link{f.suffix}"
+        shutil.move(str(f), kept)
+        return device.start_upload(song_id, kept, name)  # takes the file over
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 @app.get("/api/songs/device/{song_id}")
 def device_status(song_id: str) -> dict:
     _song(song_id)
@@ -553,29 +583,54 @@ def me_save_prefs(request: Request, song_id: str, body: dict = Body(...)) -> dic
 REQUEST_DAYS = 7  # what the singer is told: ready within a week
 
 
-def _oembed(video_id: str) -> tuple[str | None, str | None]:
-    """The video's title and channel from YouTube's public oEmbed (for the list); best effort."""
+REQUEST_ID = re.compile(r"^(yt|rq)-[A-Za-z0-9_-]{8,40}$")
+OEMBED = {  # sites with a public oEmbed: the song's name for the list
+    "open.spotify.com": "https://open.spotify.com/oembed?url={}",
+    "soundcloud.com": "https://soundcloud.com/oembed?format=json&url={}",
+}
+
+
+def _oembed(url: str) -> tuple[str | None, str | None]:
+    """The song's name (and channel / artist) for the request list; best effort."""
+    import urllib.parse
     import urllib.request
 
+    host = (urllib.parse.urlparse(url).hostname or "").lower().removeprefix("www.").removeprefix("m.")
+    vid = youtube.video_id(url)
+    api = (f"https://www.youtube.com/oembed?format=json&url={urllib.parse.quote(url, safe='')}" if vid
+           else OEMBED.get(host, "").format(urllib.parse.quote(url, safe="")))
+    if not api:
+        return None, None
     try:
-        url = f"https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v={video_id}"
-        with urllib.request.urlopen(url, timeout=6) as r:
+        with urllib.request.urlopen(api, timeout=6) as r:
             d = json.loads(r.read())
-        return youtube.clean_title({"title": d.get("title") or "", "channel": d.get("author_name") or "", "uploader": d.get("author_name") or ""})
+        if vid:
+            return youtube.clean_title({"title": d.get("title") or "", "channel": d.get("author_name") or "", "uploader": d.get("author_name") or ""})
+        return (d.get("title") or None), (d.get("author_name") or None)
     except Exception:
         return None, None
 
 
 @app.post("/api/requests")
 def request_song(request: Request, url: str = Form(...)) -> dict:
+    """Any link to a song (YouTube, Spotify, …): Lemody adds it by hand, within a week."""
+    import urllib.parse
+
+    url = url.strip()
+    u = urllib.parse.urlparse(url if "://" in url else f"https://{url}")
+    if u.scheme not in {"http", "https"} or not u.hostname or len(url) > 2000:
+        raise HTTPException(400, "Paste a link to the song.")
     vid = youtube.video_id(url)
-    if not vid:
-        raise HTTPException(400, "Paste a YouTube link to the song.")
-    song_id = f"yt-{vid}"
-    if (jobs.song_dir(song_id) / "reference.json").exists() or remote.has(song_id):
-        return {"state": "ready", "id": song_id}  # already in Lemody: just open it
-    title, artist = _oembed(vid)
-    _data(lambda: userdata.request_song(_uid(request), song_id, f"https://www.youtube.com/watch?v={vid}", title, artist))
+    if vid:
+        song_id, url = f"yt-{vid}", f"https://www.youtube.com/watch?v={vid}"
+        if (jobs.song_dir(song_id) / "reference.json").exists() or remote.has(song_id):
+            return {"state": "ready", "id": song_id}  # already in Lemody: just open it
+    else:
+        clean = urllib.parse.urlunparse(u._replace(fragment=""))
+        song_id, url = "rq-" + hashlib.sha1(clean.encode()).hexdigest()[:16], clean
+    title, artist = _oembed(url)
+    title = title or (u.hostname or "").removeprefix("www.")
+    _data(lambda: userdata.request_song(_uid(request), song_id, url, title, artist))
     return {"state": "requested", "id": song_id, "title": title, "artist": artist, "days": REQUEST_DAYS}
 
 
@@ -586,7 +641,7 @@ def my_requests(request: Request) -> list[dict]:
 
 @app.delete("/api/requests/{song_id}")
 def cancel_request(request: Request, song_id: str) -> dict:
-    if not SONG_ID.match(song_id):
+    if not REQUEST_ID.match(song_id):
         raise HTTPException(400, "invalid song id")
     _data(lambda: userdata.cancel_request(_uid(request), song_id))
     return {"ok": True}
@@ -599,12 +654,12 @@ def deliver_requests() -> None:
     except userdata.Unavailable:
         return
     for r in waiting:
-        sid = r["songId"]
-        if not ((jobs.song_dir(sid) / "reference.json").exists() or remote.has(sid)):
+        sid = r["target"]  # a link from another site: the song it was added as (once picked)
+        if not sid or not ((jobs.song_dir(sid) / "reference.json").exists() or remote.has(sid)):
             continue
         e = catalog.load().get(sid, {})
-        n = userdata.deliver(sid, {"title": e.get("title") or r["title"], "artist": e.get("artist") or r["artist"], "duration": e.get("duration")})
-        worker.log(f"request {sid}: ready, added to {n} singer(s)' songs")
+        n = userdata.deliver(r["songId"], sid, {"title": e.get("title") or r["title"], "artist": e.get("artist") or r["artist"], "duration": e.get("duration")})
+        worker.log(f"request {r['songId']}: ready as {sid}, added to {n} singer(s)' songs")
 
 
 @app.put("/api/me/songs/{song_id}")

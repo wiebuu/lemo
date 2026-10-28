@@ -2,15 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, Link2, Loader2, Pause, Play, Search, X } from 'lucide-react'
 import { analyzer, type CatalogItem } from '../api/analyzer'
 import { formatTime } from '../lib/music'
-import { searchSongs, youtubeId } from '../lib/songSearch'
+import { searchSongs } from '../lib/songSearch'
+import { songLink } from '../lib/songLinks'
 import { cx, Tip, usePhone } from './ui'
 
 /**
  * The start box: type a song or a singer to find it among the songs Lemody already
- * has (they open straight away, ▶ plays 10 seconds first) — or paste a YouTube link
- * for anything else. A link to a song that's already here opens it without analysing again.
+ * has (they open straight away, ▶ plays 10 seconds first) — or paste a link: a song
+ * file (Drive, Dropbox, …) is analysed on this device; a YouTube link to a song that's
+ * already here opens it; any other site's link can be sent to Lemody to add.
  */
-export function SongSearch({ catalog, loading, busy, opening, disabled, newSongTime, onOpen, onLink, onTyping }: {
+export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, onLink, onAsk, onTyping }: {
   catalog: CatalogItem[]
   /** the song list is still on its way */
   loading: boolean
@@ -19,10 +21,11 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
   /** id of the song being opened */
   opening: string | null
   disabled: boolean
-  /** "about 6 minutes": how long a new song takes */
-  newSongTime: string | null
   onOpen: (id: string) => void
+  /** a song file link: analysed on this device */
   onLink: (url: string) => void
+  /** a link from a site that doesn't let Lemody use it: Lemody adds it by hand */
+  onAsk: (url: string) => void
   /** something is typed: the results take the song list's place */
   onTyping?: (typing: boolean) => void
 }) {
@@ -30,18 +33,23 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
   const preview = usePreview()
-  const vid = youtubeId(q)
+  const link = songLink(q)
+  const vid = link?.kind === 'youtube' ? link.videoId : null
   const known = vid ? catalog.find((c) => c.id === `yt-${vid}`) : undefined
-  const found = useMemo(() => (vid ? [] : searchSongs(catalog, q)), [catalog, q, vid])
+  // a site we can't take songs from (a YouTube song not in Lemody counts too)
+  const locked = link?.kind === 'locked' ? link.site : link?.kind === 'youtube' && !known ? 'YouTube' : null
+  const found = useMemo(() => (link ? [] : searchSongs(catalog, q)), [catalog, q, link])
   useEffect(() => setSel(0), [q])
   useEffect(() => () => preview.stop(), [])
 
   const typed = q.trim().length > 0
   useEffect(() => onTyping?.(typed), [typed, onTyping])
   const submit = () => {
-    if (vid) {
+    if (link) {
       preview.stop()
-      return onLink(q.trim())
+      if (known) return onOpen(known.id)
+      if (link.kind === 'file') return onLink(link.url)
+      return onAsk(link.url)
     }
     const pick = found[sel]
     if (pick) {
@@ -59,7 +67,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
         }}
         className="relative rounded-xl surface focus-within:border-main/50 transition-colors"
       >
-        {vid ? (
+        {link ? (
           <Link2 size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-main pointer-events-none" />
         ) : (
           <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-sub pointer-events-none" />
@@ -74,18 +82,18 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
             else if (e.key === 'Escape') setQ('')
           }}
           disabled={disabled}
-          placeholder="search a song or singer — or paste a YouTube link"
-          aria-label="search songs or paste a YouTube link"
+          placeholder="search a song or singer — or paste a link"
+          aria-label="search songs or paste a link"
           className="w-full bg-transparent rounded-xl pl-11 pr-28 py-3.5 text-[15px] text-text placeholder:text-sub outline-none"
         />
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {loading && typed && !vid && <Loader2 size={15} className="animate-spin text-sub mr-2" aria-label="loading songs" />}
+          {loading && typed && !link && <Loader2 size={15} className="animate-spin text-sub mr-2" aria-label="loading songs" />}
           {typed && !busy && (
             <button type="button" onClick={() => setQ('')} aria-label="clear" className="p-1.5 text-sub hover:text-text">
               <X size={14} />
             </button>
           )}
-          {vid && (
+          {link && !locked && (
             <button type="submit" disabled={disabled || busy}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg bg-main text-bg disabled:opacity-60">
               {busy && <Loader2 size={12} className="animate-spin" />}
@@ -98,8 +106,23 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
       {vid && known && (
         <p className="mt-2 px-1 text-[11px] text-sub fade-in">In Lemody: <span className="text-text">{known.title}</span></p>
       )}
+      {link?.kind === 'file' && (
+        <p className="mt-2 px-1 text-[11px] text-sub fade-in">A song file from {link.from} — analysed on your device.</p>
+      )}
+      {locked && link && (
+        <div className="mt-2 surface rounded-xl p-3 fade-in">
+          <p className="text-[13px] text-text">{locked} doesn’t let Lemody use its songs.</p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <button type="button" disabled={disabled || busy} onClick={() => onAsk(link.url)}
+              className="flex items-center gap-1.5 rounded-full bg-main text-bg text-xs font-medium px-4 py-1.5 disabled:opacity-60">
+              {busy && <Loader2 size={12} className="animate-spin" />} ask Lemody to add it
+            </button>
+            <span className="text-[11px] text-sub">about a week · then it’s in your songs</span>
+          </div>
+        </div>
+      )}
 
-      {typed && !vid && (
+      {typed && !link && (
         <div className="mt-2 surface rounded-xl p-1 fade-in" role="listbox" aria-label="songs found">
           {loading && !catalog.length ? (
             <ResultSkeleton />
@@ -132,8 +155,8 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, newSongT
             ))
           ) : (
             <div className="px-3 py-3 text-[13px] text-sub leading-relaxed">
-              <span className="text-text">No “{q.trim()}” in Lemody yet.</span> Paste its YouTube link here and Lemody will add it
-              {newSongTime ? ` (takes ${newSongTime})` : ''}.
+              <span className="text-text">No “{q.trim()}” in Lemody yet.</span> Upload the song, or paste a link to it here —
+              from any site.
             </div>
           )}
           {preview.error && <div className="px-3 pb-2 text-[11px] text-error">{preview.error}</div>}

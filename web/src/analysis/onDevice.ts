@@ -6,6 +6,7 @@
 
 import { ApiError } from '../api/analyzer'
 import { apiUrl, idToken } from '../auth/firebase'
+import { songLink } from '../lib/songLinks'
 import type { WorkerIn, WorkerOut } from './analysis.worker'
 
 export type DeviceStage = 'models' | 'fetching' | 'separating' | 'melody' | 'encoding' | 'uploading' | 'checking' | 'finishing'
@@ -180,7 +181,12 @@ export async function analyseOnDevice(source: string | File, onProgress: (p: Dev
   // 1. the server gets the song (no queue), or keeps the singer's file to check the result
   // against — meanwhile the models download (first time only)
   let start: ServerState
-  if (typeof source === 'string') {
+  if (typeof source === 'string' && songLink(source)?.kind === 'file') {
+    // a song file behind a link (Drive, Dropbox, …): the server fetches it first
+    report('fetching', 0.1, 'getting the song from the link')
+    start = await json<ServerState>(await fetch('/api/songs/device/link', { method: 'POST', body: new URLSearchParams({ url: source }), signal }))
+    report('models', 0, 'getting the analyser')
+  } else if (typeof source === 'string') {
     start = await json<ServerState>(await fetch('/api/songs/device/start', { method: 'POST', body: new URLSearchParams({ url: source }), signal }))
   } else {
     const fd = new FormData()

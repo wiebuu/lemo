@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, Check, TriangleAlert, Volume1, Volume2 } from 'luci
 import { midiToNoteName } from '../lib/music'
 import { studio } from '../state/studio'
 import { ListenControls } from './Results'
-import { cx, Tip, useStudio } from './ui'
+import { cx, Tip, usePhone, useStudio } from './ui'
 
 /**
  * Live readout above the graph: one big symbol telling you what to do right now.
@@ -11,6 +11,7 @@ import { cx, Tip, useStudio } from './ui'
  */
 export function LiveStats({ big }: { big?: boolean }) {
   const s = useStudio()
+  const phone = usePhone()
   const note = useRef<HTMLSpanElement>(null)
   const icons = useRef<Record<string, HTMLSpanElement | null>>({})
   const meter = useRef<HTMLSpanElement>(null)
@@ -59,7 +60,7 @@ export function LiveStats({ big }: { big?: boolean }) {
         <ListenControls />
       ) : (
       <div className="flex items-center gap-4 text-xs text-sub shrink-0">
-        {s.phrases.length > 0 && (
+        {s.phrases.length > 0 && !phone && ( // phones: no room to spare above the graph
           <Tip tip="Line of the song">
             <span className="tabular-nums">{Math.max(1, s.phrase + 1)}/{s.phrases.length}</span>
           </Tip>

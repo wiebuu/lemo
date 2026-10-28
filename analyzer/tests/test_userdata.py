@@ -104,6 +104,16 @@ class UserDataTests(unittest.TestCase):
             self.assertEqual(self.call("GET", "/api/requests", who=who).json(), [])
             self.assertEqual([s["songId"] for s in self.call("GET", "/api/me", who=who).json()["songs"]], ["yt-AbCdEfGhIjK"])
 
+    def test_a_link_from_another_site_is_delivered_as_the_song_picked_for_it(self):
+        with mock.patch.object(server, "_oembed", return_value=("Kesariya", None)):
+            r = self.call("POST", "/api/requests", data={"url": "https://open.spotify.com/track/abc123"}).json()
+        self.assertTrue(r["id"].startswith("rq-"))
+        self.assertIsNone(userdata.pending_requests()[0]["target"])  # nothing to add yet
+        userdata.set_target(r["id"], "yt-AbCdEfGhIjK")
+        with mock.patch.object(server.remote, "has", return_value=True):
+            server.deliver_requests()
+        self.assertEqual([s["songId"] for s in self.call("GET", "/api/me").json()["songs"]], ["yt-AbCdEfGhIjK"])
+
     def test_a_request_can_be_cancelled(self):
         with mock.patch.object(server, "_oembed", return_value=(None, None)):
             self.call("POST", "/api/requests", data={"url": "https://youtu.be/AbCdEfGhIjK"})

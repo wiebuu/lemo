@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS lemo_requests (
   done_at      double precision,
   PRIMARY KEY (uid, song_id)
 );
+-- a link from a site we can't use (Spotify, …): the song it becomes, set when it's added
+ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS target_id text;
 """
 
 _lock = threading.Lock()
@@ -239,8 +241,8 @@ def request_song(uid: str, song_id: str, url: str, title: str | None, artist: st
 
 
 def my_requests(uid: str) -> list[dict]:
-    rows = _q("SELECT song_id, title, artist, requested_at FROM lemo_requests WHERE uid = %s AND done_at IS NULL ORDER BY requested_at DESC", (uid,))
-    return [{"songId": r["song_id"], "title": r["title"], "artist": r["artist"], "requestedAt": r["requested_at"]} for r in rows]
+    rows = _q("SELECT song_id, url, title, artist, requested_at FROM lemo_requests WHERE uid = %s AND done_at IS NULL ORDER BY requested_at DESC", (uid,))
+    return [{"songId": r["song_id"], "url": r["url"], "title": r["title"], "artist": r["artist"], "requestedAt": r["requested_at"]} for r in rows]
 
 
 def cancel_request(uid: str, song_id: str) -> None:
@@ -251,17 +253,24 @@ def pending_requests() -> list[dict]:
     """Every song still waiting, most asked-for first."""
     rows = _q(
         """SELECT song_id, MIN(url) AS url, MAX(title) AS title, MAX(artist) AS artist, COUNT(*) AS people,
-                  MIN(requested_at) AS first_at
+                  MIN(requested_at) AS first_at, MAX(target_id) AS target_id
            FROM lemo_requests WHERE done_at IS NULL GROUP BY song_id ORDER BY COUNT(*) DESC, MIN(requested_at)""")
     return [{"songId": r["song_id"], "url": r["url"], "title": r["title"], "artist": r["artist"],
-             "people": int(r["people"]), "firstAt": r["first_at"]} for r in rows]
+             "people": int(r["people"]), "firstAt": r["first_at"],
+             # the song it becomes: a YouTube link's own id, or what was picked for another link
+             "target": r["target_id"] or (r["song_id"] if r["song_id"].startswith("yt-") else None)} for r in rows]
 
 
-def deliver(song_id: str, meta: dict[str, Any]) -> int:
+def set_target(song_id: str, target_id: str) -> int:
+    """A request from a site we can't use is added as this song."""
+    return _q("UPDATE lemo_requests SET target_id = %s WHERE song_id = %s AND done_at IS NULL", (target_id, song_id))
+
+
+def deliver(song_id: str, target: str, meta: dict[str, Any]) -> int:
     """The song is ready: it goes into the song list of everyone who asked. Returns how many."""
     rows = _q("SELECT uid FROM lemo_requests WHERE song_id = %s AND done_at IS NULL", (song_id,))
     now = time.time()
     for r in rows:
-        save_song(r["uid"], song_id, {**meta, "addedAt": now * 1000})
+        save_song(r["uid"], target, {**meta, "addedAt": now * 1000})
     _q("UPDATE lemo_requests SET done_at = %s WHERE song_id = %s AND done_at IS NULL", (now, song_id))
     return len(rows)

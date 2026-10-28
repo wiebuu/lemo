@@ -100,16 +100,9 @@ export default function App() {
     // space that's left. The start screen can scroll (long library lists).
     <div className={cx('relative isolate flex flex-col max-w-[1500px] mx-auto px-4 sm:px-10', s.track ? 'h-dvh min-h-[540px] overflow-hidden' : 'h-dvh min-h-[480px] overflow-hidden')}>
       <Header open={setPanel} />
-      {/* phones: the header has no room for the song name, so it gets a line of its own */}
-      {s.track && (
-        <div className={cx('sm:hidden -mt-1 mb-1 text-center truncate leading-tight transition-opacity', s.session && 'opacity-60')}>
-          <span className="text-sm font-medium text-text">{s.track.title}</span>
-          {s.track.artist && <span className="text-xs text-sub"> · {s.track.artist}</span>}
-        </div>
-      )}
 
       {s.track ? (
-        <main className="flex-1 min-h-0 flex flex-col gap-3 py-1">
+        <main className={cx('flex-1 min-h-0 flex flex-col py-1', phone ? 'gap-1.5' : 'gap-3')}>
           {/* Options only in practice: they fold away during a test and on the results. */}
           <div className="fold" data-closed={s.session || !!s.lastResult}>
             <div><div className="pb-1"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div></div>
@@ -117,7 +110,8 @@ export default function App() {
           <ErrorBoundary label="live readout"><LiveStats big={s.session} /></ErrorBoundary>
           <ErrorBoundary label="graph"><Graph onImport={() => setPanel('load')} /></ErrorBoundary>
           {/* fixed-height slot under the graph: lyrics, or the results panel after a test */}
-          <div className={cx('shrink-0 flex flex-col justify-center py-4 transition-[height] duration-500', results ? 'h-[10rem]' : 'h-[8rem]')}>
+          <div className={cx('shrink-0 flex flex-col justify-center transition-[height] duration-500',
+            phone ? (results ? 'h-[9rem] py-1' : 'h-[6.5rem] py-1') : results ? 'h-[10rem] py-4' : 'h-[8rem] py-4')}>
             <ErrorBoundary label="results">
               {results ? <ResultsPanel big={false} /> : <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />}
             </ErrorBoundary>
@@ -130,6 +124,13 @@ export default function App() {
       )}
 
       {s.track && <ErrorBoundary label="player"><PlayerBar /></ErrorBoundary>}
+      {/* phones: the header has no room for the song name — it sits small at the very bottom */}
+      {s.track && phone && (
+        <div className={cx('text-center truncate leading-tight text-[11px] pt-1 transition-opacity', s.session && 'opacity-60')}>
+          <span className="text-text/80 font-medium">{s.track.title}</span>
+          {s.track.artist && <span className="text-sub"> · {s.track.artist}</span>}
+        </div>
+      )}
 
       <footer className="flex justify-center text-sub pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[11px] shrink-0">
         {s.track ? (

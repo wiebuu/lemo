@@ -8,7 +8,7 @@ import { formatTime } from '../lib/music'
 import { METRIC_LABELS, type MetricResult } from '../lib/evaluation'
 import type { MetricKey } from '../lib/types'
 import { studio } from '../state/studio'
-import { centsInWords, cx, Tabs, Tip, useStudio } from './ui'
+import { centsInWords, cx, Tabs, Tip, usePhone, useStudio } from './ui'
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`)
 const ORDER: MetricKey[] = ['shape', 'harmony', 'rhythm', 'tone', 'attack', 'stability', 'dynamics', 'exact']
@@ -59,6 +59,7 @@ export function ResultsPanel({ big }: { big?: boolean }) {
  */
 export function ListenControls() {
   const s = useStudio()
+  const phone = usePhone()
   const [fxOpen, setFxOpen] = useState(false)
   const fx = s.voiceFx
   const fxOn = fx.pitch !== 0 || fx.tune !== 0 || fx.echo !== 0 || fx.reverb !== 0 || fx.tone !== 0 || fx.volume !== 1
@@ -66,7 +67,7 @@ export function ListenControls() {
     <div className="fade-in flex items-center gap-1.5">
       {fxOpen && s.replay && <Suspense fallback={null}><VoiceFxPanel onClose={() => setFxOpen(false)} /></Suspense>}
       {s.canReplay && <VoiceSwitch />}
-      {s.canReplay && s.replay && (
+      {s.canReplay && s.replay && !phone && ( // phones: kept simple
         <Tip tip="Voice effects: tune, pitch, echo, reverb">
           <button type="button" onClick={() => { setFxOpen((o) => !o); studio.setListenSource('me') }} aria-label="voice effects" aria-pressed={fxOpen}
             className={cx('relative w-10 h-10 rounded-full flex items-center justify-center transition-colors', fxOpen ? 'bg-main text-bg' : 'text-sub hover:text-text hover:bg-sub-alt')}>

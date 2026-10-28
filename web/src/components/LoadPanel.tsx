@@ -11,7 +11,6 @@ const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: 
 import { FeaturedShelf } from './FeaturedShelf'
 import { Plays, PreviewButton, usePreview } from './SongSearch'
 import { SongSearch } from './SongSearch'
-import { youtubeId } from '../lib/songSearch'
 import { Btn, cx, Eq, Tip } from './ui'
 
 const STAGES: { id: JobStage; label: string }[] = [
@@ -172,12 +171,10 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       setErr((e as Error).message)
     }
   }
+  /** a link to a song file (Drive, Dropbox, …): analysed on this device */
   const submitUrl = (u: string) => {
     if (!health) return setErr('Lemody\u2019s server can\u2019t be reached right now. Try again in a minute.')
-    if (!health.youtube) return setErr(health.youtubeReason ?? 'YouTube import is disabled in the analyzer.')
     setErr(null)
-    const vid = youtubeId(u)
-    if (vid && catalog.some((c) => c.id === `yt-${vid}`)) return useServer(u) // already in Lemody: opens straight away
     if (storageFull()) return
     setChoosing(u)
   }
@@ -195,15 +192,15 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         busy={sending}
         opening={opening}
         disabled={!!running}
-        newSongTime={health ? aboutFor(health, 240) : null}
         onOpen={(id) => void open(id)}
         onLink={submitUrl}
+        onAsk={(u) => void askLemody(u)}
         onTyping={setTyping}
       />
 
       <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
         <Btn onClick={() => audioInput.current?.click()} disabled={!!running || !health} title={health ? 'a song file from your phone or computer' : 'needs Lemody\u2019s server'}>
-          <Upload size={13} /> upload & analyse
+          <Upload size={13} /> upload a song
         </Btn>
         <Btn
           primary
@@ -228,6 +225,12 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         <input ref={audioInput} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setChoosing(f) } }} />
       </div>
+      {!typing && !running && !choosing && (
+        <ul className="mt-3 px-1 flex flex-col gap-1 text-[11px] text-sub leading-snug">
+          <li><span className="text-text">Your own song</span> — upload the file, or paste a Google Drive / Dropbox link. It’s analysed on your device.</li>
+          <li><span className="text-text">From YouTube, Spotify or another app</span> — paste the link and ask Lemody. It’s added in about a week.</li>
+        </ul>
+      )}
 
       <Suspense fallback={choosing || onDevice ? <div className="mt-4 flex justify-center"><Eq /></div> : null}>
       {choosing && !onDevice && (
@@ -235,7 +238,6 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           health={health}
           onDevice={() => { setOnDevice(choosing); setChoosing(null) }}
           onServer={() => useServer(choosing)}
-          onRequest={typeof choosing === 'string' ? () => void askLemody(choosing) : undefined}
           onCancel={() => setChoosing(null)}
         />
       )}
@@ -245,7 +247,6 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           serverSec={serverSec}
           onDone={(id) => { setOnDevice(null); void open(id) }}
           onUseServer={health?.separation ? () => useServer(onDevice) : undefined}
-          onRequest={typeof onDevice === 'string' ? () => void askLemody(onDevice) : undefined}
           onCancel={() => setOnDevice(null)}
         />
       )}
@@ -311,7 +312,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         requests={requests}
         onCancelRequest={async (id) => { setRequests((r) => r.filter((x) => x.songId !== id)); await analyzer.cancelRequest(id).catch(() => {}) }}
         onPrepare={async (now) => { await analyzer.prepareFeatured(now).catch((e) => setErr((e as Error).message)); void refresh() }}
-        onFetch={(id) => submitUrl(`https://www.youtube.com/watch?v=${id.slice(3)}`)}
+        onFetch={(id) => (catalog.some((c) => c.id === id) ? void open(id) : void askLemody(`https://www.youtube.com/watch?v=${id.slice(3)}`))}
         onRemove={async (id) => {
           // off your list; a file you uploaded is also deleted from the server (YouTube songs stay for everyone)
           events.emit('songRemoved', id)
@@ -361,11 +362,6 @@ function timeLeft(sec: number): string {
   return `about ${Math.round(sec / 60)} min left`
 }
 
-/** How long a song of this length takes on this analyzer ("about 6 minutes"). */
-function aboutFor(h: AnalyzerHealth, songSec: number): string {
-  const min = Math.max(1, Math.round(((h.analysisRate ?? 1.4) * songSec + (h.analysisFixedSec ?? 8)) / 60))
-  return `about ${min} minute${min > 1 ? 's' : ''}`
-}
 
 function rememberJob(id: string) {
   try {

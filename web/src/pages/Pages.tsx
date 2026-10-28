@@ -6,9 +6,9 @@ import { SiteFooter } from './Footer'
 import { StatsPage, TopPage } from './Board'
 import { go, navigate } from './router'
 
-export const PAGES: Record<string, { title: string; body: () => ReactNode }> = {
-  '/top': { title: 'Today’s top', body: TopPage },
-  '/stats': { title: 'Stats', body: StatsPage },
+export const PAGES: Record<string, { title: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean }> = {
+  '/top': { title: 'Today’s top', body: TopPage, compact: true },
+  '/stats': { title: 'Stats', body: StatsPage, compact: true },
   '/about': { title: 'About Lemody', body: About },
   '/help': { title: 'Help & questions', body: Help },
   '/privacy': { title: 'Privacy policy', body: Privacy },
@@ -46,9 +46,9 @@ export function SitePage({ path }: { path: string }) {
             <ArrowLeft size={13} /> back to singing
           </a>
         </header>
-        <main className="flex-1 py-8 sm:py-12">
+        <main className={page?.compact ? 'flex-1 py-4 sm:py-12' : 'flex-1 py-8 sm:py-12'}>
           {page ? (
-            <article className="prose-lemody">
+            <article className={page.compact ? 'prose-lemody prose-compact' : 'prose-lemody'}>
               <h1>{page.title}</h1>
               <page.body />
             </article>

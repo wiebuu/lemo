@@ -623,6 +623,15 @@ button:disabled {
 .prose-lemody .card .button {
   display: inline-block; margin-top: 0.25rem; background: var(--main); color: var(--bg); text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 999px; padding: 0.5rem 1.2rem;
 }
+/* lists and numbers (today's top, stats): smaller on phones */
+@media (max-width: 639px) {
+  .prose-compact { font-size: 13px; line-height: 1.55; }
+  .prose-compact h1 { font-size: 24px; margin-bottom: 0.6rem; }
+  .prose-compact .lead { font-size: 14px; }
+  .prose-compact p { margin-bottom: 0.75rem; }
+  .prose-compact .card { padding: 0.9rem 1rem; margin: 1rem 0; border-radius: 12px; }
+  .prose-compact .card-title { font-size: 14px; }
+}
 /* pages are for reading: text can be selected and copied there */
 .prose-lemody { user-select: text; -webkit-user-select: text; cursor: auto; }
 .prose-lemody summary, .prose-lemody a { cursor: pointer; }

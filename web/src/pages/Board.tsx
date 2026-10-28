@@ -43,9 +43,9 @@ function ago(at: number): string {
 
 function Avatar({ e }: { e: Pick<TopEntry, 'name' | 'photo'> }) {
   return e.photo ? (
-    <img src={e.photo} alt="" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full shrink-0" />
+    <img src={e.photo} alt="" referrerPolicy="no-referrer" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full shrink-0" />
   ) : (
-    <span className="w-7 h-7 rounded-full bg-sub-alt text-text text-xs flex items-center justify-center shrink-0">{e.name.trim().charAt(0).toUpperCase() || '?'}</span>
+    <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-sub-alt text-text text-[11px] sm:text-xs flex items-center justify-center shrink-0">{e.name.trim().charAt(0).toUpperCase() || '?'}</span>
   )
 }
 
@@ -79,17 +79,17 @@ export function TopPage() {
             return (
               <li key={e.id} style={{ margin: 0, padding: 0 }} className="border-b border-line">
                 <button type="button" onClick={() => open(e)}
-                  className={cx('group w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-lg transition-colors hover:bg-sub-alt', e.mine && 'bg-sub-alt/60')}>
-                  <span className={cx('w-7 text-right tabular-nums shrink-0', e.rank <= 3 ? 'text-main font-semibold' : 'text-sub')}>
-                    {e.rank === 1 ? <Crown size={16} className="inline -mt-1" /> : e.rank}
+                  className={cx('group w-full flex items-center gap-2 sm:gap-3 px-2 py-2 sm:py-2.5 text-left rounded-lg transition-colors hover:bg-sub-alt', e.mine && 'bg-sub-alt/60')}>
+                  <span className={cx('w-5 sm:w-7 text-right text-xs sm:text-base tabular-nums shrink-0', e.rank <= 3 ? 'text-main font-semibold' : 'text-sub')}>
+                    {e.rank === 1 ? <Crown size={14} className="inline -mt-0.5" /> : e.rank}
                   </span>
                   <Avatar e={e} />
                   <span className="flex-1 min-w-0 leading-tight">
-                    <span className="block text-text truncate">{e.name}{e.mine && <span className="text-main text-xs"> · you</span>}</span>
-                    <span className="block text-xs text-sub truncate">{t.title || 'a song'}{t.artist ? ` · ${t.artist}` : ''} · {formatTime(e.seconds)} · {ago(e.at)}</span>
+                    <span className="block text-[13px] sm:text-base text-text truncate">{e.name}{e.mine && <span className="text-main text-xs"> · you</span>}</span>
+                    <span className="block text-[11px] sm:text-xs text-sub truncate">{t.title || 'a song'}{t.artist ? ` · ${t.artist}` : ''} · {formatTime(e.seconds)} · {ago(e.at)}</span>
                   </span>
-                  <span className="text-main text-lg tabular-nums font-medium shrink-0">{pct(e.score)}</span>
-                  <Play size={14} className="text-sub group-hover:text-text shrink-0" />
+                  <span className="text-main text-sm sm:text-lg tabular-nums font-medium shrink-0">{pct(e.score)}</span>
+                  <Play size={12} className="text-sub group-hover:text-text shrink-0" />
                 </button>
               </li>
             )
@@ -102,10 +102,10 @@ export function TopPage() {
 
 function Stat({ value, label, sub }: { value: string; label: string; sub?: string }) {
   return (
-    <div className="py-4">
-      <div className="text-[11px] uppercase tracking-wider text-sub">{label}</div>
-      <div className="text-text text-3xl sm:text-4xl font-medium tabular-nums leading-tight mt-1">{value}</div>
-      {sub && <div className="text-xs text-sub mt-0.5">{sub}</div>}
+    <div className="py-2.5 sm:py-4">
+      <div className="text-[9.5px] sm:text-[11px] uppercase tracking-wider text-sub">{label}</div>
+      <div className="text-text text-xl sm:text-4xl font-medium tabular-nums leading-tight mt-0.5 sm:mt-1">{value}</div>
+      {sub && <div className="text-[10.5px] sm:text-xs text-sub mt-0.5">{sub}</div>}
     </div>
   )
 }
@@ -125,7 +125,7 @@ export function StatsPage() {
       {error && <p className="card">{error}</p>}
       {!data && !error && <p className="text-sub">loading…</p>}
       {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 border-t border-line">
+        <div className="grid grid-cols-3 gap-x-4 sm:gap-x-6 border-t border-line">
           <Stat label="singers" value={num(data.singers)} sub={`${num(data.singersToday)} in the last 24 h`} />
           <Stat label="tests started" value={num(data.testsStarted)} sub={`${num(data.today.testsStarted)} today`} />
           <Stat label="tests finished" value={num(data.testsFinished)} sub={`${num(data.today.testsFinished)} today`} />
@@ -134,7 +134,7 @@ export function StatsPage() {
           <Stat label="today’s top" value={num(data.inTop)} sub="of 100 places" />
         </div>
       )}
-      {data && <p className="mt-6"><a href="/top" onClick={go}>See today’s top</a></p>}
+      {data && <p className="mt-4 sm:mt-6"><a href="/top" onClick={go}>See today’s top</a></p>}
     </>
   )
 }

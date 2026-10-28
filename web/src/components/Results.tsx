@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { lazy, Suspense, useState } from 'react'
-import { MicVocal, Music2, SlidersHorizontal, X } from 'lucide-react'
+import { Crown, MicVocal, Music2, SlidersHorizontal, X } from 'lucide-react'
 const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel })))
 import { LyricTicker } from './LyricTicker'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
@@ -9,6 +9,7 @@ import { METRIC_LABELS, type MetricResult } from '../lib/evaluation'
 import type { MetricKey } from '../lib/types'
 import { studio } from '../state/studio'
 import { centsInWords, cx, Tabs, Tip, usePhone, useStudio } from './ui'
+import { navigate } from '../pages/router'
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`)
 const ORDER: MetricKey[] = ['shape', 'harmony', 'rhythm', 'tone', 'attack', 'stability', 'dynamics', 'exact']
@@ -193,6 +194,23 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
   }
   return (
     <div className="edge-fade flex flex-nowrap items-center gap-x-3 text-xs text-sub min-h-5 whitespace-nowrap overflow-x-auto [&>*]:shrink-0">
+      {s.viewing && (
+        <Tip tip="A take from today's top. ▶ plays their voice with the music.">
+          <button type="button" onClick={() => navigate('/top')} className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-main text-bg">
+            {s.viewing.photo
+              ? <img src={s.viewing.photo} alt="" referrerPolicy="no-referrer" className="w-4 h-4 rounded-full" />
+              : <Crown size={12} className="ml-1" />}
+            {s.viewing.name}{s.viewing.rank ? ` · #${s.viewing.rank} today` : ''}
+          </button>
+        </Tip>
+      )}
+      {s.topRank && (
+        <Tip tip={s.topRank.saving ? 'Saving your take to today’s top…' : 'Your take is on today’s top — others can open it and hear it.'}>
+          <button type="button" onClick={() => navigate('/top')} className={cx('flex items-center gap-1 px-2 py-0.5 rounded-full bg-main text-bg', s.topRank.saving && 'opacity-60')}>
+            <Crown size={12} /> #{s.topRank.rank} in today’s top{s.topRank.saving ? '…' : ''}
+          </button>
+        </Tip>
+      )}
       {s.resultMode && (
         <Tip tip={`Scored on ${LEVEL_NAME[s.resultMode.toleranceCents] ?? 'custom'} difficulty, ${s.resultMode.scoringMode === 'exact' ? 'checking the original notes' : 'melody shape (any key)'}.`}>
           <span className="px-2 py-0.5 rounded-full bg-sub-alt text-text cursor-default">
@@ -213,7 +231,7 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
           </span>
         </Tip>
       )}
-      {Math.abs(r.timeOffsetMs) >= 60 && (
+      {Math.abs(r.timeOffsetMs) >= 60 && !s.viewing && (
         <Tip wide tip={<>Your whole line sits {Math.abs(r.timeOffsetMs)} ms {r.timeOffsetMs > 0 ? 'behind' : 'ahead of'} the melody. That's usually headphone delay (Bluetooth adds 150–300 ms), not your timing. Fixing it shifts the melody to match what you hear — this take is re-aligned too.</>}>
           <button type="button" onClick={() => studio.applySyncFix(r.timeOffsetMs)}
             className="text-main underline decoration-dotted underline-offset-4 hover:decoration-solid">

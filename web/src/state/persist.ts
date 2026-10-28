@@ -54,6 +54,8 @@ export interface Settings {
   layers: GraphLayers
   /** Disco lights: glows at the screen's edges that pulse with the beat and follow the melody. */
   disco: boolean
+  /** A take good enough for today's top is shared there (your name, photo, result and voice). */
+  shareTop: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -79,6 +81,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lyricsScript: 'original',
   layers: { shape: true, loudness: true, exact: false, timing: true },
   disco: false,
+  shareTop: true,
 }
 
 export interface SongPrefs {

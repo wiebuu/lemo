@@ -2,6 +2,8 @@ import { cx } from '../components/ui'
 import { go } from './router'
 
 export const FOOTER_LINKS: [string, string][] = [
+  ['/top', 'Today’s top'],
+  ['/stats', 'Stats'],
   ['/about', 'About'],
   ['/help', 'Help'],
   ['/privacy', 'Privacy'],

@@ -56,6 +56,27 @@ CREATE TABLE IF NOT EXISTS lemo_requests (
 );
 -- a link from a site we can't use (Spotify, …): the song it becomes, set when it's added
 ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS target_id text;
+-- today's top: each singer's best take of the day (only the best 100 are kept, with their voice)
+CREATE TABLE IF NOT EXISTS lemo_top (
+  id         text PRIMARY KEY,
+  day        text NOT NULL,
+  uid        text NOT NULL REFERENCES lemo_users(uid) ON DELETE CASCADE,
+  song_id    text NOT NULL,
+  title      text,
+  artist     text,
+  score      double precision NOT NULL,
+  seconds    double precision NOT NULL,
+  created_at double precision NOT NULL,
+  meta       jsonb NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS lemo_top_day_uid ON lemo_top (day, uid);
+-- the stats page: tests started / finished and time sung, per day
+CREATE TABLE IF NOT EXISTS lemo_daily (
+  day      text PRIMARY KEY,
+  started  integer NOT NULL DEFAULT 0,
+  finished integer NOT NULL DEFAULT 0,
+  seconds  double precision NOT NULL DEFAULT 0
+);
 """
 
 _lock = threading.Lock()
@@ -274,3 +295,85 @@ def deliver(song_id: str, target: str, meta: dict[str, Any]) -> int:
         save_song(r["uid"], target, {**meta, "addedAt": now * 1000})
     _q("UPDATE lemo_requests SET done_at = %s WHERE song_id = %s AND done_at IS NULL", (now, song_id))
     return len(rows)
+
+
+# ---- today's top (see top.py) and the stats page --------------------------------------------
+
+TOP_SIZE = 100
+# best first; a tie goes to whoever sang it first
+_RANKED = "SELECT id, uid, score, created_at, row_number() OVER (ORDER BY score DESC, created_at) AS rank FROM lemo_top WHERE day = %s"
+
+
+def top_rank(day: str, uid: str, score: float) -> dict:
+    """Where this score would land today. Each singer has one place: their best take."""
+    mine = _q("SELECT score FROM lemo_top WHERE day = %s AND uid = %s", (day, uid), one=True)
+    if mine and mine["score"] >= score:
+        return {"rank": None, "reason": "you have a better take today"}
+    above = _q("SELECT COUNT(*) AS n FROM lemo_top WHERE day = %s AND uid <> %s AND score >= %s", (day, uid, score), one=True)["n"]
+    rank = int(above) + 1
+    return {"rank": rank if rank <= TOP_SIZE else None, "reason": None if rank <= TOP_SIZE else "not in the top 100"}
+
+
+def top_add(entry: dict) -> tuple[int | None, list[str]]:
+    """Save a take (replacing the singer's earlier one today). Returns its rank and the ids
+    of takes that are no longer kept (their files are deleted by the caller)."""
+    _ensure_user(entry["uid"])
+    old = _q("SELECT id FROM lemo_top WHERE day = %s AND uid = %s", (entry["day"], entry["uid"]), one=True)
+    _q("DELETE FROM lemo_top WHERE day = %s AND uid = %s", (entry["day"], entry["uid"]))
+    _q("""INSERT INTO lemo_top (id, day, uid, song_id, title, artist, score, seconds, created_at, meta)
+          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+       (entry["id"], entry["day"], entry["uid"], entry["songId"], entry.get("title"), entry.get("artist"),
+        entry["score"], entry["seconds"], time.time(), _json(entry.get("meta") or {})))
+    gone = top_prune(entry["day"])
+    if old:
+        gone.append(old["id"])
+    row = _q(f"SELECT rank FROM ({_RANKED}) r WHERE id = %s", (entry["day"], entry["id"]), one=True)
+    return (int(row["rank"]) if row else None), gone
+
+
+def top_prune(day: str) -> list[str]:
+    """Only today's best 100 are kept: earlier days and anything below 100th go."""
+    rows = _q(f"DELETE FROM lemo_top WHERE day <> %s OR id IN (SELECT id FROM ({_RANKED}) r WHERE rank > {TOP_SIZE}) RETURNING id", (day, day))
+    return [r["id"] for r in rows]
+
+
+def top_ids() -> set[str]:
+    return {r["id"] for r in _q("SELECT id FROM lemo_top")}
+
+
+def top_list(day: str) -> list[dict]:
+    rows = _q(f"""SELECT r.rank, t.id, t.uid, t.song_id, t.title, t.artist, t.score, t.seconds, t.created_at, u.name, u.photo
+                  FROM ({_RANKED}) r JOIN lemo_top t ON t.id = r.id JOIN lemo_users u ON u.uid = t.uid ORDER BY r.rank""", (day,))
+    return [{"rank": int(r["rank"]), "id": r["id"], "uid": r["uid"], "songId": r["song_id"], "title": r["title"], "artist": r["artist"],
+             "score": r["score"], "seconds": r["seconds"], "at": r["created_at"], "name": r["name"] or "a singer", "photo": r["photo"]} for r in rows]
+
+
+def top_get(take_id: str) -> dict | None:
+    row = _q(f"""SELECT r.rank, t.*, u.name, u.photo FROM lemo_top t JOIN lemo_users u ON u.uid = t.uid
+                 LEFT JOIN ({_RANKED}) r ON r.id = t.id WHERE t.id = %s""", (_today_for(take_id), take_id), one=True)
+    if not row:
+        return None
+    return {"id": row["id"], "rank": int(row["rank"]) if row["rank"] else None, "day": row["day"], "songId": row["song_id"],
+            "title": row["title"], "artist": row["artist"], "score": row["score"], "seconds": row["seconds"],
+            "name": row["name"] or "a singer", "photo": row["photo"], "meta": row["meta"]}
+
+
+def _today_for(take_id: str) -> str:
+    row = _q("SELECT day FROM lemo_top WHERE id = %s", (take_id,), one=True)
+    return row["day"] if row else ""
+
+
+def count_test(day: str, finished: bool, seconds: float = 0.0) -> None:
+    col = "finished" if finished else "started"
+    _q(f"""INSERT INTO lemo_daily (day, {col}, seconds) VALUES (%s, 1, %s)
+           ON CONFLICT (day) DO UPDATE SET {col} = lemo_daily.{col} + 1, seconds = lemo_daily.seconds + EXCLUDED.seconds""",
+       (day, max(0.0, min(seconds, 3600.0))))
+
+
+def stats(day: str) -> dict:
+    users = _q("SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE last_seen > %s) AS today FROM lemo_users", (time.time() - 86400,), one=True)
+    tot = _q("SELECT COALESCE(SUM(started), 0) AS started, COALESCE(SUM(finished), 0) AS finished, COALESCE(SUM(seconds), 0) AS seconds FROM lemo_daily", one=True)
+    today = _q("SELECT started, finished, seconds FROM lemo_daily WHERE day = %s", (day,), one=True) or {"started": 0, "finished": 0, "seconds": 0}
+    return {"singers": int(users["n"]), "singersToday": int(users["today"]),
+            "testsStarted": int(tot["started"]), "testsFinished": int(tot["finished"]), "secondsSung": float(tot["seconds"]),
+            "today": {"testsStarted": int(today["started"]), "testsFinished": int(today["finished"]), "secondsSung": float(today["seconds"])}}

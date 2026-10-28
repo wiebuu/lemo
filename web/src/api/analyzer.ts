@@ -129,6 +129,55 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** One place in today's top: a singer's best take of the day. */
+export interface TopEntry {
+  id: string
+  rank: number
+  name: string
+  photo: string | null
+  songId: string
+  title: string | null
+  artist: string | null
+  score: number
+  seconds: number
+  at: number
+  mine: boolean
+}
+
+export interface TopBoard {
+  day: string
+  resetsAt: number
+  minSeconds: number
+  entries: TopEntry[]
+}
+
+/** A take from today's top, with what it takes to show its full result. */
+export interface TopTake {
+  id: string
+  rank: number | null
+  songId: string
+  title: string | null
+  artist: string | null
+  score: number
+  seconds: number
+  name: string
+  photo: string | null
+  meta: { from: number; to: number; start: number; keyOffset: number | null; toleranceCents?: number; scoringMode?: 'shape' | 'exact' }
+  /** the pitch line: time, midi (null: no voice), clarity, level */
+  frames: { t: number[]; m: (number | null)[]; c: number[]; l?: (number | null)[] }
+}
+
+export interface SiteStats {
+  singers: number
+  singersToday: number
+  testsStarted: number
+  testsFinished: number
+  secondsSung: number
+  songs: number
+  inTop: number
+  today: { testsStarted: number; testsFinished: number; secondsSung: number }
+}
+
 export const analyzer = {
   async health(): Promise<AnalyzerHealth | null> {
     try {
@@ -154,6 +203,29 @@ export const analyzer = {
   activity: () => fetch('/api/activity', { method: 'POST' }).catch(() => undefined),
   /** someone got a result on this song: one more play for Explore */
   played: (id: string) => fetch(`/api/songs/${id}/played`, { method: 'POST' }).catch(() => undefined),
+  /** today's top 100 */
+  top: () => fetch('/api/top').then((r) => json<TopBoard>(r)),
+  topTake: (id: string) => fetch(`/api/top/${id}`).then((r) => json<TopTake>(r)),
+  topVoice: (id: string) =>
+    fetch(`/api/top/${id}/voice`).then((r) => {
+      if (!r.ok) throw new ApiError(r.status === 404 ? 'This take is no longer in today’s top.' : `Couldn’t load the take (${r.status})`, r.status)
+      return r.arrayBuffer()
+    }),
+  /** would this score make today's top? */
+  topCheck: (score: number) =>
+    fetch('/api/top/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) })
+      .then((r) => json<{ rank: number | null; reason: string | null }>(r)),
+  topSubmit(meta: Record<string, unknown>, frames: string, voice: Blob) {
+    const fd = new FormData()
+    fd.append('meta', JSON.stringify(meta))
+    fd.append('frames', new Blob([frames], { type: 'application/json' }), 'frames.json')
+    fd.append('voice', voice, 'voice.wav')
+    return fetch('/api/top/submit', { method: 'POST', body: fd }).then((r) => json<{ rank: number | null }>(r))
+  },
+  stats: () => fetch('/api/stats').then((r) => json<SiteStats>(r)),
+  /** a test started, or finished after `seconds` of singing (for the stats page) */
+  countTest: (finished: boolean, seconds = 0) =>
+    fetch('/api/stats/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ finished, seconds }) }).catch(() => undefined),
   /** every stored song, for search */
   catalog: () => fetch('/api/catalog').then((r) => json<CatalogItem[]>(r)),
   /** 10 seconds of a song (the most-sung part), to check it's the right one */

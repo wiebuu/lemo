@@ -1,4 +1,4 @@
-import { CircleHelp, Info, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
+import { ChartColumn, CircleHelp, Crown, Info, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
 import { signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
 import { navigate } from '../pages/router'
@@ -35,6 +35,16 @@ export function Header({ open }: { open: (p: Panel) => void }) {
         <IconToggle tip="How Lemody works" onClick={() => open('tutorial')}>
           <Info size={17} />
         </IconToggle>
+        {!phone && ( // phones: in the account menu
+          <>
+            <IconToggle tip="Today's top" onClick={() => navigate('/top')}>
+              <Crown size={17} />
+            </IconToggle>
+            <IconToggle tip="Stats" onClick={() => navigate('/stats')}>
+              <ChartColumn size={17} />
+            </IconToggle>
+          </>
+        )}
       </nav>
       <div className="flex-1" />
       {t && (
@@ -97,6 +107,8 @@ function Account() {
               </Tip>
             )}
           </div>
+          <MenuItem icon={<Crown size={14} />} label="today's top" tip="The best takes sung today — open one to hear it." onClick={() => { close(); navigate('/top') }} />
+          <MenuItem icon={<ChartColumn size={14} />} label="stats" tip="Lemody in numbers." onClick={() => { close(); navigate('/stats') }} />
           <MenuItem icon={<CircleHelp size={14} />} label="help & questions" tip="Answers to common questions." onClick={() => { close(); navigate('/help') }} />
           <MenuItem icon={<Shield size={14} />} label="privacy" tip="What Lemody keeps, and what it never does." onClick={() => { close(); navigate('/privacy') }} />
           <MenuItem icon={<LogOut size={14} />} label="sign out" tip="Sign out of Lemody on this device." onClick={() => { close(); void signOut() }} />

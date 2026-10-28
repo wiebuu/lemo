@@ -16,7 +16,7 @@ import { buildPhrases, lyricLineAt, phraseAt, plainTextToLines, suggestBreaths }
 import { lineEnd, lyricGate, retextLine, withWordTiming } from '../lib/lyricTiming'
 import { CoachState, voiceIssue, type VoiceIssue } from '../lib/voiceCoach'
 import { reviewNotes, type NoteReview, type ReviewAspect } from '../lib/review'
-import { chordAt, clashesWith, evaluate, liveGuidance, type EvalSettings, type Evaluation, type LiveGuidance } from '../lib/evaluation'
+import { chordAt, clashesWith, DEFAULT_EVAL, evaluate, liveGuidance, type EvalSettings, type Evaluation, type LiveGuidance } from '../lib/evaluation'
 import { formatTime, median } from '../lib/music'
 import { noteAt, type LiveState } from '../lib/scoring'
 import { phraseLoop, type LoopRegion } from '../lib/timeline'
@@ -26,6 +26,7 @@ import { events } from './events'
 import { NO_FX, shiftCurve, STEP, type VoiceFx } from '../lib/voiceFx'
 import type { FxIn, FxOut } from '../audio/voiceFx.worker'
 import { persist, type Settings, type SongPrefs } from './persist'
+import { packFrames, TOP_MIN_SECONDS, unpackFrames, wavOf } from '../lib/topTake'
 
 export type MicState = 'off' | 'starting' | 'on' | 'error'
 
@@ -88,9 +89,13 @@ export interface Snapshot {
   focus: { start: number; end: number } | null
   /** The difficulty and scoring mode the shown result was scored with. */
   resultMode: { toleranceCents: number; scoringMode: 'shape' | 'exact' } | null
+  /** Your result made today's top: its place (saving: being uploaded). */
+  topRank: { rank: number; saving: boolean } | null
+  /** The result shown is someone's take from today's top, not yours. */
+  viewing: { id: string; name: string; photo: string | null; rank: number | null } | null
 }
 
-/** The last take's voice, in memory only (never saved or uploaded). */
+/** The last take's voice, in memory (uploaded only when it makes today's top, and only if you share). */
 interface RecordedTake {
   samples: Float32Array
   sampleRate: number
@@ -185,6 +190,7 @@ export class Studio {
     phrases: [], phrase: -1, breaths: [], lyrics: [], lyricPos: { line: -1, word: -1 }, mic: 'off', micError: null,
     muted: false, voiceIssue: null, settings: persist.settings(), attempts: [], lastResult: null, offsetMs: 0, error: null,
     canReplay: false, replay: false, listenSource: 'me', voiceFx: NO_FX, voiceFxBusy: false, session: false, lyricsShown: [], lyricsStatus: null, lyricsNote: null, toast: null, reviewAspect: 'pitch', resultsView: 'results', focus: null, resultMode: null,
+    topRank: null, viewing: null,
   }
 
   // ---- subscription ---------------------------------------------------------
@@ -330,7 +336,7 @@ export class Studio {
     this.fxId++ // a voice-effects render still running for the old take is ignored
     this.lyricsJob++
     this.set({
-      lastResult: null, focus: null, replay: false, canReplay: false, resultsView: 'results', resultMode: null,
+      lastResult: null, focus: null, replay: false, canReplay: false, resultsView: 'results', resultMode: null, topRank: null, viewing: null,
       voiceFxBusy: false, lyricsStatus: null, lyricPos: { line: -1, word: -1 }, loop: null,
     })
     return seq
@@ -866,7 +872,8 @@ export class Studio {
     this.endTake() // drop the practice line
     if (restartAt !== null) e.seek(restartAt)
     this.sessionEval = null
-    this.set({ session: true, lastResult: null, resultsView: 'results' })
+    this.set({ session: true, lastResult: null, resultsView: 'results', topRank: null, viewing: null })
+    void analyzer.countTest(false)
     await e.play()
   }
 
@@ -901,8 +908,11 @@ export class Studio {
     const st = this.snap.settings
     this.set({ session: false, lastResult: ev, resultsView: 'results', resultMode: { toleranceCents: st.toleranceCents, scoringMode: st.scoringMode } })
     if (ev) void this.enterReview()
-    if (ev && this.analyzerId) void analyzer.played(this.analyzerId) // counts towards Explore's most played
-    else this.toast('test too short to score')
+    if (ev) void analyzer.countTest(true, Math.max(0, ev.to - ev.from))
+    if (ev && this.analyzerId) {
+      void analyzer.played(this.analyzerId) // counts towards Explore's most played
+      void this.offerToTop(this.analyzerId)
+    } else if (!ev) this.toast('test too short to score')
   }
 
   // your take as you hear it back: levelled (the raw recording is often much quieter than the song)
@@ -947,8 +957,79 @@ export class Studio {
     this.frames = []
     this.ghost = []
     this.results.clear()
-    this.set({ lastResult: null })
+    this.set({ lastResult: null, topRank: null, viewing: null })
     this.renderOnce()
+  }
+
+  // ---- today's top -------------------------------------------------------------------------
+
+  /** Scored the same way for everyone (normal difficulty, melody shape, the default mix), so places are fair. */
+  private topEval(take: RecordedTake, track: ReferenceTrack): Evaluation {
+    return evaluate(track.notes, take.frames, take.from, take.to, DEFAULT_EVAL, track.harmony)
+  }
+
+  /**
+   * A finished test that could make today's top: a library song, at least a minute of
+   * it, normal speed, the original key. If its score makes the 100, the take (voice and
+   * pitch line) is sent so others can open it.
+   */
+  private async offerToTop(songId: string) {
+    const take = this.lastTake
+    const track = this.snap.track
+    if (!take || !track || !this.snap.settings.shareTop || this.snap.viewing) return
+    if (take.speed !== 1 || take.transpose !== 0 || take.to - take.from < TOP_MIN_SECONDS) return
+    const ev = this.topEval(take, track)
+    const score = ev.overall.score
+    if (score === null) return
+    try {
+      const { rank } = await analyzer.topCheck(score)
+      if (!rank || this.lastTake !== take) return
+      this.set({ topRank: { rank, saving: true } })
+      const meta = {
+        songId, title: track.title, artist: track.artist ?? null, score, seconds: take.to - take.from,
+        from: take.from, to: take.to, start: take.start, keyOffset: ev.keyOffset,
+        scores: { ...Object.fromEntries(Object.entries(ev.metrics).map(([k, m]) => [k, m.score])), overall: score },
+        toleranceCents: DEFAULT_EVAL.toleranceCents, scoringMode: 'shape',
+      }
+      const res = await analyzer.topSubmit(meta, JSON.stringify(packFrames(take.frames)), wavOf(take.samples, take.sampleRate))
+      if (this.lastTake !== take) return
+      this.set({ topRank: res.rank ? { rank: res.rank, saving: false } : null })
+      if (res.rank) this.toast(`#${res.rank} in today's top`)
+    } catch {
+      if (this.lastTake === take) this.set({ topRank: null }) // offline etc.: it just doesn't count
+    }
+  }
+
+  /** Open a take from today's top: its song, its full result, and the singer's voice to play. */
+  async openTopTake(id: string) {
+    this.set({ busy: 'opening the take', error: null })
+    try {
+      const t = await analyzer.topTake(id)
+      await this.loadAnalyzed(t.songId)
+      const e = this.engine
+      const track = this.snap.track
+      if (!e || !track || this.analyzerId !== t.songId) return
+      this.set({ busy: 'loading their voice' })
+      const audio = await e.ctx.decodeAudioData(await analyzer.topVoice(id))
+      const frames = unpackFrames(t.frames)
+      const take: RecordedTake = {
+        samples: audio.getChannelData(0), sampleRate: audio.sampleRate, start: t.meta.start, speed: 1, transpose: 0,
+        from: t.meta.from, to: t.meta.to, frames,
+      }
+      this.lastTake = take
+      this.frames = frames
+      this.ghost = frames
+      this.results.clear()
+      this.reviewCache = null
+      this.set({
+        busy: null, canReplay: true, lastResult: this.topEval(take, track), resultsView: 'results',
+        resultMode: { toleranceCents: DEFAULT_EVAL.toleranceCents, scoringMode: 'shape' },
+        viewing: { id: t.id, name: t.name, photo: t.photo, rank: t.rank },
+      })
+      await this.enterReview()
+    } catch (err) {
+      this.set({ busy: null, error: (err as Error).message })
+    }
   }
 
   setResultsView(v: 'results' | 'lyrics') {

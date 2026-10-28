@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.requests import Request
 
 from starlette.concurrency import run_in_threadpool
-from . import audio, auth, catalog, device, jobs, lyrics, remote, storage, userdata, worker, youtube
+from . import audio, auth, catalog, device, jobs, lyrics, remote, storage, top, userdata, worker, youtube
 from .config import CONFIG, FFMPEG, RUBBERBAND, device_name
 
 app = FastAPI(title="Lemody analyzer", version="0.1.0")
@@ -940,3 +940,104 @@ def align_lyrics(song_id: str, body: dict = Body(...)) -> dict:
             threading.Thread(target=run, daemon=True).start()
     first = not any((Path.home() / ".cache" / "torch" / "hub" / "checkpoints").glob("*.pt"))  # torchaudio keeps MMS_FA there
     return {"status": "running", "message": "timing each word to the singer" + (" (first time: downloading the ~1 GB model)" if first else "")}
+
+
+# ---- today's top & the stats page ----------------------------------------------------------------
+
+
+@app.get("/api/top")
+def top_list(request: Request) -> dict:
+    """Today's best 100 (each singer's best take), best first."""
+    def run():
+        top.tidy()
+        uid = _uid(request)
+        entries = [{k: v for k, v in e.items() if k != "uid"} | {"mine": e["uid"] == uid} for e in userdata.top_list(top.today())]
+        return {"day": top.today(), "resetsAt": top.resets_at(), "minSeconds": top.MIN_SECONDS, "entries": entries}
+
+    return _data(run)
+
+
+@app.post("/api/top/check")
+def top_check(request: Request, body: dict = Body(...)) -> dict:
+    """Would this score make today's top? (Only then is the take uploaded.)"""
+    score = body.get("score")
+    if not isinstance(score, (int, float)) or not 0 <= score <= 1:
+        raise HTTPException(400, "send {score: 0..1}")
+    return _data(lambda: top.check(_uid(request), float(score)))
+
+
+@app.post("/api/top/submit")
+async def top_submit(request: Request, frames: UploadFile, voice: UploadFile, meta: str = Form(...)) -> dict:
+    """A take that made today's top: its result, pitch line and voice (kept while it stays in the 100)."""
+    try:
+        m = json.loads(meta)
+    except ValueError as e:
+        raise HTTPException(400, "invalid meta") from e
+    sid = m.get("songId")
+    if not isinstance(sid, str) or not SONG_ID.match(sid) or not catalog.is_public(sid):
+        raise HTTPException(400, "only songs in Lemody's library count")
+    fr = await frames.read(8 * 1024 * 1024 + 1)
+    if len(fr) > 8 * 1024 * 1024:
+        raise HTTPException(413, "pitch line too large")
+    limit = 40 * 1024 * 1024
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = Path(tmp) / "voice.wav"
+        size = 0
+        with wav.open("wb") as out:
+            while chunk := await voice.read(1 << 20):
+                size += len(chunk)
+                if size > limit:
+                    raise HTTPException(413, "recording too large")
+                out.write(chunk)
+        try:
+            def run():
+                userdata.touch_user(request.state.user)  # the name and photo shown with the take
+                return top.add(_uid(request), m, fr, wav)
+
+            return await run_in_threadpool(lambda: _data(run))
+        except top.Rejected as e:
+            raise HTTPException(422, str(e)) from e
+
+
+@app.get("/api/top/{take_id}")
+def top_take(take_id: str) -> dict:
+    """One take from today's top: everything to show its full result."""
+    try:
+        e = _data(lambda: top.get(take_id))
+    except top.Rejected as err:
+        raise HTTPException(400, str(err)) from err
+    if not e:
+        raise HTTPException(404, "this take is no longer in today's top")
+    return e
+
+
+@app.get("/api/top/{take_id}/voice")
+def top_voice(take_id: str):
+    try:
+        f = top.voice(take_id)
+    except top.Rejected as e:
+        raise HTTPException(400, str(e)) from e
+    if not f:
+        raise HTTPException(404, "this take is no longer in today's top")
+    return FileResponse(f, media_type="audio/mp4", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.post("/api/stats/test")
+def stats_test(body: dict = Body(...)) -> dict:
+    """A test started, or finished (with how long was sung)."""
+    finished = bool(body.get("finished"))
+    seconds = body.get("seconds") if finished else 0
+    if not isinstance(seconds, (int, float)):
+        seconds = 0
+    _data(lambda: userdata.count_test(top.today(), finished, float(seconds)))
+    return {"ok": True}
+
+
+@app.get("/api/stats")
+def stats() -> dict:
+    """Numbers for the stats page."""
+    def run():
+        s = userdata.stats(top.today())
+        return {**s, "songs": sum(1 for e in catalog.all_songs() if catalog.is_public(e["id"])), "inTop": len(userdata.top_ids())}
+
+    return _data(run)

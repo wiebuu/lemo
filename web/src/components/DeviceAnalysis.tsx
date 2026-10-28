@@ -69,13 +69,14 @@ export function TooWeak({ name, phone, onRequest, onClose }: { name?: string; ph
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-semibold text-text">Best added from a computer</span>
+        <span className="text-sm font-semibold text-text">This {phone ? 'phone' : 'device'} isn’t compatible</span>
         <button type="button" onClick={onClose} className="text-xs text-sub hover:text-text">close</button>
       </div>
       {name && <SongName name={name} />}
       <p className="mt-2 text-[13px] text-sub leading-relaxed">
-        Analysing a new song takes a lot of processing power, so it’s done on a computer or a recent phone. Open Lemody there
-        to add it — then you can sing it here{phone ? ' on your phone' : ''}, or on any device.
+        Analysing a song needs a lot of processing power and memory — more than this {phone ? 'phone' : 'device'} can give it.
+        Use a high-performance device, like a laptop or desktop with Chrome or Edge, to add the song. Once it’s added, you can
+        sing it here{phone ? ' on your phone' : ''} or on any device.
       </p>
       {onRequest && <AskLemody onRequest={onRequest} />}
     </div>

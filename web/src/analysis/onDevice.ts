@@ -59,7 +59,8 @@ export function deviceSupport(): Promise<DeviceSupport> {
       return { ok: false, phone, why: 'The graphics chip isn’t available.' }
     }
     const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
-    if (mem !== undefined && mem < 4) return { ok: false, phone, why: 'This device has too little memory.' }
+    // a whole song's separation needs room: phones (which share memory with everything else) need more
+    if (mem !== undefined && mem < (phone ? 6 : 4)) return { ok: false, phone, why: 'This device has too little memory.' }
     return { ok: true, phone }
   })()
   return support

@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { isStaleChunkError, reloadForNewVersion } from '../lib/staleBuild'
 
 /** Keeps one broken widget from blanking the whole app. */
 export class ErrorBoundary extends Component<{ children: ReactNode; label?: string }, { error: Error | null }> {
@@ -9,6 +10,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; label?: stri
   }
 
   componentDidCatch(error: Error) {
+    if (isStaleChunkError(error) && reloadForNewVersion()) return // a new version was deployed: load it
     console.error(`[lemo] ${this.props.label ?? 'component'} crashed:`, error)
   }
 

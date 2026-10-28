@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { persist } from './state/persist'
 import { installGuards } from './guards'
+import { installStaleBuildReload } from './lib/staleBuild'
 import { startAuth } from './auth/firebase'
 import { AuthGate } from './components/AuthGate'
 import { usePath } from './pages/router'
@@ -12,6 +13,7 @@ import { usePath } from './pages/router'
 // Apply the saved theme before first paint (the canvas reads its colours on creation).
 document.documentElement.dataset.theme = persist.settings().theme
 installGuards()
+installStaleBuildReload()
 startAuth()
 
 const SitePage = lazy(() => import('./pages/Pages').then((m) => ({ default: m.SitePage })))

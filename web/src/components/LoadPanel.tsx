@@ -212,7 +212,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         onTyping={setTyping}
       />
 
-      <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-3 text-xs">
+      <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
         <Btn onClick={() => (cantAnalyse ? setWeak(true) : audioInput.current?.click())} disabled={!!running || !health} title={health ? 'a song file from your phone or computer' : 'needs Lemody\u2019s server'}>
           <Upload size={13} /> upload a song
         </Btn>
@@ -230,7 +230,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setChoosing(f) } }} />
       </div>
       {!typing && !running && !choosing && (
-        <ul className="mt-2 sm:mt-3 px-1 flex flex-col gap-0.5 text-[10px] sm:text-[11px] text-sub leading-snug">
+        <ul className="mt-3 px-1 flex flex-col gap-1 text-[10px] sm:text-[11px] text-sub leading-snug">
           <li><span className="text-text/80">Your song:</span> upload it, or paste a Drive / Dropbox link</li>
           <li><span className="text-text/80">YouTube, Spotify & more:</span> paste the link, we add it in about a week</li>
         </ul>
@@ -433,7 +433,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   const idle = waiting.length > 0 && waiting.every((f) => !f.stage || f.stage === 'failed' || f.stage === 'cancelled')
 
   return (
-    <div className={cx('mt-4 sm:mt-8', fill && 'flex-1 min-h-0 flex flex-col')}>
+    <div className={cx('mt-6 sm:mt-8', fill && 'flex-1 min-h-0 flex flex-col')}>
       {(featured.length > 0 || featuredLoading) && (
         <div className="flex items-center gap-5 mb-3 shrink-0 text-xs">
           {([['featured', 'featured'], ['explore', 'explore'], ['mine', `your songs${own.length + requests.length ? ` · ${own.length + requests.length}` : ''}`]] as const).map(([v, label]) => (
@@ -618,8 +618,8 @@ function ListSkeleton({ fill }: { fill?: boolean }) {
 /** The start screen's headline, under a staff with a melody drifting across it. */
 function Hero() {
   return (
-    <div className="hero mb-4 sm:mb-7 shrink-0 fade-in">
-      <svg viewBox="0 0 640 46" className="hero-staff w-full h-6 mb-2 sm:h-9 sm:mb-4" aria-hidden preserveAspectRatio="none">
+    <div className="hero mb-5 sm:mb-7 shrink-0 fade-in">
+      <svg viewBox="0 0 640 46" className="hero-staff w-full h-6 mb-3 sm:h-9 sm:mb-4" aria-hidden preserveAspectRatio="none">
         {[0, 1, 2, 3, 4].map((i) => (
           <line key={i} x1="0" x2="640" y1={5 + i * 9} y2={5 + i * 9} stroke="var(--text)" strokeOpacity=".07" strokeWidth="1" vectorEffect="non-scaling-stroke" />
         ))}

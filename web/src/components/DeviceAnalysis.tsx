@@ -53,7 +53,7 @@ export function AnalyseChoice({ name, health, onDevice, onServer, onRequest, onC
           icon={<Icon size={15} />}
           title={sup?.phone ? 'This phone' : 'This computer'}
           time={sup?.ok ? mins(deviceSec) : '—'}
-          note={sup === null ? 'checking…' : !sup.ok ? 'best on a computer' : cached ? 'keep Lemody open' : '+ 263 MB first time'}
+          note={sup === null ? 'checking…' : !sup.ok ? 'not compatible' : cached ? 'keep Lemody open' : '+ 263 MB first time'}
           recommended={pickDevice}
           disabled={!sup?.ok}
           onClick={onDevice}
@@ -67,16 +67,15 @@ export function AnalyseChoice({ name, health, onDevice, onServer, onRequest, onC
 /** This device can't analyse songs (and there's no server to do it): say where to add it instead. */
 export function TooWeak({ name, phone, onRequest, onClose }: { name?: string; phone: boolean; onRequest?: () => void; onClose: () => void }) {
   return (
-    <div className="fade-in mt-4 surface rounded-2xl p-4">
+    <div className="fade-in mt-4 surface rounded-2xl p-3 sm:p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-semibold text-text">This {phone ? 'phone' : 'device'} isn’t compatible</span>
+        <span className="text-[13px] sm:text-sm font-semibold text-text">Best added from another device</span>
         <button type="button" onClick={onClose} className="text-xs text-sub hover:text-text">close</button>
       </div>
       {name && <SongName name={name} />}
-      <p className="mt-2 text-[13px] text-sub leading-relaxed">
-        Analysing a song needs a lot of processing power and memory — more than this {phone ? 'phone' : 'device'} can give it.
-        Use a high-performance device, like a laptop or desktop with Chrome or Edge, to add the song. Once it’s added, you can
-        sing it here{phone ? ' on your phone' : ''} or on any device.
+      <p className="mt-1.5 text-[12px] sm:text-[13px] text-sub leading-snug">
+        This {phone ? 'phone' : 'device'} isn’t compatible: analysing a song needs more processing power and memory.
+        Add it from a more powerful device — then sing it anywhere.
       </p>
       {onRequest && <AskLemody onRequest={onRequest} />}
     </div>

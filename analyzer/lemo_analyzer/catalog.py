@@ -167,8 +167,8 @@ def make_preview(song_dir: Path) -> bool:
 
 
 def is_public(song_id: str) -> bool:
-    """Only YouTube songs are searchable — a file someone uploaded stays theirs."""
-    return song_id.startswith("yt-")
+    """Every song in Lemody is for everyone: from YouTube or uploaded by a singer."""
+    return song_id.startswith(("yt-", "up-"))
 
 
 def finish(song_dir: Path) -> None:

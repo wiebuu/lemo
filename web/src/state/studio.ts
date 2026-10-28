@@ -205,6 +205,7 @@ export class Studio {
       patch = { busyProgress: null, busyDetail: null, ...patch }
       this.stemFrac = { backing: 0, vocals: 0 }
       this.stemDetail = { backing: '', vocals: '' }
+      this.stemBytes = { backing: [0, 0], vocals: [0, 0] }
     }
     this.snap = { ...this.snap, ...patch }
     this.viewDirty = true
@@ -368,10 +369,8 @@ export class Studio {
         const res = await this.fromAnalyzer(id, () => fetch(analyzer.stemUrl(id, stem, speed, semis), { signal }))
         converting = false
         const from = original ? 0 : 0.6
-        const blob = await readWithProgress(res, (got, total) =>
-          this.stemProgress(stem, from + (0.95 - from) * (total ? got / total : 0), `downloading · ${mb(got)}${total ? ` / ${mb(total)}` : ''} MB`),
-        )
-        this.stemProgress(stem, 0.95, 'decoding')
+        const blob = await readWithProgress(res, (got, total) => this.stemBytes_(stem, got, total, from))
+        this.stemProgress(stem, this.stemFrac[stem], 'getting it ready') // the bar stays the download's share
         return blob.arrayBuffer()
       }
       await this.loadTrack(ref, analyzerSource(ref.duration, fetchStem), 'loading audio', seq)
@@ -387,20 +386,48 @@ export class Studio {
 
   private stemFrac = { backing: 0, vocals: 0 }
   private stemDetail = { backing: '', vocals: '' }
+  private stemBytes: Record<'backing' | 'vocals', [got: number, total: number]> = { backing: [0, 0], vocals: [0, 0] }
   private lastProgress = 0
+
+  /**
+   * Bytes of one stem arrived. Both stems download together, so the text and the bar
+   * count them together: "downloading · 3.1 / 7.4 MB" and the same share on the bar
+   * (until both sizes are known, the bar follows each stem's own share).
+   */
+  private stemBytes_(stem: 'backing' | 'vocals', got: number, total: number, from: number) {
+    this.stemBytes[stem] = [got, total]
+    const [gb, tb] = this.stemBytes.backing
+    const [gv, tv] = this.stemBytes.vocals
+    const both = tb > 0 && tv > 0
+    const frac = both ? (gb + gv) / (tb + tv) : total ? got / total : 0
+    const detail = `downloading · ${both ? `${mb(gb + gv)} / ${mb(tb + tv)} MB` : `${mb(gb + gv)} MB`}`
+    const at = from + (1 - from) * frac // the bar's share = the share of MB downloaded
+    if (both) {
+      // one count for both: the bar is exactly the combined share (never behind what it showed)
+      const shown = Math.max(at, Math.min(this.stemFrac.backing, this.stemFrac.vocals))
+      this.stemFrac = { backing: shown, vocals: shown }
+      this.stemDetail = { backing: detail, vocals: detail }
+    } else {
+      this.stemFrac[stem] = Math.max(this.stemFrac[stem], at)
+      this.stemDetail[stem] = detail
+    }
+    this.stemProgress(stem, this.stemFrac[stem], detail)
+  }
 
   /** Both stems load side by side: the bar shows their average, the text the one that's behind. */
   private stemProgress(stem: 'backing' | 'vocals', frac: number, detail: string) {
     this.stemFrac[stem] = Math.max(this.stemFrac[stem], frac)
     this.stemDetail[stem] = detail
     const t = performance.now()
-    if (t - this.lastProgress < 80 && frac < 0.95) return // ~12 updates a second is plenty
+    if (t - this.lastProgress < 80 && frac < 1) return // ~12 updates a second is plenty
     this.lastProgress = t
     const fr = this.stemFrac
     const behind = fr.backing <= fr.vocals ? 'backing' : 'vocals'
     const which = behind === 'backing' ? 'music' : 'vocals'
     const text = this.stemDetail[behind]
-    this.snap = { ...this.snap, busyProgress: (fr.backing + fr.vocals) / 2, busyDetail: text ? `${which} · ${text}` : null }
+    // downloading: one count for both stems; converting / decoding: the stem that's behind
+    const label = !text ? null : text.startsWith('downloading') ? text : `${which} · ${text}`
+    this.snap = { ...this.snap, busyProgress: (fr.backing + fr.vocals) / 2, busyDetail: label }
     this.listeners.forEach((l) => l())
   }
 

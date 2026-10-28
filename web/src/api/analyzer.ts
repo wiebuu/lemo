@@ -173,7 +173,6 @@ export const analyzer = {
     fd.append('vocals', vocals, 'vocals.m4a')
     return fetch(`/api/songs/${id}/restore`, { method: 'POST', body: fd }).then((r) => json<{ ok: boolean; restored: boolean }>(r))
   },
-  remove: (id: string) => fetch(`/api/songs/${id}`, { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
   /** Ask Lemody to add a song (analysed later by hand); it lands in your songs when ready. */
   requestSong: (url: string) =>
     fetch('/api/requests', { method: 'POST', body: new URLSearchParams({ url }) }).then((r) =>

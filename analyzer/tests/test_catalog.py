@@ -72,9 +72,10 @@ class CatalogTest(unittest.TestCase):
             self.assertEqual(catalog.all_songs()[0]["plays"], 2)
             self.assertIsNone(catalog.played("yt-unknown000", "ana"))
 
-    def test_uploads_are_not_searchable(self):
+    def test_every_song_is_for_everyone_uploads_too(self):
         self.assertTrue(catalog.is_public("yt-abcdefghijk"))
-        self.assertFalse(catalog.is_public("up-abcdefghijk"))
+        self.assertTrue(catalog.is_public("up-abcdef0123456789"))
+        self.assertFalse(catalog.is_public("rq-abcdef0123456789"))  # a request isn't a song yet
 
 
 if __name__ == "__main__":

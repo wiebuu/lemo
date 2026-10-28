@@ -310,9 +310,8 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         onPrepare={async (now) => { await analyzer.prepareFeatured(now).catch((e) => setErr((e as Error).message)); void refresh() }}
         onFetch={(id) => (catalog.some((c) => c.id === id) ? void open(id) : void askLemody(`https://www.youtube.com/watch?v=${id.slice(3)}`))}
         onRemove={async (id) => {
-          // off your list; a file you uploaded is also deleted from the server (YouTube songs stay for everyone)
+          // off your list only: the song stays in Lemody for everyone
           events.emit('songRemoved', id)
-          if (id.startsWith('up-')) await analyzer.remove(id).catch(() => {})
           void refresh()
         }}
       />}
@@ -490,7 +489,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                 <span className="text-[11px] text-sub tabular-nums">
                   {opening === it.id ? <span className="flex items-center gap-1 text-main"><Loader2 size={11} className="animate-spin" />opening</span> : formatTime(it.duration)}
                 </span>
-                <Tip tip={it.id.startsWith('up-') ? 'remove this song (your uploaded file is deleted too)' : 'remove from your songs'}>
+                <Tip tip="remove from your songs (it stays in Lemody for everyone)">
                   <button
                     type="button"
                     aria-label="remove from your songs"

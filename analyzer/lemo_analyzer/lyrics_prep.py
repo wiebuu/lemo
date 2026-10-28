@@ -104,7 +104,7 @@ def with_lyrics() -> set[str]:
 def for_song(song_id: str, title: str | None, artist: str | None) -> None:
     """Right after a song is analysed: its lyrics, in a worker process (waits its turn
     behind other heavy work)."""
-    if not available() or not song_id.startswith("yt-"):
+    if not available() or not song_id.startswith(("yt-", "up-")):
         return
     try:
         ok, msg = worker.run(prepare_in_worker, song_id, title or "", artist or "", heavy=True)
@@ -126,7 +126,7 @@ def catch_up_forever() -> None:
         while True:
             try:
                 missing = [(sid, e) for sid, e in sorted(catalog.load().items())
-                           if sid.startswith("yt-") and sid not in _tried]
+                           if sid.startswith(("yt-", "up-")) and sid not in _tried]
                 have = with_lyrics() if missing else set()
                 for sid, e in missing:
                     if sid in have:

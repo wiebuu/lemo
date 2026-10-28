@@ -776,15 +776,10 @@ def featured_prepare(now: bool = False) -> dict:
 
 @app.delete("/api/songs/{song_id}")
 def delete(song_id: str) -> dict:
-    d = _song(song_id)
-    if song_id in storage.featured_ids():
-        raise HTTPException(403, "featured songs stay on the server")
-    jobs.MANAGER.cancel(song_id)
-    jobs.MANAGER.jobs.pop(song_id, None)
-    shutil.rmtree(d, ignore_errors=True)
-    remote.remove(song_id)
-    catalog.remove(song_id)
-    return {"ok": True}
+    """Songs are shared by everyone (uploads too): nobody deletes one for the others.
+    Taking a song off your own list is DELETE /api/me/songs/{id}."""
+    _song(song_id)
+    raise HTTPException(403, "Songs in Lemody are shared with everyone, so they stay. Remove it from your songs instead.")
 
 
 @app.get("/api/lyrics")

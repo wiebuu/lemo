@@ -111,6 +111,14 @@ function installApiAuth() {
     const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
     const user = auth?.currentUser
     if (user) headers.set('Authorization', `Bearer ${await user.getIdToken()}`)
-    return original(apiUrl(url.pathname + url.search), { ...init, headers })
+    // files in the song store: the API answers with their link (not a redirect, which
+    // Safari won't follow for a request carrying the sign-in header) — fetched plainly
+    headers.set('X-Lemo-Follow', '1')
+    const res = await original(apiUrl(url.pathname + url.search), { ...init, headers })
+    if (res.headers.get('X-Lemo-Link')) {
+      const { url: file } = (await res.json()) as { url: string }
+      return original(file, { signal: init?.signal })
+    }
+    return res
   }
 }

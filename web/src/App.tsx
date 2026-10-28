@@ -108,10 +108,17 @@ export default function App() {
             <div><div className="pb-1"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div></div>
           </div>
           <ErrorBoundary label="live readout"><LiveStats big={s.session} /></ErrorBoundary>
+          {/* phones: the header has no room for the song's name — it sits just above the graph */}
+          {phone && (
+            <div className={cx('pt-1 text-center truncate leading-tight text-[12px] transition-opacity', s.session && 'opacity-60')}>
+              <span className="text-text font-medium">{s.track.title}</span>
+              {s.track.artist && <span className="text-sub"> · {s.track.artist}</span>}
+            </div>
+          )}
           <ErrorBoundary label="graph"><Graph onImport={() => setPanel('load')} /></ErrorBoundary>
           {/* fixed-height slot under the graph: lyrics, or the results panel after a test */}
           <div className={cx('shrink-0 flex flex-col justify-center transition-[height] duration-500',
-            phone ? (results ? 'h-[9rem] py-1' : 'h-[6.5rem] py-1') : results ? 'h-[10rem] py-4' : 'h-[8rem] py-4')}>
+            phone ? (results ? 'h-[8.5rem] py-1' : 'h-[6rem] py-0.5') : results ? 'h-[10rem] py-4' : 'h-[8rem] py-4')}>
             <ErrorBoundary label="results">
               {results ? <ResultsPanel big={false} /> : <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />}
             </ErrorBoundary>
@@ -124,13 +131,6 @@ export default function App() {
       )}
 
       {s.track && <ErrorBoundary label="player"><PlayerBar /></ErrorBoundary>}
-      {/* phones: the header has no room for the song name — it sits small at the very bottom */}
-      {s.track && phone && (
-        <div className={cx('text-center truncate leading-tight text-[11px] pt-1 transition-opacity', s.session && 'opacity-60')}>
-          <span className="text-text/80 font-medium">{s.track.title}</span>
-          {s.track.artist && <span className="text-sub"> · {s.track.artist}</span>}
-        </div>
-      )}
 
       <footer className="flex justify-center text-sub pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[11px] shrink-0">
         {s.track ? (

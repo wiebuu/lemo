@@ -28,7 +28,17 @@ app.add_middleware(
     allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Lemo-Link"],
 )
+
+def _to_store(request: Request, url: str):
+    """Send the browser to a file in the song store. Our own app asks for the link itself
+    (header X-Lemo-Follow) and fetches it without sign-in headers: Safari won't follow a
+    redirect for a request that carried them."""
+    if request.headers.get("x-lemo-follow"):
+        return JSONResponse({"url": url}, headers={"X-Lemo-Link": "1", "Cache-Control": "no-store"})
+    return RedirectResponse(url, status_code=307)
+
 
 # Only the health check is open; everything else needs a Google sign-in (see auth.py).
 OPEN_PATHS = {"/api/health"}
@@ -228,13 +238,13 @@ MODELS = {"htdemucs.onnx", "crepe-full.onnx"}
 
 
 @app.get("/api/models/{name}")
-def model_file(name: str):
+def model_file(request: Request, name: str):
     """The two models a browser needs to analyse a song itself (~263 MB; the browser keeps them)."""
     if name not in MODELS:
         raise HTTPException(404, "unknown model")
     f = CONFIG.data_dir / "models" / name
     if remote.enabled() and remote.has_model(name, f):
-        return RedirectResponse(remote.signed_url("_models", name, ttl=3600), status_code=307)
+        return _to_store(request, remote.signed_url("_models", name, ttl=3600))
     if not f.exists():
         raise HTTPException(404, "model not installed on the server")
     return FileResponse(f, media_type="application/octet-stream", headers={"Cache-Control": "private, max-age=86400"})
@@ -393,7 +403,7 @@ def song_played(song_id: str, request: Request) -> dict:
 
 
 @app.get("/api/songs/{song_id}/preview")
-def preview(song_id: str):
+def preview(request: Request, song_id: str):
     """10 seconds of the song (the most-sung part), to check it's the right one."""
     d = _song(song_id)
     f = d / catalog.PREVIEW
@@ -402,7 +412,7 @@ def preview(song_id: str):
     if f.exists():
         return FileResponse(f, media_type="audio/mp4", headers={"Cache-Control": "private, max-age=86400"})
     if remote.has(song_id):
-        return RedirectResponse(remote.signed_url(song_id, catalog.PREVIEW), status_code=307)
+        return _to_store(request, remote.signed_url(song_id, catalog.PREVIEW))
     raise HTTPException(404, "no preview for this song")
 
 
@@ -446,11 +456,12 @@ def reference(song_id: str) -> dict:
 
 @app.get("/api/songs/{song_id}/audio/{stem}")
 def stem_audio(
+    request: Request,
     song_id: str,
     stem: str,
     speed: float = Query(1.0, ge=0.5, le=1.25),
     semitones: int = Query(0, ge=-12, le=12),
-) -> FileResponse:
+):
     if stem not in {"backing", "vocals"}:
         raise HTTPException(400, "stem must be backing or vocals")
     d = _song(song_id)
@@ -458,7 +469,7 @@ def stem_audio(
     if audio.stem_file(d, stem) is None:
         if speed == 1 and semitones == 0 and remote.has(song_id):
             # not on this machine: the browser downloads it straight from the VPS (signed link)
-            return RedirectResponse(remote.signed_url(song_id, f"{stem}{audio.STEM_EXT}"), status_code=307)
+            return _to_store(request, remote.signed_url(song_id, f"{stem}{audio.STEM_EXT}"))
         if not remote.pull(d) or audio.stem_file(d, stem) is None:
             raise HTTPException(404, "stem not found")
     try:

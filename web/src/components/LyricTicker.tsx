@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { itemAt, lyricRows, rowAt } from '../lib/lyricTiming'
 import { studio } from '../state/studio'
-import { cx, Eq, Tip, useStudio } from './ui'
+import { cx, Eq, Tip, usePhone, useStudio } from './ui'
 
 /**
  * Three-row karaoke: previous line (faint) · the line being sung · next line (faint).
@@ -12,6 +12,7 @@ import { cx, Eq, Tip, useStudio } from './ui'
  */
 export function LyricTicker({ big, onFix }: { big?: boolean; /** shows "wrong lyrics?" */ onFix?: () => void }) {
   const s = useStudio()
+  const phone = usePhone() // phones: the line being sung and the next one (no room for the last one)
   const rows = useMemo(() => lyricRows(s.lyricsShown), [s.lyricsShown])
   const [cur, setCur] = useState(() => rowAt(rows, studio.heardTime()))
   const curRef = useRef(cur)
@@ -91,9 +92,11 @@ export function LyricTicker({ big, onFix }: { big?: boolean; /** shows "wrong ly
   return (
     <div className="relative">
       <div key={cur} className="lyric-rows flex flex-col items-center gap-1">
-        <div dir="auto" className={cx('lyric-side h-6 leading-6 max-w-full truncate px-6 text-center transition-all duration-500', big ? 'text-base' : 'text-sm')}>
-          {prev?.text ?? ''}
-        </div>
+        {!phone && (
+          <div dir="auto" className={cx('lyric-side h-6 leading-6 max-w-full truncate px-6 text-center transition-all duration-500', big ? 'text-base' : 'text-sm')}>
+            {prev?.text ?? ''}
+          </div>
+        )}
         <div ref={wrap} className={cx('lyric-ticker w-full overflow-hidden transition-all duration-500', big ? 'h-14' : 'h-12')}>
           <div ref={track} dir={rtl ? 'rtl' : 'ltr'} className={cx('flex items-center h-full w-max whitespace-pre will-change-transform transition-[font-size] duration-500', big ? 'text-3xl font-medium tracking-tight' : 'text-[1.7rem] font-medium tracking-tight')}>
             {items.map((it, k) =>
@@ -112,7 +115,8 @@ export function LyricTicker({ big, onFix }: { big?: boolean; /** shows "wrong ly
           {next?.text ?? ''}
         </div>
       </div>
-      <div className="absolute right-0 -bottom-5 flex items-center gap-2 text-[11px] text-sub">
+      {/* phones: in its own row under the lines, never over the player below */}
+      <div className={cx('flex items-center gap-2 text-[11px] text-sub', phone ? 'justify-end h-5 mt-0.5' : 'absolute right-0 -bottom-5')}>
         {onFix && <FixLink onFix={onFix} />}
         {s.lyricsStatus && <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span>}
         {!s.lyricsStatus && s.lyricsNote?.startsWith('script:') && (

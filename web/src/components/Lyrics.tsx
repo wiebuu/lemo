@@ -1,10 +1,11 @@
-import { Eq, useStudio, cx } from './ui'
+import { Eq, useStudio, usePhone, cx } from './ui'
 import { FixLink, LyricTicker } from './LyricTicker'
 import type { LyricLine } from '../lib/types'
 
 /** Monkeytype-style words: sung = text colour, current = main with caret, upcoming = sub. */
 export function Lyrics({ onEdit, onFix, big }: { onEdit: () => void; onFix: () => void; big?: boolean }) {
   const s = useStudio()
+  const phone = usePhone()
   const lines = s.lyricsShown
   if (!s.track) return null
   // Timed words → the one-line moving ticker.
@@ -56,15 +57,22 @@ export function Lyrics({ onEdit, onFix, big }: { onEdit: () => void; onFix: () =
 
   return (
     <div className="relative h-full flex flex-col items-center justify-center gap-1.5 text-center overflow-hidden px-2">
-      {!s.session && (
+      {!s.session && !phone && (
         <span className="absolute right-0 bottom-0 flex items-center gap-2 text-[11px] text-sub">
           {s.lyricsStatus && <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span>}
           <FixLink onFix={onFix} />
         </span>
       )}
-      <div className="text-sub/60 text-base truncate max-w-full h-6">{prev?.text ?? ''}</div>
+      {/* phones: the line being sung and the next one */}
+      {!phone && <div className="text-sub/60 text-base truncate max-w-full h-6">{prev?.text ?? ''}</div>}
       {cur >= 0 ? <CurrentLine line={lines[cur]} word={s.lyricPos.word} big={big} /> : <div className="text-2xl text-sub h-9">{''}</div>}
       <div className="text-sub text-lg truncate max-w-full h-7">{next?.text ?? ''}</div>
+      {!s.session && phone && (
+        <span className="self-end flex items-center gap-2 text-[11px] text-sub h-5">
+          {s.lyricsStatus && <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span>}
+          <FixLink onFix={onFix} />
+        </span>
+      )}
     </div>
   )
 }

@@ -20,8 +20,8 @@ export function FeaturedShelf({ label, items, plays, opening, preview, onOpen }:
   const row = useRef<HTMLDivElement>(null)
   const scroll = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
   return (
-    <section className="mb-5">
-      <div className="flex items-center gap-2 mb-2 px-0.5">
+    <section className="mb-2.5 sm:mb-5">
+      <div className="flex items-center gap-2 mb-1.5 sm:mb-2 px-0.5">
         <span className="text-[10px] uppercase tracking-[0.16em] text-main font-medium">{label}</span>
         <span className="text-[10px] text-sub tabular-nums">{items.length}</span>
         <span className="flex-1" />
@@ -39,7 +39,7 @@ export function FeaturedShelf({ label, items, plays, opening, preview, onOpen }:
             <div key={f.title} className={cx('group relative snap-start shrink-0 w-[9.5rem] sm:w-[10.5rem] rounded-lg surface transition-colors', f.ready && 'hover:border-main/40')}>
               <button type="button" disabled={!f.ready || !f.id || !!opening} onClick={() => f.id && onOpen(f.id)}
                 aria-label={`sing ${f.title}${f.artist ? ` by ${f.artist}` : ''}`}
-                className="block w-full text-left px-3 py-2.5 pr-10 disabled:cursor-default">
+                className="block w-full text-left px-3 py-2 sm:py-2.5 pr-10 disabled:cursor-default">
                 <div className={cx('text-[13px] font-medium leading-tight truncate', f.ready ? 'text-text group-hover:text-main' : 'text-sub')} title={f.title}>{f.title}</div>
                 <div className="text-[11px] text-sub truncate leading-tight mt-1">{f.artist}</div>
                 <div className="text-[10px] text-sub/70 tabular-nums mt-1 h-3.5 flex items-center gap-1">

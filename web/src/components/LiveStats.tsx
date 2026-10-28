@@ -56,12 +56,10 @@ export function LiveStats({ big, center }: { big?: boolean; /** phones: the song
           <span ref={reg('clash')} style={hidden}><Tip tip="This note clashes with the music — try changing the key"><TriangleAlert className="text-error" size={22} /></Tip></span>
         </span>
       </div>
-      {/* centred on the screen; beside the results' controls it takes the space left of them */}
-      {center && (s.lastResult && !s.session
-        ? <div className="flex-1 min-w-0 text-left">{center}</div>
-        : <div className="absolute left-1/2 -translate-x-1/2 max-w-[56%] text-center pointer-events-none">{center}</div>)}
+      {/* centred on the screen, between the note and the controls */}
+      {center && <div className="absolute left-1/2 -translate-x-1/2 max-w-[56%] text-center">{center}</div>}
       {s.lastResult && !s.session ? (
-        <ListenControls />
+        <ListenControls noSwitch={!!center} />
       ) : (
       <div className="flex items-center gap-4 text-xs text-sub shrink-0">
         {s.phrases.length > 0 && !phone && ( // phones: no room to spare above the graph

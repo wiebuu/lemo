@@ -64,7 +64,7 @@ export function ResultsPanel({ big }: { big?: boolean }) {
  * Above the graph on the results: you | original, voice effects, and ✕ back to
  * practice.
  */
-export function ListenControls() {
+export function ListenControls({ noSwitch }: { /** the you / song switch is shown elsewhere (phones: centred) */ noSwitch?: boolean }) {
   const s = useStudio()
   const phone = usePhone()
   const [fxOpen, setFxOpen] = useState(false)
@@ -73,7 +73,7 @@ export function ListenControls() {
   return (
     <div className="fade-in flex items-center gap-1.5">
       {fxOpen && s.replay && <Suspense fallback={null}><VoiceFxPanel onClose={() => setFxOpen(false)} /></Suspense>}
-      {s.canReplay && <VoiceSwitch />}
+      {s.canReplay && !noSwitch && <VoiceSwitch />}
       {s.canReplay && s.replay && !phone && ( // phones: kept simple
         <Tip tip="Voice effects: tune, pitch, echo, reverb">
           <button type="button" onClick={() => { setFxOpen((o) => !o); studio.setListenSource('me') }} aria-label="voice effects" aria-pressed={fxOpen}
@@ -94,7 +94,7 @@ export function ListenControls() {
 }
 
 /** Play your take or the original singer — switching never stops the music. */
-function VoiceSwitch() {
+export function VoiceSwitch() {
   const s = useStudio()
   const me = s.listenSource === 'me'
   const canOriginal = !!s.caps?.hasGuide

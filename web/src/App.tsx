@@ -8,7 +8,7 @@ import { LiveStats } from './components/LiveStats'
 import { LoadPanel } from './components/LoadPanel'
 import { Lyrics } from './components/Lyrics'
 import { PlayerBar } from './components/PlayerBar'
-import { ResultsPanel } from './components/Results'
+import { ResultsPanel, VoiceSwitch } from './components/Results'
 import { BusyCard, cx, Modal, Tip, usePhone, useStudio } from './components/ui'
 import { Keyboard } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -109,13 +109,13 @@ export default function App() {
           </div>
           <ErrorBoundary label="live readout">
             {/* while singing the big note readout needs the room: the name steps aside */}
-            <LiveStats big={s.session} center={phone && !s.session ? (
+            <LiveStats big={s.session} center={phone && !s.session ? (results ? (s.canReplay ? <VoiceSwitch /> : undefined) : (
               // phones: the header has no room for the song's name — it sits in this row, above the graph
               <div className="truncate leading-tight text-[12px]">
                 <span className="text-text font-medium">{s.track.title}</span>
                 {s.track.artist && <span className="text-sub"> · {s.track.artist}</span>}
               </div>
-            ) : undefined} />
+            )) : undefined} />
           </ErrorBoundary>
           {/* phones: a little air between the song's name and the graph */}
           <div className={cx('flex-1 min-h-0 flex flex-col', phone && 'pt-2')}>

@@ -3,6 +3,7 @@
 // snapshot that only changes on user-visible state changes (not per frame).
 
 import { analyzer } from '../api/analyzer'
+import { levelTake } from '../lib/level'
 import { demoSource, demoTrack } from '../audio/demo'
 import { analyzerSource, fileSource, PlaybackEngine, type AudioSource } from '../audio/engine'
 import { MicError, MicInput, type MicReading } from '../audio/mic'
@@ -265,7 +266,7 @@ export class Studio {
     const e = this.engine
     if (e && this.snap.replay) {
       const buf = e.ctx.createBuffer(1, take.samples.length, take.sampleRate)
-      buf.copyToChannel(take.samples as Float32Array<ArrayBuffer>, 0)
+      buf.copyToChannel(this.playable(take) as Float32Array<ArrayBuffer>, 0)
       e.setVoice({ buffer: buf, start: take.start })
     }
     this.reviewCache = null
@@ -877,6 +878,14 @@ export class Studio {
     else this.toast('test too short to score')
   }
 
+  // your take as you hear it back: levelled (the raw recording is often much quieter than the song)
+  private levelled = new WeakMap<object, Float32Array>()
+  private playable(take: { samples: Float32Array }): Float32Array {
+    let x = this.levelled.get(take)
+    if (!x) this.levelled.set(take, (x = levelTake(take.samples)))
+    return x
+  }
+
   /** Results mode: mic off, your take ready to play with the music (switch you / original any time). */
   private async enterReview() {
     const e = this.engine
@@ -888,9 +897,9 @@ export class Studio {
     }
     this.mic.muted = false
     const buf = e.ctx.createBuffer(1, take.samples.length, take.sampleRate)
-    buf.copyToChannel(take.samples as Float32Array<ArrayBuffer>, 0)
+    buf.copyToChannel(this.playable(take) as Float32Array<ArrayBuffer>, 0)
     e.setVoice({ buffer: buf, start: take.start })
-    this.fxWorker().postMessage({ type: 'take', samples: take.samples.slice(), sampleRate: take.sampleRate } satisfies FxIn)
+    this.fxWorker().postMessage({ type: 'take', samples: this.playable(take).slice(), sampleRate: take.sampleRate } satisfies FxIn)
     e.voiceChain.set(this.snap.voiceFx)
     this.renderVoiceFx() // effects chosen on an earlier take carry over
     // Results only cover the part you sang: playback, seeking and the graph stay there.

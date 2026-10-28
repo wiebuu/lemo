@@ -83,16 +83,22 @@ export function Modal({ title, onClose, children, wide, tabs }: {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
+  const overlay = useRef<HTMLDivElement>(null)
+  const sheet = useRef<HTMLDivElement>(null)
+  const drag = useSheetDrag(sheet, overlay, onClose)
   return (
     <div
+      ref={overlay}
       className="overlay-in fixed inset-0 z-50 bg-black/55 flex items-end sm:items-center justify-center sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       {/* Never taller than the screen: header stays put, only the content scrolls.
-          Phones: a sheet from the bottom edge; larger screens: a centred card. */}
-      <div className={cx('modal-in sheet-in modal-card w-full rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[88dvh] sm:max-h-[min(86vh,780px)] pb-[env(safe-area-inset-bottom)] sm:pb-0', wide ? 'sm:max-w-3xl' : 'sm:max-w-xl')}>
-        <div className="sm:hidden mx-auto mt-2 h-1 w-10 rounded-full bg-sub/40 shrink-0" aria-hidden />
-        <div className="flex items-center justify-between px-5 sm:px-7 pt-3 sm:pt-4 pb-2 shrink-0">
+          Phones: a sheet from the bottom edge (drag the top of it down to close); larger screens: a centred card. */}
+      <div ref={sheet} className={cx('modal-in sheet-in modal-card w-full rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[88dvh] sm:max-h-[min(86vh,780px)] pb-[env(safe-area-inset-bottom)] sm:pb-0', wide ? 'sm:max-w-3xl' : 'sm:max-w-xl')}>
+        <div {...drag} className="sm:hidden shrink-0 pt-2 pb-1 -mb-1 touch-none cursor-grab" aria-hidden>
+          <div className="mx-auto h-1 w-10 rounded-full bg-sub/40" />
+        </div>
+        <div {...drag} className="flex items-center justify-between px-5 sm:px-7 pt-3 sm:pt-4 pb-2 shrink-0 touch-none sm:touch-auto">
           <h2 className="text-base font-semibold tracking-tight text-text">{title}</h2>
           <IconBtn title="close (esc)" onClick={onClose}>
             <X size={16} />
@@ -103,6 +109,65 @@ export function Modal({ title, onClose, children, wide, tabs }: {
       </div>
     </div>
   )
+}
+
+/**
+ * Phones: drag a sheet down by its top to close it. The sheet follows the finger (moved
+ * directly, no re-render, so it's smooth) and the backdrop fades with it; let go past a
+ * third of its height — or flick it down — and it slides away and closes, otherwise it
+ * springs back. A tap (no movement) still reaches the buttons.
+ */
+function useSheetDrag(sheet: React.RefObject<HTMLDivElement | null>, overlay: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
+  const st = useRef<{ id: number; y0: number; dy: number; t: number; v: number; on: boolean } | null>(null)
+  const set = (dy: number, animate: boolean) => {
+    const el = sheet.current
+    if (!el) return
+    el.style.transition = animate ? 'transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none'
+    el.style.transform = dy ? `translateY(${dy}px)` : ''
+    const o = overlay.current
+    if (o) {
+      o.style.transition = animate ? 'background-color 0.24s ease-out' : 'none'
+      o.style.backgroundColor = `rgba(0, 0, 0, ${0.55 * Math.max(0, 1 - dy / Math.max(1, el.offsetHeight))})`
+    }
+  }
+  const end = (e: React.PointerEvent) => {
+    const d = st.current
+    st.current = null
+    if (!d?.on || !sheet.current) return
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(d.id)
+    } catch {
+      /* already released */
+    }
+    const h = sheet.current.offsetHeight
+    if (d.dy > h / 3 || d.v > 0.6) {
+      set(h + 40, true) // slide away, then close
+      window.setTimeout(onClose, 220)
+    } else set(0, true)
+  }
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      if (e.pointerType === 'mouse' || !matchMedia('(max-width: 639px)').matches) return
+      st.current = { id: e.pointerId, y0: e.clientY, dy: 0, t: e.timeStamp, v: 0, on: false }
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const d = st.current
+      if (!d || e.pointerId !== d.id) return
+      const dy = Math.max(0, e.clientY - d.y0)
+      if (!d.on) {
+        if (dy < 6) return // still a tap
+        d.on = true
+        ;(e.currentTarget as HTMLElement).setPointerCapture(d.id)
+      }
+      const dt = Math.max(1, e.timeStamp - d.t)
+      d.v = 0.7 * d.v + 0.3 * ((dy - d.dy) / dt) // px per ms, smoothed
+      d.dy = dy
+      d.t = e.timeStamp
+      set(dy, false)
+    },
+    onPointerUp: end,
+    onPointerCancel: end,
+  }
 }
 
 /** A settings row: title and explanation on top, controls underneath — never squeezed side by side. */

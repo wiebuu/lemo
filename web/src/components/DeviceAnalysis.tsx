@@ -65,14 +65,14 @@ export function AnalyseChoice({ name, health, onDevice, onServer, onRequest, onC
 }
 
 /** This device can't analyse songs (and there's no server to do it): say where to add it instead. */
-function TooWeak({ name, phone, onRequest, onClose }: { name: string; phone: boolean; onRequest?: () => void; onClose: () => void }) {
+export function TooWeak({ name, phone, onRequest, onClose }: { name?: string; phone: boolean; onRequest?: () => void; onClose: () => void }) {
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-sm font-semibold text-text">Best added from a computer</span>
         <button type="button" onClick={onClose} className="text-xs text-sub hover:text-text">close</button>
       </div>
-      <SongName name={name} />
+      {name && <SongName name={name} />}
       <p className="mt-2 text-[13px] text-sub leading-relaxed">
         Analysing a new song takes a lot of processing power, so it’s done on a computer or a recent phone. Open Lemody there
         to add it — then you can sing it here{phone ? ' on your phone' : ''}, or on any device.

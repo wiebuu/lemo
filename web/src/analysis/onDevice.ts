@@ -101,6 +101,9 @@ export function deviceSupport(): Promise<DeviceSupport> {
     }
     if (Date.now() - Number(read(CRASHED_KEY) || 0) < CRASH_MEMORY_MS)
       return { ok: false, phone, why: 'Analysing a song stopped this device last time.' }
+    // iPhones: Safari gives one page far too little memory for this (and won't say how much
+    // the phone has), so it fails or the page is killed — don't even start
+    if (/iPhone|iPod/.test(navigator.userAgent)) return { ok: false, phone: true, why: 'iPhones can’t analyse songs in the browser.' }
     const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<{ limits: { maxBufferSize: number } } | null> } }).gpu
     if (!gpu) return { ok: false, phone, why: 'This browser can’t use the graphics chip (WebGPU).' }
     try {

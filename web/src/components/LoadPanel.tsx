@@ -9,6 +9,7 @@ import { formatTime } from '../lib/music'
 import { studio } from '../state/studio'
 const AnalyseChoice = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.AnalyseChoice })))
 const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
+const TooWeak = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak })))
 import { FeaturedShelf } from './FeaturedShelf'
 import { Plays, PreviewButton, usePreview } from './SongSearch'
 import { SongSearch } from './SongSearch'
@@ -176,9 +177,17 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       setErr((e as Error).message)
     }
   }
-    /** a link to a song file (Drive, Dropbox, …): analysed on this device */
+    // Can this device analyse songs? Checked once, up front: one that can't (an iPhone, too
+  // little memory, …) is told straight away instead of starting an upload it can't finish.
+  const [device, setDevice] = useState<{ ok: boolean; phone: boolean } | null>(null)
+  useEffect(() => void import('../analysis/onDevice').then((m) => m.deviceSupport()).then(setDevice, () => {}), [])
+  const cantAnalyse = !!device && !device.ok && !health?.separation
+  const [weak, setWeak] = useState(false)
+
+  /** a link to a song file (Drive, Dropbox, …): analysed on this device */
   const submitUrl = (u: string) => {
     if (!health) return setErr('Lemody\u2019s server can\u2019t be reached right now. Try again in a minute.')
+    if (cantAnalyse) return setWeak(true)
     setErr(null)
     if (storageFull()) return
     setChoosing(u)
@@ -204,7 +213,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       />
 
       <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-3 text-xs">
-        <Btn onClick={() => audioInput.current?.click()} disabled={!!running || !health} title={health ? 'a song file from your phone or computer' : 'needs Lemody\u2019s server'}>
+        <Btn onClick={() => (cantAnalyse ? setWeak(true) : audioInput.current?.click())} disabled={!!running || !health} title={health ? 'a song file from your phone or computer' : 'needs Lemody\u2019s server'}>
           <Upload size={13} /> upload a song
         </Btn>
         <Btn
@@ -246,6 +255,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           onCancel={() => setOnDevice(null)}
         />
       )}
+        {weak && <TooWeak phone={!!device?.phone} onClose={() => setWeak(false)} />}
       </Suspense>
       {asked && (
         <div className="fade-in mt-4 surface rounded-2xl p-4 flex items-start justify-between gap-3">

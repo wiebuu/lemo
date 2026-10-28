@@ -43,21 +43,25 @@ export function LiveStats({ big, center }: { big?: boolean; /** phones: the song
 
   return (
     <div className={cx('relative flex items-center justify-between px-1 transition-all duration-500', center ? 'gap-2' : 'gap-4', big ? 'min-h-[4.5rem]' : 'min-h-[2.75rem]')}>
-      <div className="flex items-center gap-3 shrink-0">
+      {/* phones: a little smaller, the hints right beside it — clear of the centred switch */}
+      <div className={cx('flex items-center shrink-0', phone ? 'gap-1' : 'gap-3')}>
         <Tip tip="The note you're singing right now.">
-          <span ref={note} className={cx('font-medium tabular-nums w-[3.5ch] transition-all duration-500', big ? 'text-6xl' : 'text-4xl')} />
+          <span ref={note} className={cx('font-medium tabular-nums w-[3.5ch] transition-all duration-500', big ? 'text-6xl' : phone ? 'text-3xl' : 'text-4xl')} />
         </Tip>
-        <span className={cx('flex items-center gap-2 transition-transform duration-500 origin-left', big && 'scale-[1.35]')}>
-          <span ref={reg('on')} style={hidden}><Tip tip="On the line"><Check className="text-main" size={26} /></Tip></span>
-          <span ref={reg('up')} style={hidden}><Tip tip="Go a little higher"><ArrowUp className="text-flat" size={26} /></Tip></span>
-          <span ref={reg('down')} style={hidden}><Tip tip="Go a little lower"><ArrowDown className="text-sharp" size={26} /></Tip></span>
-          <span ref={reg('more')} style={hidden}><Tip tip="Sing with more energy here"><Volume2 className="text-text" size={22} /></Tip></span>
-          <span ref={reg('softer')} style={hidden}><Tip tip="Sing softer here"><Volume1 className="text-text" size={22} /></Tip></span>
-          <span ref={reg('clash')} style={hidden}><Tip tip="This note clashes with the music — try changing the key"><TriangleAlert className="text-error" size={22} /></Tip></span>
+        <span className={cx('flex items-center transition-transform duration-500 origin-left', phone ? 'gap-1' : 'gap-2', big && 'scale-[1.35]')}>
+          <span ref={reg('on')} style={hidden}><Tip tip="On the line"><Check className="text-main" size={phone ? 22 : 26} /></Tip></span>
+          <span ref={reg('up')} style={hidden}><Tip tip="Go a little higher"><ArrowUp className="text-flat" size={phone ? 22 : 26} /></Tip></span>
+          <span ref={reg('down')} style={hidden}><Tip tip="Go a little lower"><ArrowDown className="text-sharp" size={phone ? 22 : 26} /></Tip></span>
+          <span ref={reg('more')} style={hidden}><Tip tip="Sing with more energy here"><Volume2 className="text-text" size={phone ? 18 : 22} /></Tip></span>
+          <span ref={reg('softer')} style={hidden}><Tip tip="Sing softer here"><Volume1 className="text-text" size={phone ? 18 : 22} /></Tip></span>
+          <span ref={reg('clash')} style={hidden}><Tip tip="This note clashes with the music — try changing the key"><TriangleAlert className="text-error" size={phone ? 18 : 22} /></Tip></span>
         </span>
       </div>
-      {/* centred on the screen, between the note and the controls */}
-      {center && <div className="absolute left-1/2 -translate-x-1/2 max-w-[56%] text-center">{center}</div>}
+      {/* the song's name: centred on the screen; the results' switch: centred in the space
+          between the note and the ✕, so it never runs into the note */}
+      {center && (s.lastResult && !s.session
+        ? <div className="flex-1 min-w-0 flex justify-center">{center}</div>
+        : <div className="absolute left-1/2 -translate-x-1/2 max-w-[56%] text-center">{center}</div>)}
       {s.lastResult && !s.session ? (
         <ListenControls noSwitch={!!center} />
       ) : (

@@ -59,5 +59,6 @@
   {"title": "Firefly", "artist": "When Chai Met Toast", "lang": "en", "hidden": true, "videoId": "uhXbIDoUEkQ"},
   {"title": "Kho Gaye Hum Kahan", "artist": "Jasleen Royal & Prateek Kuhad", "lang": "hi", "hidden": true, "videoId": "9TwPZYt33tI"},
   {"title": "Zindagi Ki Goud Mein", "artist": "Dream Note", "lang": "hi", "hidden": true, "videoId": "VpFMhuvibcc"},
-  {"title": "Paaro", "artist": "Aditya Rikhari", "lang": "hi", "hidden": true, "videoId": "gZ0vHQKfNH8"}
+  {"title": "Paaro", "artist": "Aditya Rikhari", "lang": "hi", "hidden": true, "videoId": "gZ0vHQKfNH8"},
+  {"videoId": "cWMxCE2HTag", "hidden": true, "requested": true}
 ]

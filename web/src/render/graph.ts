@@ -462,22 +462,41 @@ export class GraphRenderer {
       for (let j = k + dir; j >= 0 && j < notes.length; j += dir) if (!notes[j].offLyrics) return notes[j]
       return undefined
     }
+    // The line as points (each note's flat part; a passing note too short to hold is one
+    // point, so it becomes a rounded bump, not a needle), then drawn with the same rounded
+    // corner everywhere: clean steps, flat held notes, nothing jagged.
+    const runs: { x: number; y: number }[][] = []
+    let pts: { x: number; y: number }[] = []
+    const end = () => {
+      if (pts.length > 1) runs.push(pts)
+      pts = []
+    }
     for (let i = first; i < notes.length && notes[i].startTime <= t1 + 1; i++) {
       const n = notes[i]
       if (n.offLyrics) continue
       const prev = vis(i, -1)
       const next = vis(i, 1)
       const dur = n.endTime - n.startTime
-      const gIn = prev && joined(prev, n) ? Math.min(0.06, dur * 0.25) : 0
-      const gOut = next && joined(n, next) ? Math.min(0.06, dur * 0.25) : 0
-      if (!gIn) path.moveTo(X(n.startTime), y(n))
-      path.lineTo(X(n.endTime - gOut), y(n))
-      if (gOut && next) {
-        const nd = next.endTime - next.startTime
-        const x0 = X(n.endTime - gOut), x1 = X(next.startTime + Math.min(0.06, nd * 0.25))
-        const xm = (x0 + x1) / 2
-        path.bezierCurveTo(xm, y(n), xm, y(next), x1, y(next))
+      const jp = !!prev && joined(prev, n)
+      const jn = !!next && joined(n, next)
+      if (!jp && !jn && dur < 0.1) continue // a stray scrap, not a sung note
+      if (!jp) end()
+      const g = Math.min(0.08, dur * 0.3) // the glide into / out of the note
+      if (jp && jn && dur < 0.13) pts.push({ x: X((n.startTime + n.endTime) / 2), y: y(n) })
+      else pts.push({ x: X(n.startTime + (jp ? g : 0)), y: y(n) }, { x: X(n.endTime - (jn ? g : 0)), y: y(n) })
+      if (!jn) end()
+    }
+    end()
+    const R = 7
+    for (const r of runs) {
+      path.moveTo(r[0].x, r[0].y)
+      for (let k = 1; k < r.length - 1; k++) {
+        const a = r[k - 1], b = r[k], c = r[k + 1]
+        const rad = Math.min(R, Math.hypot(b.x - a.x, b.y - a.y) / 2, Math.hypot(c.x - b.x, c.y - b.y) / 2)
+        if (rad < 0.5 || (a.y === b.y && b.y === c.y)) path.lineTo(b.x, b.y)
+        else path.arcTo(b.x, b.y, c.x, c.y, rad)
       }
+      path.lineTo(r[r.length - 1].x, r[r.length - 1].y)
     }
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -665,9 +684,8 @@ export class GraphRenderer {
     for (const { r, vals: raw } of series) {
       let vals = raw
       if (!normalised) {
-        // real pitch: fold single frames that slip an octave away from their own stretch
-        const sorted = [...vals].sort((a, b) => a - b)
-        vals = foldOctaveSlips(vals, sorted[sorted.length >> 1])
+        // real pitch: fold single frames that slip an octave away from what came just before
+        vals = foldOctaveSlips(vals)
       }
       const sm = smoothBack(vals, v.lineDetail)
       // each smoothed point belongs a few frames earlier (the filter only looks back)

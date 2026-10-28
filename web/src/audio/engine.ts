@@ -121,7 +121,27 @@ export class PlaybackEngine {
   /** Song time currently being scheduled (ahead of what the ear hears by outputLatency). */
   time(): number {
     if (!this.anchor) return this.pausedAt
-    return songTimeAt(this.anchor, this.ctx.currentTime)
+    return songTimeAt(this.anchor, this.smoothCtxTime())
+  }
+
+  // The audio clock moves in uneven steps (5–16 ms between screen frames here, bigger
+  // in Safari), so the graph would scroll in uneven steps: a judder. This clock runs on
+  // the screen's own steady timer and gently follows the audio clock; a seek or a stall
+  // (more than 50 ms apart) snaps back to it at once.
+  private steady: { ctx: number; perf: number } | null = null
+  private smoothCtxTime(): number {
+    const c = this.ctx.currentTime
+    const p = performance.now() / 1000
+    const s = this.steady
+    if (!s) {
+      this.steady = { ctx: c, perf: p }
+      return c
+    }
+    const predicted = s.ctx + (p - s.perf)
+    const err = c - predicted
+    const next = Math.abs(err) > 0.05 ? c : predicted + err * 0.06
+    this.steady = { ctx: Math.max(next, s.ctx), perf: p } // never backwards
+    return this.steady.ctx
   }
 
   /**
@@ -227,6 +247,7 @@ export class PlaybackEngine {
     start(this.stems.guide, this.guideGain)
     if (this.voice) this.startVoice(startCtx, this.pausedAt)
     this.anchor = { ctxStart: startCtx, songStart: this.pausedAt, speed: this.speed }
+    this.steady = null
     this.nextBeat = -1
     this.emit()
   }
@@ -292,6 +313,7 @@ export class PlaybackEngine {
     this.nodes = []
     this.voiceNode = null
     this.anchor = null
+    this.steady = null
   }
 
   seek(t: number) {

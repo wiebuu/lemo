@@ -31,6 +31,16 @@ describe('smoothBack', () => {
 })
 
 describe('foldOctaveSlips', () => {
+  it('a line already drawn never changes as more singing arrives', () => {
+    // a long stretch that starts low and climbs: judged against the whole stretch, the
+    // first notes would flip an octave once the high part arrived
+    const sung = [55, 55.2, 55.1, 67.3, 56, 58, 60, 62, 64, 66, 67, 68, 69, 70, 71, 72, 72.2]
+    const early = foldOctaveSlips(sung.slice(0, 6))
+    const later = foldOctaveSlips(sung)
+    expect(later.slice(0, 6)).toEqual(early)
+    expect(early[3]).toBeCloseTo(55.3) // the one-frame octave slip is still folded down
+  })
+
   it('folds values about an octave away back next to the voice', () => {
     const out = foldOctaveSlips([60, 72.4, 61, 47.8, 63], 61)
     ;[60, 60.4, 61, 59.8, 63].forEach((v, i) => expect(out[i]).toBeCloseTo(v, 6))

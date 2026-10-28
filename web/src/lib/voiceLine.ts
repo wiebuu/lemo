@@ -24,11 +24,21 @@ export function placeOnMelody(vals: number[], anchors: number[], offset: number)
  * Pitch-tracker octave slips: values about an octave from `around` are folded back.
  * Real octave leaps are rare and brief in singing; slips are common.
  */
-export function foldOctaveSlips(midis: number[], around: number): number[] {
-  return midis.map((m) => {
-    const d = m - around
-    return Math.abs(d) >= 9 && Math.abs(Math.abs(d) - 12) <= 3 ? m - 12 * Math.sign(d) : m
-  })
+export function foldOctaveSlips(midis: number[], around?: number): number[] {
+  // Each frame is judged against the frames before it (their median), never later ones:
+  // a stretch still being sung grows, and a judgement that used the whole stretch made
+  // the part already drawn jump an octave mid-song. `around` (fixed) is used when given.
+  const out: number[] = []
+  for (let i = 0; i < midis.length; i++) {
+    let ref = around
+    if (ref === undefined) {
+      const prev = out.slice(Math.max(0, i - 40), i)
+      ref = prev.length ? [...prev].sort((a, b) => a - b)[prev.length >> 1] : midis[i]
+    }
+    const d = midis[i] - ref
+    out.push(Math.abs(d) >= 9 && Math.abs(Math.abs(d) - 12) <= 3 ? midis[i] - 12 * Math.sign(d) : midis[i])
+  }
+  return out
 }
 
 /** How many frames smoothBack lags behind: draw point i at frame i − this, so timing stays true. */

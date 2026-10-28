@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Check, Cpu, Loader2, Server, Smartphone } from 'lucide-react'
-import { analyseOnDevice, deviceRate, deviceSupport, modelsReady, type DeviceProgress, type DeviceStage, type DeviceSupport } from '../analysis/onDevice'
+import { AlertTriangle, Check, Cpu, Loader2, Music2, Server, Smartphone } from 'lucide-react'
+import { analyseOnDevice, deviceRate, deviceSupport, modelsReady, noteRunning, reportProblem, type DeviceProgress, type DeviceStage, type DeviceSupport } from '../analysis/onDevice'
 import { ApiError, type AnalyzerHealth } from '../api/analyzer'
 import { cx } from './ui'
 
@@ -9,7 +9,9 @@ const SONG_SEC = 240 // before the song is fetched its length isn't known: a typ
 const mins = (sec: number) => `~${Math.max(1, Math.round(sec / 60))} min`
 
 /** The two ways to analyse a new song, each with a rough time. Shown when a link isn't in Lemody yet. */
-export function AnalyseChoice({ health, onDevice, onServer, onRequest, onCancel }: {
+export function AnalyseChoice({ name, health, onDevice, onServer, onRequest, onCancel }: {
+  /** which song this is about (the file's name, or where the link points) */
+  name: string
   health: AnalyzerHealth | null | undefined
   onDevice: () => void
   onServer: () => void
@@ -29,13 +31,14 @@ export function AnalyseChoice({ health, onDevice, onServer, onRequest, onCancel 
   const serverOk = !!health?.separation // a small server may not analyse songs at all
   const pickDevice = !!sup?.ok && (!serverOk || ahead >= 3) // a long queue: this device is quicker
   const Icon = sup?.phone ? Smartphone : Cpu
-  if (sup && !sup.ok && !serverOk) return <TooWeak phone={sup.phone} onRequest={onRequest} onClose={onCancel} />
+  if (sup && !sup.ok && !serverOk) return <TooWeak name={name} phone={sup.phone} onRequest={onRequest} onClose={onCancel} />
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-sm font-semibold text-text">New song — where to analyse it?</span>
         <button type="button" onClick={onCancel} className="text-xs text-sub hover:text-text">cancel</button>
       </div>
+      <SongName name={name} />
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <Option
           icon={<Server size={15} />}
@@ -62,18 +65,29 @@ export function AnalyseChoice({ health, onDevice, onServer, onRequest, onCancel 
 }
 
 /** This device can't analyse songs (and there's no server to do it): say where to add it instead. */
-function TooWeak({ phone, onRequest, onClose }: { phone: boolean; onRequest?: () => void; onClose: () => void }) {
+function TooWeak({ name, phone, onRequest, onClose }: { name: string; phone: boolean; onRequest?: () => void; onClose: () => void }) {
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-sm font-semibold text-text">Add this song from another device</span>
         <button type="button" onClick={onClose} className="text-xs text-sub hover:text-text">close</button>
       </div>
+      <SongName name={name} />
       <p className="mt-2 text-[13px] text-sub leading-relaxed">
         {phone ? 'This phone' : 'This device'} can’t analyse new songs without slowing right down. Open Lemody on a computer
         (Chrome or Edge) or a newer phone and add it there — then it’s here for you to sing on any device.
       </p>
       {onRequest && <AskLemody onRequest={onRequest} />}
+    </div>
+  )
+}
+
+/** The song a card is about, so it's clear which one was picked. */
+function SongName({ name }: { name: string }) {
+  return (
+    <div className="mt-2 flex items-center gap-2 min-w-0 text-[13px] text-text">
+      <Music2 size={14} className="text-main shrink-0" />
+      <span className="truncate" title={name}>{name}</span>
     </div>
   )
 }
@@ -158,14 +172,32 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onRequest, onCa
     const onLeave = (e: BeforeUnloadEvent) => e.preventDefault()
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('beforeunload', onLeave)
-    analyseOnDevice(url, setP, ac.signal).then(
-      (r) => (r.kind !== 'server' ? onDone(r.id) : onUseServer ? onUseServer() : setErr('This browser can\u2019t analyse songs. Try Chrome or Edge on a computer.')),
+    const song = typeof url === 'string' ? url : url.name
+    let stage = ''
+    const progress = (p: DeviceProgress) => {
+      if (p.stage !== stage) noteRunning((stage = p.stage), song) // if the page dies now, next time we know where
+      setP(p)
+    }
+    noteRunning('starting', song)
+    // closed on purpose (not killed for memory, which gives no warning): not a crash
+    const closed = () => noteRunning(null)
+    window.addEventListener('pagehide', closed)
+    analyseOnDevice(url, progress, ac.signal).then(
+      (r) => {
+        noteRunning(null)
+        if (r.kind !== 'server') onDone(r.id)
+        else if (onUseServer) onUseServer()
+        else setErr('This browser can\u2019t analyse songs. Try Chrome or Edge on a computer.')
+      },
       (e) => {
+        noteRunning(null)
         if ((e as Error).name === 'AbortError') return
+        if (!(e instanceof ApiError)) reportProblem('error', stage, (e as Error).message, song) // the device's own failure
         setErr(e instanceof ApiError && e.code === 'rejected' ? `The result didn't pass Lemody's checks: ${e.message}` : (e as Error).message)
       },
     )
     return () => {
+      window.removeEventListener('pagehide', closed)
       ac.abort()
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('beforeunload', onLeave)

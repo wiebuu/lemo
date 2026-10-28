@@ -34,7 +34,14 @@ const ASPECT_WORD: Record<ReviewAspect, string> = { pitch: 'pitch', key: 'key', 
  */
 export function ResultsPanel({ big }: { big?: boolean }) {
   const s = useStudio()
+  const phone = usePhone()
   if (!s.lastResult) return null
+  // phones: just the results — every score on the screen, no switching to the lyrics
+  if (phone) return (
+    <div className="fade-in w-full h-full flex flex-col justify-center overflow-hidden">
+      <ResultsBody tabs={null} compact />
+    </div>
+  )
   const tabs = (
     <div className="w-32 sm:w-40 shrink-0">
       <Tabs<'results' | 'lyrics'> value={s.resultsView} onChange={(v) => studio.setResultsView(v)}
@@ -112,7 +119,7 @@ function VoiceSwitch() {
 }
 
 /** Scores (click one to shade that aspect on the graph) and one line of detail. */
-function ResultsBody({ tabs }: { tabs: React.ReactNode }) {
+function ResultsBody({ tabs, compact }: { tabs: React.ReactNode; /** phones: all scores in a grid, a little smaller */ compact?: boolean }) {
   const s = useStudio()
   const r = s.lastResult!
   const notes = s.track?.notes ?? []
@@ -126,20 +133,21 @@ function ResultsBody({ tabs }: { tabs: React.ReactNode }) {
     <div className="w-full flex flex-col gap-2">
       {/* one row; on narrow screens it scrolls sideways instead of wrapping out of its space */}
       <div className="flex items-center gap-3">
-      <div className="edge-fade flex-1 min-w-0 flex flex-nowrap items-end gap-x-5 overflow-x-auto [&>*]:shrink-0 -mx-1 px-1 py-0.5">
+      <div className={compact ? 'flex-1 min-w-0 grid grid-cols-4 items-end gap-x-2 gap-y-2'
+        : 'edge-fade flex-1 min-w-0 flex flex-nowrap items-end gap-x-5 overflow-x-auto [&>*]:shrink-0 -mx-1 px-1 py-0.5'}>
         {s.settings.showOverall && (
           <Tip wide tip={weights.length ? <>The average of your scores, weighted: {weights.join(', ')}. Change the mix in settings.</> : 'Not enough singing for an overall score.'}>
             <div className="cursor-default">
-              <div className="text-main text-4xl font-medium tabular-nums leading-none">{pct(r.overall.score)}</div>
+              <div className={cx('text-main font-medium tabular-nums leading-none', compact ? 'text-3xl' : 'text-4xl')}>{pct(r.overall.score)}</div>
               <div className="text-sub text-[11px] mt-1">overall</div>
             </div>
           </Tip>
         )}
         {keys.map((k) => (
           <MetricTile key={k} k={k} m={r.metrics[k]} selected={ASPECT_OF[k] === aspect && (k !== 'exact' || !keys.includes('shape'))}
-            selectable={aspects.includes(ASPECT_OF[k])} />
+            selectable={aspects.includes(ASPECT_OF[k])} compact={compact} />
         ))}
-        {s.settings.showHistory && history.length > 1 && (
+        {s.settings.showHistory && history.length > 1 && !compact && (
           <Tip tip="Your recent tries — the bright bar is this one.">
             <div className="flex items-end gap-[3px] h-7 ml-auto">
               {history.map((a, i) => (
@@ -157,14 +165,14 @@ function ResultsBody({ tabs }: { tabs: React.ReactNode }) {
   )
 }
 
-function MetricTile({ k, m, selected, selectable }: { k: MetricKey; m: MetricResult; selected: boolean; selectable: boolean }) {
+function MetricTile({ k, m, selected, selectable, compact }: { k: MetricKey; m: MetricResult; selected: boolean; selectable: boolean; compact?: boolean }) {
   const lines = m.score === null ? [`Couldn't measure this time: ${m.note}.`] : plainDetails(k, m)
   return (
     <Tip wide tip={<>{ABOUT[k]}{lines.map((l) => <span key={l} className="block mt-1 opacity-80">{l}</span>)}{selectable && <span className="block mt-1 opacity-60">Click to see where on the graph.</span>}</>}>
       <button type="button" disabled={!selectable} onClick={() => studio.setReviewAspect(ASPECT_OF[k])}
         className={cx('text-left pb-1 border-b-2', selected ? 'border-main' : 'border-transparent hover:border-sub-alt', !selectable && 'cursor-default')}>
-        <div className={cx('text-xl tabular-nums leading-none', m.score === null ? 'text-sub' : 'text-text')}>{pct(m.score)}</div>
-        <div className={cx('text-[11px] mt-1', selected ? 'text-main' : 'text-sub')}>{SHORT[k]}</div>
+        <div className={cx('tabular-nums leading-none', compact ? 'text-lg' : 'text-xl', m.score === null ? 'text-sub' : 'text-text')}>{pct(m.score)}</div>
+        <div className={cx('mt-1 truncate', compact ? 'text-[10px]' : 'text-[11px]', selected ? 'text-main' : 'text-sub')}>{SHORT[k]}</div>
       </button>
     </Tip>
   )

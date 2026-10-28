@@ -196,10 +196,11 @@ function VolumeMenu() {
       ? { icon: <UserRound size={14} />, label: 'original singer', max: 1, value: s.settings.guideVolume, set: (v: number) => studio.updateSettings({ guideVolume: v }) }
       : null
   const row = (icon: ReactNode, label: string, max: number, value: number, set: (v: number) => void) => (
-    <label className="flex items-center gap-3 px-2 py-2 text-xs text-sub">
-      {icon}
-      <span className="w-24 shrink-0">{label}</span>
-      <input type="range" min={0} max={max} step={0.01} value={value} onChange={(e) => set(Number(e.target.value))} className="flex-1" />
+    <label className="flex items-center gap-2.5 px-1 py-2 text-xs text-sub min-w-0">
+      <span className="shrink-0">{icon}</span>
+      <span className="w-[5.5rem] shrink-0 truncate">{label}</span>
+      {/* min-w-0: a slider's built-in width would otherwise push it out of the box */}
+      <input type="range" min={0} max={max} step={0.01} value={value} onChange={(e) => set(Number(e.target.value))} className="flex-1 min-w-0 w-full" />
     </label>
   )
   return (

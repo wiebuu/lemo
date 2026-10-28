@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Check, HardDrive, Loader2, Play, Trash2, Upload, X } from 'lucide-react'
 import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
 import { tidyTitle } from '../lib/titles'
+import { songLink } from '../lib/songLinks'
 import { cloudSongs, refreshCloudSongs } from '../state/cloud'
 import { events } from '../state/events'
 import { formatTime } from '../lib/music'
@@ -49,8 +50,12 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       return r
     })
   }, [])
+  const misses = useRef(0)
   const refresh = useCallback(async () => {
-    const h = await analyzer.health()
+    let h = await analyzer.health()
+    // one slow answer isn't "offline": keep what we knew until it fails twice in a row
+    misses.current = h ? 0 : misses.current + 1
+    if (!h && misses.current < 2) h = await analyzer.health()
     setHealth(h)
     const lists: Promise<unknown>[] = []
     if (h) {
@@ -171,7 +176,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       setErr((e as Error).message)
     }
   }
-  /** a link to a song file (Drive, Dropbox, …): analysed on this device */
+    /** a link to a song file (Drive, Dropbox, …): analysed on this device */
   const submitUrl = (u: string) => {
     if (!health) return setErr('Lemody\u2019s server can\u2019t be reached right now. Try again in a minute.')
     setErr(null)
@@ -235,6 +240,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       <Suspense fallback={choosing || onDevice ? <div className="mt-4 flex justify-center"><Eq /></div> : null}>
       {choosing && !onDevice && (
         <AnalyseChoice
+          name={songName(choosing)}
           health={health}
           onDevice={() => { setOnDevice(choosing); setChoosing(null) }}
           onServer={() => useServer(choosing)}
@@ -593,4 +599,17 @@ function Hero() {
       </h1>
     </div>
   )
+}
+
+/** What to call a picked song before it's analysed: the file's name, or where its link points. */
+export function songName(src: string | File): string {
+  if (typeof src !== 'string') return src.name.replace(/\.[^.]+$/, '')
+  const link = songLink(src)
+  try {
+    const file = decodeURIComponent(new URL(link?.url ?? src).pathname.split('/').pop() ?? '')
+    if (/\.\w{2,4}$/.test(file)) return file.replace(/\.[^.]+$/, '')
+  } catch {
+    /* not a full link */
+  }
+  return link?.kind === 'file' && link.from !== 'a link' ? `your song from ${link.from}` : src
 }

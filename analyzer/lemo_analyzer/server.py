@@ -322,6 +322,15 @@ def device_link(url: str = Form(...)) -> dict:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+@app.post("/api/songs/device/report")
+def device_report(request: Request, body: dict = Body(...)) -> dict:
+    """A device's analysis went wrong (an error, or the page was killed mid-way): logged,
+    so problems on phones we can't test on are visible."""
+    what = {k: str(body.get(k, ""))[:300] for k in ("kind", "stage", "message", "ua", "song")}
+    worker.log(f"device report from {_uid(request)[:8]}: {what['kind']} at {what['stage']}: {what['message']} | {what['ua']} | {what['song']}")
+    return {"ok": True}
+
+
 @app.get("/api/songs/device/{song_id}")
 def device_status(song_id: str) -> dict:
     _song(song_id)

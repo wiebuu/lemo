@@ -46,10 +46,61 @@ export interface DeviceSupport {
 
 let support: Promise<DeviceSupport> | null = null
 
+// An analysis in progress is noted here; if the page is killed mid-way (a phone running
+// out of memory reloads the page), the note is still there next time: that device isn't
+// offered analysis again for a week, and the server hears about it.
+const RUNNING_KEY = 'lemo:analysing'
+const CRASHED_KEY = 'lemo:analysisCrashed'
+const CRASH_MEMORY_MS = 7 * 24 * 3600 * 1000
+
+function store(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
+  } catch {
+    /* storage blocked */
+  }
+}
+function read(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+/** Tell the server what went wrong on this device (best effort). */
+export function reportProblem(kind: string, stage: string, message: string, song = '') {
+  void fetch('/api/songs/device/report', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind, stage, message, song, ua: navigator.userAgent }),
+  }).catch(() => {})
+}
+
+/** Note the analysis that's running (its stage), or that it ended (null). */
+export function noteRunning(stage: string | null, song = '') {
+  store(RUNNING_KEY, stage === null ? null : JSON.stringify({ stage, song, at: Date.now() }))
+}
+
 /** Can this device analyse songs itself? Needs WebGPU (the graphics chip, from the browser). */
 export function deviceSupport(): Promise<DeviceSupport> {
   support ??= (async () => {
     const phone = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820
+    const left = read(RUNNING_KEY)
+    if (left) {
+      // the page was killed during an analysis last time
+      let was: { stage?: string; song?: string } = {}
+      try {
+        was = JSON.parse(left)
+      } catch {
+        /* old note */
+      }
+      store(RUNNING_KEY, null)
+      store(CRASHED_KEY, String(Date.now()))
+      reportProblem('crashed', was.stage ?? '?', 'the page stopped during the analysis', was.song ?? '')
+    }
+    if (Date.now() - Number(read(CRASHED_KEY) || 0) < CRASH_MEMORY_MS)
+      return { ok: false, phone, why: 'Analysing a song stopped this device last time.' }
     const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<{ limits: { maxBufferSize: number } } | null> } }).gpu
     if (!gpu) return { ok: false, phone, why: 'This browser can’t use the graphics chip (WebGPU).' }
     try {

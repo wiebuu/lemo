@@ -130,7 +130,8 @@ async function json<T>(res: Response): Promise<T> {
 export const analyzer = {
   async health(): Promise<AnalyzerHealth | null> {
     try {
-      const res = await fetch('/api/health', { signal: AbortSignal.timeout(2500) })
+      // generous: a phone on mobile data can take a few seconds for the first connection
+      const res = await fetch('/api/health', { signal: AbortSignal.timeout(8000) })
       if (!res.ok) return null
       return await res.json()
     } catch {

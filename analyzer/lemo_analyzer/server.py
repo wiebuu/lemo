@@ -40,8 +40,9 @@ def _to_store(request: Request, url: str):
     return RedirectResponse(url, status_code=307)
 
 
-# Only the health check is open; everything else needs a Google sign-in (see auth.py).
-OPEN_PATHS = {"/api/health"}
+# Only the health check and the stats page's numbers are open; everything else needs a
+# Google sign-in (see auth.py).
+OPEN_PATHS = {"/api/health", "/api/stats"}
 
 
 @app.middleware("http")

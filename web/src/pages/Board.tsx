@@ -11,19 +11,19 @@ import { go, navigate } from './router'
 const pct = (v: number) => `${Math.round(v * 100)}%`
 
 /** Loads something for a page once; signed out, or offline, it says so instead. */
-function useLoad<T>(load: () => Promise<T>): { data: T | null; error: string | null } {
+function useLoad<T>(load: () => Promise<T>, open = false): { data: T | null; error: string | null } {
   const auth = useAuth()
   const [state, setState] = useState<{ data: T | null; error: string | null }>({ data: null, error: null })
-  const signedIn = auth.status === 'signed-in'
+  const ready = open ? auth.status !== 'loading' : auth.status === 'signed-in'
   useEffect(() => {
-    if (!signedIn) return
+    if (!ready) return
     let live = true
     load().then((data) => live && setState({ data, error: null }), (e: Error) => live && setState({ data: null, error: e.message }))
     return () => {
       live = false
     }
-  }, [signedIn]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (auth.status === 'signed-out') return { data: null, error: 'Sign in on the home page to see this.' }
+  }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (auth.status === 'signed-out' && !open) return { data: null, error: 'Sign in on the home page to see this.' }
   return state
 }
 
@@ -118,7 +118,7 @@ function hours(s: number): string {
 
 /** Lemody in numbers. */
 export function StatsPage() {
-  const { data, error } = useLoad<SiteStats>(analyzer.stats)
+  const { data, error } = useLoad<SiteStats>(analyzer.stats, true)
   return (
     <>
       <p className="lead">Lemody in numbers, live.</p>

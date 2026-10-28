@@ -31,6 +31,39 @@ export function installGuards() {
     },
     true,
   )
+  // Touch screens: a slider moves to wherever you touch its bar and follows the finger
+  // (on its own, a phone's slider only reacts to a touch right on its small thumb).
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      const el = e.target as HTMLInputElement
+      if (e.pointerType !== 'touch' || !(el instanceof HTMLInputElement) || el.type !== 'range' || el.disabled) return
+      e.preventDefault()
+      const set = (x: number) => {
+        const r = el.getBoundingClientRect()
+        const min = Number(el.min || 0), max = Number(el.max || 100), step = Number(el.step) || 1
+        const frac = Math.min(1, Math.max(0, (x - r.left) / r.width))
+        const v = Math.round((min + frac * (max - min)) / step) * step
+        // React listens to the native setter + an input event
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, String(v))
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      set(e.clientX)
+      const move = (ev: PointerEvent) => ev.pointerId === e.pointerId && set(ev.clientX)
+      const up = (ev: PointerEvent) => {
+        if (ev.pointerId !== e.pointerId) return
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        window.removeEventListener('pointercancel', up)
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', up)
+    },
+    true,
+  )
+
   // Sliders: release focus once you let go, so arrow keys go back to the shortcuts.
   document.addEventListener('pointerup', () => {
     const a = document.activeElement

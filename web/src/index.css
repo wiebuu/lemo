@@ -166,6 +166,24 @@ input[type='range']::-webkit-slider-thumb {
 input[type='range']:hover::-webkit-slider-thumb {
   background: var(--grad);
 }
+/* touch screens: a fingertip-sized target (the bar still looks thin), and a drag on a
+   slider never scrolls the page */
+@media (pointer: coarse) {
+  input[type='range'] {
+    height: 36px;
+    touch-action: none;
+  }
+  input[type='range']::-webkit-slider-runnable-track {
+    height: 4px;
+    background: color-mix(in srgb, var(--sub) 45%, transparent);
+  }
+  input[type='range']::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -9px;
+    background: var(--text);
+  }
+}
 input[type='range']::-moz-range-track {
   height: 3px;
   background: var(--sub-alt);

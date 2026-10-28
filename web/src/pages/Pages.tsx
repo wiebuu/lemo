@@ -24,7 +24,7 @@ export function SitePage({ path }: { path: string }) {
     scroller.current?.scrollTo({ top: 0 })
     document.title = page ? `${page.title} · Lemody` : 'Page not found · Lemody'
     return () => {
-      document.title = 'Lemody'
+      document.title = 'Lemody · Sing along to any song and see your pitch live'
     }
   }, [path, page])
   useEffect(() => {

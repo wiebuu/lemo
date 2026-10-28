@@ -221,9 +221,9 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setChoosing(f) } }} />
       </div>
       {!typing && !running && !choosing && (
-        <ul className="mt-2 sm:mt-3 px-1 flex flex-col gap-0.5 sm:gap-1 text-[11px] text-sub leading-snug">
-          <li><span className="text-text">Your own song</span> — upload the file, or paste a Google Drive / Dropbox link. It’s analysed on your device.</li>
-          <li><span className="text-text">From YouTube, Spotify or another app</span> — paste the link and ask Lemody. It’s added in about a week.</li>
+        <ul className="mt-2 sm:mt-3 px-1 flex flex-col gap-0.5 text-[10px] sm:text-[11px] text-sub leading-snug">
+          <li><span className="text-text/80">Your song:</span> upload it, or paste a Drive / Dropbox link</li>
+          <li><span className="text-text/80">YouTube, Spotify & more:</span> paste the link, we add it in about a week</li>
         </ul>
       )}
 

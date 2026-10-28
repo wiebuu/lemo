@@ -1,0 +1,16 @@
+{
+  "name": "Lemody — sing along, see your pitch",
+  "short_name": "Lemody",
+  "description": "Practise singing with your favourite songs: see your pitch live on the melody, follow the lyrics and get honest scores.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#131313",
+  "theme_color": "#131313",
+  "categories": ["music", "education", "entertainment"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

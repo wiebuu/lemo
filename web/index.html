@@ -3,19 +3,61 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#131313" />
-    <title>Lemody</title>
-    <meta name="description" content="Lemody: practise singing along to your favourite songs, see your pitch live on the melody and get honest scores. A Wiecodes product." />
+
+    <title>Lemody · Sing along to any song and see your pitch live</title>
+    <meta name="description" content="Lemody is a free singing practice app: sing along to your favourite songs, see your pitch live on the melody, follow the lyrics and get honest scores. Hindi, Garhwali, English and more." />
+    <meta name="keywords" content="singing practice, sing along, singing app, learn to sing, pitch detector, pitch checker, vocal training, voice training, karaoke online, sing in tune, singing test, online singing, singing score, lyrics, Hindi songs karaoke, Bollywood karaoke, Garhwali songs, Lemody, Wiecodes" />
     <meta name="author" content="Wiecodes" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="application-name" content="Lemody" />
     <meta name="apple-mobile-web-app-title" content="Lemody" />
-    <link rel="canonical" href="https://lemodysounds.online/" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="canonical" href="https://www.lemodysounds.online/" />
+
+    <!-- when the link is shared (WhatsApp, Instagram, Facebook, LinkedIn, iMessage, X, Discord, …) -->
     <meta property="og:site_name" content="Lemody" />
-    <meta property="og:title" content="Lemody · sing along, see your pitch" />
-    <meta property="og:description" content="Practise singing with any song: see your pitch live on the melody and get honest scores. A Wiecodes product." />
-    <meta property="og:url" content="https://lemodysounds.online/" />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.lemodysounds.online/" />
+    <meta property="og:title" content="Lemody · Sing along. See your pitch. Get better." />
+    <meta property="og:description" content="Sing along to your favourite songs, see your pitch live on the melody and get honest scores. Free, in your browser." />
+    <meta property="og:image" content="https://www.lemodysounds.online/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Lemody: sing along, see your pitch, get better" />
+    <meta property="og:locale" content="en_IN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lemody · Sing along. See your pitch. Get better." />
+    <meta name="twitter:description" content="Sing along to your favourite songs, see your pitch live on the melody and get honest scores." />
+    <meta name="twitter:image" content="https://www.lemodysounds.online/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Lemody: sing along, see your pitch, get better" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Lemody",
+        "url": "https://www.lemodysounds.online/",
+        "image": "https://www.lemodysounds.online/og-image.jpg",
+        "logo": "https://www.lemodysounds.online/icon-512.png",
+        "description": "A singing practice app: sing along to your favourite songs, see your pitch live on the melody, follow the lyrics and get honest scores.",
+        "applicationCategory": "MusicApplication",
+        "operatingSystem": "Any (web browser)",
+        "inLanguage": ["en", "hi"],
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+        "featureList": ["Live pitch on the song's melody", "Scores for pitch, timing and dynamics", "Synced lyrics", "Change the key and speed", "Analyse your own songs on your device"],
+        "creator": { "@type": "Organization", "name": "Wiecodes", "url": "https://wiecodes.com" }
+      }
+    </script>
   </head>
   <body>
     <!-- Loading screen before any script runs (React's own <Splash> takes over, same look). -->

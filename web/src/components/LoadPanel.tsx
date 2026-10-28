@@ -521,19 +521,27 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
 }
 
 /** Every song in Lemody, the most played first (a play = someone got a result on it). */
-const EXPLORE_TOP = 100
 const EXPLORE_PAGE = 20
 
-/** The 100 most played songs (then the newest, while few have been played), 20 to a page. */
+/** Pages to offer: the first, the last, and two either side of this one (… between). */
+function pageList(at: number, pages: number): (number | '…')[] {
+  const keep = new Set([0, pages - 1, at - 2, at - 1, at, at + 1, at + 2].filter((p) => p >= 0 && p < pages))
+  const out: (number | '…')[] = []
+  ;[...keep].sort((a, b) => a - b).forEach((p, i, arr) => {
+    if (i && p - arr[i - 1] > 1) out.push('…')
+    out.push(p)
+  })
+  return out
+}
+
+/** Every song, most played first (then the newest), 20 to a page. */
 function Explore({ catalog, opening, online, onOpen }: { catalog: CatalogItem[]; opening: string | null; online: boolean; onOpen: (id: string) => void }) {
   const preview = usePreview()
   const [page, setPage] = useState(0)
   const top = useRef<HTMLDivElement>(null)
   useEffect(() => () => preview.stop(), [])
   if (!catalog.length) return <SkeletonRows />
-  const ranked = [...catalog]
-    .sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0))
-    .slice(0, EXPLORE_TOP)
+  const ranked = [...catalog].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0))
   const pages = Math.ceil(ranked.length / EXPLORE_PAGE)
   const at = Math.min(page, pages - 1)
   const songs = ranked.slice(at * EXPLORE_PAGE, (at + 1) * EXPLORE_PAGE).map((c) => ({ ...c, ...tidyTitle(c.title, c.artist) }))
@@ -567,12 +575,16 @@ function Explore({ catalog, opening, online, onOpen }: { catalog: CatalogItem[];
         <nav aria-label="pages" className="flex items-center justify-center gap-1 pt-3 pb-1 text-xs">
           <button type="button" aria-label="previous page" disabled={at === 0} onClick={() => go(at - 1)}
             className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">‹</button>
-          {Array.from({ length: pages }, (_, p) => (
-            <button key={p} type="button" aria-current={p === at ? 'page' : undefined} onClick={() => go(p)}
-              className={cx('w-8 h-8 rounded-full tabular-nums', p === at ? 'bg-main text-bg font-medium' : 'text-sub hover:text-text')}>
-              {p + 1}
-            </button>
-          ))}
+          {pageList(at, pages).map((p, i) =>
+            p === '…' ? (
+              <span key={`gap${i}`} className="w-6 text-center text-sub">…</span>
+            ) : (
+              <button key={p} type="button" aria-current={p === at ? 'page' : undefined} onClick={() => go(p)}
+                className={cx('min-w-8 h-8 px-1 rounded-full tabular-nums', p === at ? 'bg-main text-bg font-medium' : 'text-sub hover:text-text')}>
+                {p + 1}
+              </button>
+            ),
+          )}
           <button type="button" aria-label="next page" disabled={at === pages - 1} onClick={() => go(at + 1)}
             className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">›</button>
         </nav>

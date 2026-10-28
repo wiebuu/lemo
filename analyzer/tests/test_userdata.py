@@ -32,7 +32,7 @@ class UserDataTests(unittest.TestCase):
     def setUp(self):
         userdata.use(TEST_DSN)
         userdata.status()  # connect + create tables
-        userdata._q("TRUNCATE lemo_prefs, lemo_songs, lemo_users")
+        userdata._q("TRUNCATE lemo_requests, lemo_prefs, lemo_songs, lemo_users")
         tokens = {"Bearer a": ALICE, "Bearer b": BOB}
 
         def verify(header):
@@ -87,6 +87,28 @@ class UserDataTests(unittest.TestCase):
         self.call("DELETE", "/api/me/songs/up-1234567890abcdef")
         self.assertEqual(self.call("GET", "/api/me").json()["songs"], [])
         self.assertEqual(self.call("GET", "/api/me/prefs/up-1234567890abcdef").status_code, 404)
+
+    def test_requested_song_reaches_everyone_who_asked_when_ready(self):
+        url = "https://www.youtube.com/watch?v=AbCdEfGhIjK"
+        with mock.patch.object(server, "_oembed", return_value=("Song", "Singer")):
+            r = self.call("POST", "/api/requests", data={"url": url})
+            self.call("POST", "/api/requests", who="b", data={"url": url})
+        self.assertEqual(r.json()["state"], "requested")
+        self.assertEqual([x["songId"] for x in self.call("GET", "/api/requests").json()], ["yt-AbCdEfGhIjK"])
+        self.assertEqual(userdata.pending_requests()[0]["people"], 2)
+        server.deliver_requests()  # not analysed yet: still waiting
+        self.assertEqual(len(self.call("GET", "/api/requests").json()), 1)
+        with mock.patch.object(server.remote, "has", return_value=True):
+            server.deliver_requests()
+        for who in ("a", "b"):
+            self.assertEqual(self.call("GET", "/api/requests", who=who).json(), [])
+            self.assertEqual([s["songId"] for s in self.call("GET", "/api/me", who=who).json()["songs"]], ["yt-AbCdEfGhIjK"])
+
+    def test_a_request_can_be_cancelled(self):
+        with mock.patch.object(server, "_oembed", return_value=(None, None)):
+            self.call("POST", "/api/requests", data={"url": "https://youtu.be/AbCdEfGhIjK"})
+        self.call("DELETE", "/api/requests/yt-AbCdEfGhIjK")
+        self.assertEqual(self.call("GET", "/api/requests").json(), [])
 
     def test_database_down_is_a_clear_error_not_a_crash(self):
         with mock.patch.object(userdata, "pool", side_effect=userdata.Unavailable("database unreachable: test")):

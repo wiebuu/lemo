@@ -522,30 +522,63 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
 }
 
 /** Every song in Lemody, the most played first (a play = someone got a result on it). */
+const EXPLORE_TOP = 100
+const EXPLORE_PAGE = 20
+
+/** The 100 most played songs (then the newest, while few have been played), 20 to a page. */
 function Explore({ catalog, opening, online, onOpen }: { catalog: CatalogItem[]; opening: string | null; online: boolean; onOpen: (id: string) => void }) {
   const preview = usePreview()
+  const [page, setPage] = useState(0)
+  const top = useRef<HTMLDivElement>(null)
   useEffect(() => () => preview.stop(), [])
   if (!catalog.length) return <SkeletonRows />
-  const songs = [...catalog]
-    .sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0))
-    .map((c) => ({ ...c, ...tidyTitle(c.title, c.artist) }))
+  const ranked = [...catalog]
+    .sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0))
+    .slice(0, EXPLORE_TOP)
+  const pages = Math.ceil(ranked.length / EXPLORE_PAGE)
+  const at = Math.min(page, pages - 1)
+  const songs = ranked.slice(at * EXPLORE_PAGE, (at + 1) * EXPLORE_PAGE).map((c) => ({ ...c, ...tidyTitle(c.title, c.artist) }))
+  const go = (p: number) => {
+    preview.stop()
+    setPage(p)
+    top.current?.scrollIntoView({ block: 'nearest' })
+  }
   return (
-    <ol className="flex flex-col">
-      {songs.map((it, n) => (
-        <li key={it.id} className="track group grid grid-cols-[1.75rem_2rem_1fr_auto_auto] items-center gap-2 px-2 py-1 rounded-lg">
-          <span className={cx('text-[11px] tabular-nums', n < 3 && (it.plays ?? 0) > 0 ? 'text-main font-medium' : 'text-sub')}>{String(n + 1).padStart(2, '0')}</span>
-          <PreviewButton id={it.id} has={it.preview !== false} preview={preview} />
-          <button type="button" disabled={!online || !!opening} onClick={() => { preview.stop(); onOpen(it.id) }} className="min-w-0 text-left truncate">
-            <span className="text-[14px] font-medium text-text group-hover:text-main">{it.title}</span>
-            {it.artist && <span className="text-[11px] text-sub ml-2">{it.artist}</span>}
-          </button>
-          <span className="text-[11px] text-sub tabular-nums">{it.plays ? `${it.plays} play${it.plays > 1 ? 's' : ''}` : ''}</span>
-          <span className="text-[11px] text-sub tabular-nums w-9 text-right">
-            {opening === it.id ? <Loader2 size={11} className="animate-spin inline text-main" /> : it.duration ? formatTime(it.duration) : ''}
-          </span>
-        </li>
-      ))}
-    </ol>
+    <div ref={top}>
+      <ol className="flex flex-col">
+        {songs.map((it, i) => {
+          const n = at * EXPLORE_PAGE + i
+          return (
+            <li key={it.id} className="track group grid grid-cols-[1.75rem_2rem_1fr_auto_auto] items-center gap-2 px-2 py-1 rounded-lg">
+              <span className={cx('text-[11px] tabular-nums', n < 3 && (it.plays ?? 0) > 0 ? 'text-main font-medium' : 'text-sub')}>{String(n + 1).padStart(2, '0')}</span>
+              <PreviewButton id={it.id} has={it.preview !== false} preview={preview} />
+              <button type="button" disabled={!online || !!opening} onClick={() => { preview.stop(); onOpen(it.id) }} className="min-w-0 text-left truncate">
+                <span className="text-[14px] font-medium text-text group-hover:text-main">{it.title}</span>
+                {it.artist && <span className="text-[11px] text-sub ml-2">{it.artist}</span>}
+              </button>
+              <span className="text-[11px] text-sub tabular-nums">{it.plays ? `${it.plays} play${it.plays > 1 ? 's' : ''}` : ''}</span>
+              <span className="text-[11px] text-sub tabular-nums w-9 text-right">
+                {opening === it.id ? <Loader2 size={11} className="animate-spin inline text-main" /> : it.duration ? formatTime(it.duration) : ''}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+      {pages > 1 && (
+        <nav aria-label="pages" className="flex items-center justify-center gap-1 pt-3 pb-1 text-xs">
+          <button type="button" aria-label="previous page" disabled={at === 0} onClick={() => go(at - 1)}
+            className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">‹</button>
+          {Array.from({ length: pages }, (_, p) => (
+            <button key={p} type="button" aria-current={p === at ? 'page' : undefined} onClick={() => go(p)}
+              className={cx('w-8 h-8 rounded-full tabular-nums', p === at ? 'bg-main text-bg font-medium' : 'text-sub hover:text-text')}>
+              {p + 1}
+            </button>
+          ))}
+          <button type="button" aria-label="next page" disabled={at === pages - 1} onClick={() => go(at + 1)}
+            className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">›</button>
+        </nav>
+      )}
+    </div>
   )
 }
 

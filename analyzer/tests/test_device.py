@@ -56,7 +56,7 @@ class CheckTest(unittest.TestCase):
         self.check(f0=self.f0 * 2)
 
     def test_wrong_pitch_is_rejected(self):
-        with self.assertRaisesRegex(device.Rejected, "pitch"):
+        with self.assertRaisesRegex(device.Rejected, "clear singing voice"):
             self.check(f0=self.f0 * 1.2)
 
     def test_music_from_elsewhere_is_rejected(self):

@@ -147,7 +147,7 @@ def _fetch(job: DeviceJob) -> None:
         audio.to_wav(src, wd / "mix.wav")  # the original, to check the result against
         info = audio.info(wd / "mix.wav")
         if info["duration"] < 5:
-            raise RuntimeError("Audio is too short to analyse.")
+            raise RuntimeError("This file has less than 5 seconds of sound, so there\u2019s nothing to sing along to.")
         if info["duration"] > CONFIG.max_duration_min * 60:
             raise RuntimeError(f"Songs can be up to {CONFIG.max_duration_min:g} minutes long.")
         job.duration = round(info["duration"], 3)
@@ -333,7 +333,7 @@ def check(mix_path: Path, vocals_path: Path, backing_path: Path, f0: np.ndarray,
         raise Rejected(f"The separated parts don't add back up to the song ({residual_db:.0f} dB off).")
     vocal_db = 10 * np.log10(float(np.mean(voc**2)) / power + 1e-12)
     if vocal_db < -40:
-        raise Rejected("No singing was found in the separated vocals.")
+        raise Rejected("No singing was found in this file. Lemody needs a song with someone singing.")
     if not np.isfinite(voc).all() or not np.isfinite(bak).all():
         raise Rejected("The separated audio is damaged.")
 
@@ -349,7 +349,8 @@ def check(mix_path: Path, vocals_path: Path, backing_path: Path, f0: np.ndarray,
         raise Rejected("The pitch track is out of range.")
     agree = pitch_agreement(voc.mean(0), f0, periodicity)
     if agree is not None and agree < 0.7:
-        raise Rejected(f"The pitch track doesn't match the vocals (only {agree:.0%} agree).")
+        raise Rejected(f"Lemody couldn\u2019t follow a clear singing voice in this file (the melody matched the voice "
+                       f"{agree:.0%} of the time; it needs 70%). Songs with one clear lead singer work best.")
     return voc, bak, f0, periodicity
 
 

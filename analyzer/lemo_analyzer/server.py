@@ -388,7 +388,7 @@ async def device_result(song_id: str, vocals: UploadFile, backing: UploadFile, f
 @app.get("/api/catalog")
 def song_catalog() -> list[dict]:
     """Every stored YouTube song, for search. Opening one never re-analyses it."""
-    return [{**{k: e.get(k) for k in ("id", "title", "artist", "duration", "lang", "featured", "preview")}, "plays": int(e.get("plays") or 0)}
+    return [{**{k: e.get(k) for k in ("id", "title", "artist", "duration", "lang", "featured", "preview", "addedAt")}, "plays": int(e.get("plays") or 0)}
             for e in catalog.all_songs() if catalog.is_public(e["id"])]
 
 

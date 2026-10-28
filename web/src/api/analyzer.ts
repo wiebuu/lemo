@@ -75,6 +75,8 @@ export interface CatalogItem {
   preview?: boolean
   /** results people got on it (Explore's "most played") */
   plays?: number
+  /** when it was added (seconds) */
+  addedAt?: number | null
 }
 
 export type JobStage = 'queued' | 'fetching' | 'preprocessing' | 'separating' | 'melody' | 'finishing' | 'done' | 'failed' | 'cancelled'

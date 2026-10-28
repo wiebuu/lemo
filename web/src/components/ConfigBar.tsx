@@ -1,6 +1,5 @@
 import {
   Languages,
-  MoreHorizontal,
   AudioLines, AudioWaveform, Clock, Wind, Crosshair, Gauge, Metronome, Minus, Piano, Plus, SignalHigh, SignalLow, SignalMedium, SlidersHorizontal, Spline, Target, Waves,
 } from 'lucide-react'
 import type { LyricsScript } from '../state/persist'
@@ -80,7 +79,7 @@ export function ConfigBar() {
               onClick={() => studio.setVariant(s.speed, s.transpose + 1)} aria-label="key up"><Plus size={13} /></button>
           </Tip>
         </span>
-        {/* phones: metronome, breath marks and lyrics script live in the ⋯ menu */}
+        {/* bigger screens: metronome, breath marks and the lyrics script */}
         <span className="hidden sm:contents">
         <Divider />
         <IconToggle tip="Metronome — a click on each beat (K)" preview={PREVIEW.metronome} active={s.metronome}
@@ -112,17 +111,12 @@ export function ConfigBar() {
           )}
         </Menu>
         </span>
+        {/* phones: just the lyrics script (no metronome or breath marks) */}
         <span className="contents sm:hidden">
           <Divider />
-          <Menu tip="More: metronome, breath marks, lyrics script" button={<MoreHorizontal size={16} />}>
+          <Menu tip="Lyrics script — as found, Hinglish, Hindi or Urdu" active={st.lyricsScript !== 'original'} button={<Languages size={16} />}>
             {(close) => (
               <>
-                <MenuItem icon={<Metronome size={14} />} label="metronome" tip="A click on each beat." active={s.metronome}
-                  disabled={!s.track?.tempo} onClick={() => { close(); studio.toggleMetronome() }} />
-                <MenuItem icon={<Wind size={14} />} label={st.showBreaths ? 'hide breath marks' : 'show breath marks'} tip="Where to breathe."
-                  active={st.showBreaths} onClick={() => { close(); studio.updateSettings({ showBreaths: !st.showBreaths }) }} />
-                <MenuItem icon={<Plus size={14} />} label="add a breath mark here" tip="At the playhead — again on the same spot removes it."
-                  disabled={!s.track} onClick={() => { close(); studio.addBreath() }} />
                 <MenuLabel>show lyrics in</MenuLabel>
                 {SCRIPTS.map(({ id, label, sample, tip }) => (
                   <MenuItem key={id} icon={<span className="w-5 text-center text-[13px] text-text">{sample}</span>} label={label} tip={tip}

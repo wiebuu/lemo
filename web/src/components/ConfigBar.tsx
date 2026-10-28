@@ -127,7 +127,7 @@ export function ConfigBar() {
           </Menu>
         </span>
         <Divider />
-        <Menu tip={`Difficulty: ${level.name} · scoring · what to show`} button={<span className="flex items-center gap-1"><LevelIcon size={15} /><SlidersHorizontal size={15} /></span>}>
+        <Menu tip={`Difficulty: ${level.name} · scoring · what to show`} button={<span className="flex items-center gap-1"><span className="hidden sm:contents"><LevelIcon size={15} /></span><SlidersHorizontal size={15} /></span>}>
           <MenuLabel>difficulty</MenuLabel>
           {LEVELS.map(({ cents, icon: Icon, name, tip }) => (
             <MenuItem key={cents} icon={<Icon size={14} />} label={name} tip={tip} preview={PREVIEW.level(cents / 4)} active={st.toleranceCents === cents}

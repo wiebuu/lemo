@@ -660,6 +660,12 @@ def find_lyrics(title: str, artist: str = "", duration: float = 0, videoId: str 
     if songId and SONG_ID.match(songId):
         d = jobs.song_dir(songId)
         if _here(d):
+            # found and timed ahead of time (tools/prepare_lyrics.py, where YouTube and the
+            # alignment model are available): every source's versions, the best one timed
+            try:
+                return json.loads((d / "lyrics.json").read_text())
+            except (OSError, ValueError):
+                pass
             try:
                 ref = json.loads((d / "reference.json").read_text())
                 notes, duration = ref.get("notes"), float(ref.get("duration") or duration)

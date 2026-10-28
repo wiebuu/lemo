@@ -39,6 +39,8 @@ export interface LyricsResult extends Omit<LyricsCandidate, 'source' | 'script'>
   script?: LyricsCandidate['script']
   candidates: LyricsCandidate[]
   failedSources: string[]
+  /** the best version already timed to the singer (prepared ahead of time on the server) */
+  timed?: { start: number | null; end: number | null; text: string; words?: { start: number; end: number; text: string }[] | null }[]
 }
 
 export interface FeaturedItem {

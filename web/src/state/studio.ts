@@ -642,7 +642,13 @@ export class Studio {
             ? r.candidates.find((c) => c.synced && c.script === want && c.duration && Math.abs(c.duration - track.duration) <= 2)
             : undefined
         const pick = alt ?? r
-        if (pick.synced) lines = parseLrc(pick.synced)
+        if (!alt && r.timed?.some((l) => l.start !== null)) {
+          // found and timed to the singer ahead of time: line and word timing ready to use
+          lines = r.timed.map((l, i) => ({
+            id: `t${i}-${Date.now().toString(36)}`, start: l.start, end: l.end, text: l.text, verified: false,
+            ...(l.words?.length ? { words: l.words, wordsSource: 'aligned' as const } : {}),
+          }))
+        } else if (pick.synced) lines = parseLrc(pick.synced)
         else if (pick.plain) lines = plainTextToLines(pick.plain)
         if (lines.length) this.toast(`lyrics from ${pick.source}`)
       } catch {

@@ -919,7 +919,7 @@ export class Studio {
     const take = this.lastTake
     if (!e || !take) return
     if (this.mic.active) {
-      this.mic.stop()
+      this.micOff()
       this.set({ mic: 'off', micError: null, muted: false })
     }
     this.mic.muted = false
@@ -1032,11 +1032,17 @@ export class Studio {
 
   private btTipShown = false
 
+  /** Mic off, and the sound straight back to full music quality (see engine.refreshOutput). */
+  private micOff() {
+    this.mic.stop()
+    void this.engine?.refreshOutput()
+  }
+
   async toggleMic() {
     if (this.mic.active) {
       this.endSession()
       this.endTake()
-      this.mic.stop()
+      this.micOff()
       this.set({ mic: 'off', micError: null })
       return
     }

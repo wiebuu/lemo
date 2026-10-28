@@ -126,6 +126,24 @@ export class PlaybackEngine {
     return songTimeAt(this.anchor, this.smoothCtxTime())
   }
 
+  /**
+   * Phones: an audio output opened while the mic was on keeps running in "call" mode
+   * (thin, mono — a buzz on Bluetooth) until it's restarted. After the mic is released,
+   * pause and resume it for a moment so the phone rebuilds it as music. Not on computers,
+   * which don't switch.
+   */
+  async refreshOutput() {
+    if (!matchMedia('(pointer: coarse)').matches || this.ctx.state !== 'running') return
+    try {
+      await this.ctx.suspend()
+      await new Promise((r) => setTimeout(r, 80))
+      await this.ctx.resume()
+    } catch {
+      /* closed meanwhile */
+    }
+    this.steady = null // the clock picks up from the audio again
+  }
+
   // The audio clock moves in uneven steps (5–16 ms between screen frames here, bigger
   // in Safari), so the graph would scroll in uneven steps: a judder. This clock runs on
   // the screen's own steady timer and gently follows the audio clock; a seek or a stall

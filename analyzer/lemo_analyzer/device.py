@@ -100,15 +100,30 @@ def upload_names(filename: str) -> tuple[str, str | None]:
     return stem, None
 
 
-def status(song_id: str) -> dict | None:
+def _job(song_id: str) -> DeviceJob | None:
+    """The job in memory, or — after a server restart — the one saved with its audio."""
     job = JOBS.get(song_id)
+    if job is None and (work_dir(song_id) / "mix.wav").exists():
+        try:
+            saved = json.loads((work_dir(song_id) / "job.json").read_text())
+        except (OSError, ValueError):
+            return None
+        job = JOBS.setdefault(song_id, DeviceJob(
+            id=song_id, video_id=saved.get("videoId"), upload=Path("upload") if saved.get("upload") else None,
+            state="ready", progress=1.0, message="ready", title=saved.get("title"), artist=saved.get("artist"),
+            duration=saved.get("duration")))
+    return job
+
+
+def status(song_id: str) -> dict | None:
+    job = _job(song_id)
     if job:
         job.touched = time.time()
     return job.public() if job else None
 
 
 def source_file(song_id: str) -> Path | None:
-    job = JOBS.get(song_id)
+    job = _job(song_id)
     f = work_dir(song_id) / "source.m4a"
     return f if job and job.state != "failed" and f.exists() else None
 
@@ -139,6 +154,9 @@ def _fetch(job: DeviceJob) -> None:
         audio.encode(wd / "mix.wav", wd / "source.m4a", "192k")  # what the browser analyses
         src.unlink(missing_ok=True)
         job.state, job.progress, job.message = "ready", 1.0, "ready"
+        # kept with the audio, so a server restart doesn't lose an analysis in progress
+        (wd / "job.json").write_text(json.dumps({"title": job.title, "artist": job.artist, "duration": job.duration,
+                                                 "videoId": job.video_id, "upload": bool(job.upload)}))
         worker.log(f"device job {job.id}: audio ready for the browser")
     except Exception as e:
         msg = str(e)
@@ -155,6 +173,11 @@ def _forget_old() -> None:
         if now - job.touched > FORGET_AFTER and job.state in {"ready", "failed", "done", "fetching"}:
             JOBS.pop(sid, None)
             shutil.rmtree(work_dir(sid), ignore_errors=True)
+    # left behind by a server restart and never asked for again
+    root = CONFIG.data_dir / "device"
+    for wd in root.iterdir() if root.exists() else []:
+        if wd.name not in JOBS and now - wd.stat().st_mtime > FORGET_AFTER:
+            shutil.rmtree(wd, ignore_errors=True)
 
 
 # ---- the result --------------------------------------------------------------------------
@@ -162,7 +185,7 @@ def _forget_old() -> None:
 
 def accept(song_id: str, vocals: tuple[bytes, str], backing: tuple[bytes, str], f0: bytes, periodicity: bytes) -> dict:
     """Check a device's result and, if it holds up, finish the song (in the background)."""
-    job = JOBS.get(song_id)
+    job = _job(song_id)
     if not job or job.state not in {"ready", "failed"} or not (work_dir(song_id) / "mix.wav").exists():
         raise Rejected("This analysis has expired — please start again.")
     d = jobs.song_dir(song_id)

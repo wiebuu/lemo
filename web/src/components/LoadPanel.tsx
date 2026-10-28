@@ -13,7 +13,7 @@ const TooWeak = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.
 import { FeaturedShelf } from './FeaturedShelf'
 import { Plays, PreviewButton, usePreview } from './SongSearch'
 import { SongSearch } from './SongSearch'
-import { Btn, cx, Eq, Tip } from './ui'
+import { cx, Eq, Tip } from './ui'
 
 const STAGES: { id: JobStage; label: string }[] = [
   { id: 'fetching', label: 'get audio' },
@@ -210,25 +210,31 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         onLink={submitUrl}
         onAsk={(u) => void askLemody(u)}
         onTyping={setTyping}
+        actions={
+          <>
+            <Tip className="flex" tip={health ? 'Upload a song from your phone or computer' : 'Needs Lemody\u2019s server'}>
+              <button type="button" aria-label="upload a song" disabled={!!running || !health}
+                onClick={() => (cantAnalyse ? setWeak(true) : audioInput.current?.click())}
+                className="w-11 sm:w-[52px] shrink-0 flex items-center justify-center rounded-xl surface text-sub hover:text-text hover:border-main/50 transition-colors disabled:opacity-40">
+                <Upload size={17} />
+              </button>
+            </Tip>
+            <Tip className="flex" tip="Try the demo song">
+              <button type="button" disabled={!!running}
+                onClick={async () => {
+                  await studio.loadDemo()
+                  onDone()
+                }}
+                className="shrink-0 flex items-center gap-1.5 px-3.5 rounded-xl bg-text text-bg text-[13px] font-medium hover:opacity-90 transition-opacity disabled:opacity-40">
+                <Play size={13} className="fill-current" /> try
+              </button>
+            </Tip>
+            <input ref={audioInput} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setChoosing(f) } }} />
+          </>
+        }
       />
 
-      <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
-        <Btn onClick={() => (cantAnalyse ? setWeak(true) : audioInput.current?.click())} disabled={!!running || !health} title={health ? 'a song file from your phone or computer' : 'needs Lemody\u2019s server'}>
-          <Upload size={13} /> upload a song
-        </Btn>
-        <Btn
-          primary
-          disabled={!!running}
-          onClick={async () => {
-            await studio.loadDemo()
-            onDone()
-          }}
-        >
-          <Play size={13} /> try the demo
-        </Btn>
-        <input ref={audioInput} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden
-          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setChoosing(f) } }} />
-      </div>
       {!typing && !running && !choosing && (
         <ul className="mt-3 px-1 flex flex-col gap-1 text-[10px] sm:text-[11px] text-sub leading-snug">
           <li><span className="text-text/80">Your song:</span> upload it, or paste a Drive / Dropbox link</li>

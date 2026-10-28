@@ -12,7 +12,7 @@ import { cx, Tip, usePhone } from './ui'
  * file (Drive, Dropbox, …) is analysed on this device; a YouTube link to a song that's
  * already here opens it; any other site's link can be sent to Lemody to add.
  */
-export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, onLink, onAsk, onTyping }: {
+export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, onLink, onAsk, onTyping, actions }: {
   catalog: CatalogItem[]
   /** the song list is still on its way */
   loading: boolean
@@ -28,6 +28,8 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
   onAsk: (url: string) => void
   /** something is typed: the results take the song list's place */
   onTyping?: (typing: boolean) => void
+  /** buttons beside the box (upload, try the demo) */
+  actions?: React.ReactNode
 }) {
   const phone = usePhone()
   const [q, setQ] = useState('')
@@ -75,12 +77,13 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
 
   return (
     <div>
+      <div className="flex items-stretch gap-2">
       <form
         onSubmit={(e) => {
           e.preventDefault()
           submit()
         }}
-        className="relative rounded-xl surface focus-within:border-main/50 transition-colors"
+        className="relative flex-1 min-w-0 rounded-xl surface focus-within:border-main/50 transition-colors"
       >
         {link ? (
           <Link2 size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-main pointer-events-none" />
@@ -97,9 +100,9 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
             else if (e.key === 'Escape') setQ('')
           }}
           disabled={disabled}
-          placeholder="search a song or singer — or paste a link"
+          placeholder={phone ? 'search or paste a link' : 'search a song or singer — or paste a link'}
           aria-label="search songs or paste a link"
-          className="w-full bg-transparent rounded-xl pl-11 pr-28 py-2.5 sm:py-3.5 text-[14px] sm:text-[15px] text-text placeholder:text-sub outline-none"
+          className={cx('w-full bg-transparent rounded-xl pl-11 py-2.5 sm:py-3.5 text-[14px] sm:text-[15px] text-text placeholder:text-sub outline-none', link ? 'pr-28' : 'pr-9')}
         />
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading && typed && !link && <Loader2 size={15} className="animate-spin text-sub mr-2" aria-label="loading songs" />}
@@ -117,6 +120,8 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
           )}
         </span>
       </form>
+      {actions}
+      </div>
 
       {checking && (
         <p className="mt-2 px-1 text-[11px] text-sub fade-in flex items-center gap-1.5"><Loader2 size={11} className="animate-spin" /> checking if Lemody has it…</p>

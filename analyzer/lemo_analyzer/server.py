@@ -752,7 +752,9 @@ def _queue_featured() -> None:
             todo = [
                 f for f in storage.prepare_list()
                 if f.get("videoId") and f"yt-{f['videoId']}" not in failed
+                # done = analysed here or safe on the VPS (this machine's copy may have been cleared)
                 and not (jobs.song_dir(f"yt-{f['videoId']}") / "reference.json").exists()
+                and not remote.has(f"yt-{f['videoId']}")
             ]
             if not todo:
                 break

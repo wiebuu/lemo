@@ -1,8 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Check, HardDrive, Loader2, Play, Trash2, Upload, X } from 'lucide-react'
-import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus } from '../api/analyzer'
+import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
 import { tidyTitle } from '../lib/titles'
-import { cloudSongs } from '../state/cloud'
+import { cloudSongs, refreshCloudSongs } from '../state/cloud'
 import { events } from '../state/events'
 import { formatTime } from '../lib/music'
 import { studio } from '../state/studio'
@@ -38,12 +38,25 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
   const audioInput = useRef<HTMLInputElement>(null)
 
   const catalogAt = useRef(0)
+  // songs you asked Lemody to add, still on their way
+  const [requests, setRequests] = useState<SongRequest[]>([])
+  const requestsAt = useRef(0)
+  const loadRequests = useCallback(async () => {
+    requestsAt.current = Date.now()
+    const r = await analyzer.requests().catch(() => null)
+    if (!r) return
+    setRequests((before) => {
+      if (before.some((b) => !r.some((x) => x.songId === b.songId))) void refreshCloudSongs() // one is ready: it's in your songs now
+      return r
+    })
+  }, [])
   const refresh = useCallback(async () => {
     const h = await analyzer.health()
     setHealth(h)
     const lists: Promise<unknown>[] = []
     if (h) {
       lists.push(analyzer.featured().then(setFeatured).catch(() => setFeatured([])))
+      if (Date.now() - requestsAt.current > 30_000) void loadRequests()
       if (Date.now() - catalogAt.current > 30_000) { // every stored song: rarely changes
         catalogAt.current = Date.now()
         analyzer.catalog().then(setCatalog).catch(() => {}).finally(() => setCatalogLoading(false))
@@ -51,7 +64,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
     } else setCatalogLoading(false)
     await Promise.allSettled(lists)
     setListsLoading(false)
-  }, [])
+  }, [loadRequests])
 
   const open = async (id: string) => {
     setErr(null)
@@ -144,6 +157,21 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
     // when storage is full the analyzer says so (a song already stored still opens)
     void start(typeof u === 'string' ? analyzer.analyzeUrl(u) : analyzer.analyzeFile(u))
   }
+  // "we'll do it for you": added by hand within a week, then it's in your songs
+  const [asked, setAsked] = useState<string | null>(null)
+  const askLemody = async (u: string) => {
+    setChoosing(null)
+    setOnDevice(null)
+    setErr(null)
+    try {
+      const r = await analyzer.requestSong(u)
+      if (r.state === 'ready') return void open(r.id) // it's already in Lemody
+      setAsked(r.title || 'this song')
+      void loadRequests()
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
   const submitUrl = (u: string) => {
     if (!health) return setErr('Lemody\u2019s server can\u2019t be reached right now. Try again in a minute.')
     if (!health.youtube) return setErr(health.youtubeReason ?? 'YouTube import is disabled in the analyzer.')
@@ -207,6 +235,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           health={health}
           onDevice={() => { setOnDevice(choosing); setChoosing(null) }}
           onServer={() => useServer(choosing)}
+          onRequest={typeof choosing === 'string' ? () => void askLemody(choosing) : undefined}
           onCancel={() => setChoosing(null)}
         />
       )}
@@ -216,10 +245,20 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           serverSec={serverSec}
           onDone={(id) => { setOnDevice(null); void open(id) }}
           onUseServer={health?.separation ? () => useServer(onDevice) : undefined}
+          onRequest={typeof onDevice === 'string' ? () => void askLemody(onDevice) : undefined}
           onCancel={() => setOnDevice(null)}
         />
       )}
       </Suspense>
+      {asked && (
+        <div className="fade-in mt-4 surface rounded-2xl p-4 flex items-start justify-between gap-3">
+          <div className="text-[13px] text-sub leading-relaxed">
+            <span className="text-text font-medium">Got it.</span> We’ll add <span className="text-text">{asked}</span> within a week —
+            it’ll show up in your songs, and everyone can sing it.
+          </div>
+          <button type="button" onClick={() => setAsked(null)} className="text-xs text-sub hover:text-text shrink-0">close</button>
+        </div>
+      )}
 
       {job && (
         <div className="mt-6 fade-in">
@@ -269,6 +308,8 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         loading={listsLoading}
         onOpen={(id) => void open(id)}
         canPrepare={!!health?.separation}
+        requests={requests}
+        onCancelRequest={async (id) => { setRequests((r) => r.filter((x) => x.songId !== id)); await analyzer.cancelRequest(id).catch(() => {}) }}
         onPrepare={async (now) => { await analyzer.prepareFeatured(now).catch((e) => setErr((e as Error).message)); void refresh() }}
         onFetch={(id) => submitUrl(`https://www.youtube.com/watch?v=${id.slice(3)}`)}
         onRemove={async (id) => {
@@ -354,8 +395,11 @@ const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : 
  * hindi, kanye. Explore has every song, most played first. "your songs" are the ones you added
  * (kept in your account; the songs themselves live on Lemody's server).
  */
-function SongList({ featured, catalog, online, canPrepare, fill, opening, loading, onOpen, onFetch, onPrepare, onRemove }: {
+function SongList({ featured, catalog, online, canPrepare, requests, onCancelRequest, fill, opening, loading, onOpen, onFetch, onPrepare, onRemove }: {
   featured: FeaturedItem[]
+  /** songs you asked Lemody to add, still on their way */
+  requests: SongRequest[]
+  onCancelRequest: (id: string) => void
   /** the server analyses songs itself (featured ones can be prepared there) */
   canPrepare: boolean
   /** every stored song (Explore: most played first) */
@@ -383,7 +427,7 @@ function SongList({ featured, catalog, online, canPrepare, fill, opening, loadin
   const featuredLoading = loading && !featured.length
   const show = tab !== 'featured' ? tab : featured.length || featuredLoading ? 'featured' : 'mine'
   if (loading && !featured.length && !own.length) return <ListSkeleton fill={fill} />
-  if (!featured.length && !own.length) return null
+  if (!featured.length && !own.length && !requests.length) return null
   const waiting = featured.filter((f) => !f.ready)
   const idle = waiting.length > 0 && waiting.every((f) => !f.stage || f.stage === 'failed' || f.stage === 'cancelled')
 
@@ -391,7 +435,7 @@ function SongList({ featured, catalog, online, canPrepare, fill, opening, loadin
     <div className={cx('mt-8', fill && 'flex-1 min-h-0 flex flex-col')}>
       {(featured.length > 0 || featuredLoading) && (
         <div className="flex items-center gap-5 mb-3 shrink-0 text-xs">
-          {([['featured', 'featured'], ['explore', 'explore'], ['mine', `your songs${own.length ? ` · ${own.length}` : ''}`]] as const).map(([v, label]) => (
+          {([['featured', 'featured'], ['explore', 'explore'], ['mine', `your songs${own.length + requests.length ? ` · ${own.length + requests.length}` : ''}`]] as const).map(([v, label]) => (
             <button key={v} type="button" onClick={() => setTab(v)}
               className={cx('relative pb-1.5 tracking-wide', show === v ? 'text-text' : 'text-sub hover:text-text')}>
               {label}
@@ -422,8 +466,21 @@ function SongList({ featured, catalog, online, canPrepare, fill, opening, loadin
               </Tip>
             )}
           </>
-        ) : own.length ? (
+        ) : own.length || requests.length ? (
           <ol className="flex flex-col">
+            {requests.map((r) => (
+              <li key={r.songId} className="group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
+                <span className="text-[11px] text-sub">··</span>
+                <span className="min-w-0 truncate text-[14px] text-sub" title={r.title ?? ''}>{r.title ?? 'requested song'}</span>
+                <span className="text-[11px] text-main">requested · within a week</span>
+                <Tip tip="cancel this request">
+                  <button type="button" aria-label="cancel this request" onClick={() => onCancelRequest(r.songId)}
+                    className="text-sub hover:text-error self-center p-1 -m-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100">
+                    <X size={13} />
+                  </button>
+                </Tip>
+              </li>
+            ))}
             {own.map((it, n) => (
               <li key={it.id} className="track group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
                 <span className="text-[11px] text-sub tabular-nums">{String(n + 1).padStart(2, '0')}</span>

@@ -43,6 +43,14 @@ export interface LyricsResult extends Omit<LyricsCandidate, 'source' | 'script'>
   timed?: { start: number | null; end: number | null; text: string; words?: { start: number; end: number; text: string }[] | null }[]
 }
 
+/** A song you asked Lemody to add, still on its way. */
+export interface SongRequest {
+  songId: string
+  title: string | null
+  artist: string | null
+  requestedAt: number
+}
+
 export interface FeaturedItem {
   id: string | null
   title: string
@@ -163,6 +171,13 @@ export const analyzer = {
     return fetch(`/api/songs/${id}/restore`, { method: 'POST', body: fd }).then((r) => json<{ ok: boolean; restored: boolean }>(r))
   },
   remove: (id: string) => fetch(`/api/songs/${id}`, { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
+  /** Ask Lemody to add a song (analysed later by hand); it lands in your songs when ready. */
+  requestSong: (url: string) =>
+    fetch('/api/requests', { method: 'POST', body: new URLSearchParams({ url }) }).then((r) =>
+      json<{ state: 'ready' | 'requested'; id: string; title?: string | null; artist?: string | null; days?: number }>(r),
+    ),
+  requests: () => fetch('/api/requests').then((r) => json<SongRequest[]>(r)),
+  cancelRequest: (id: string) => fetch(`/api/requests/${id}`, { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
   stemUrl: (id: string, stem: 'backing' | 'vocals', speed: number, semis: number) =>
     `/api/songs/${id}/audio/${stem}?speed=${speed}&semitones=${semis}&f=m4a`, // f: new address after the WAV → AAC change (old cache entries)
   align: (id: string, lines: { start: number; end: number; text: string }[]) =>

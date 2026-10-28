@@ -128,6 +128,16 @@ export async function startCloud(uid: string) {
   }
 }
 
+/** Songs added to your list from elsewhere (a song you asked Lemody to add is ready). */
+export async function refreshCloudSongs() {
+  try {
+    const me = await call<{ songs: (SongMeta & { songId?: string })[] }>('GET', '')
+    if (me) accountSongs = me.songs.map((s) => ({ ...s, id: s.id ?? s.songId! }))
+  } catch {
+    /* next time */
+  }
+}
+
 export function stopCloud() {
   off.forEach((f) => f())
   off = []

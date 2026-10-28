@@ -64,6 +64,7 @@ def _startup() -> None:
                 time.sleep(600)
                 try:
                     catalog.backfill()
+                    deliver_requests()
                     storage.trim()
                 except Exception as e:
                     print(f"could not refresh the song list: {e}", flush=True)
@@ -547,6 +548,65 @@ def me_save_prefs(request: Request, song_id: str, body: dict = Body(...)) -> dic
     return _data(lambda: userdata.save_prefs(_uid(request), song_id, prefs, float(at)))
 
 
+# ---- asking Lemody to add a song (analysed later, on the machine that can) ----
+
+REQUEST_DAYS = 7  # what the singer is told: ready within a week
+
+
+def _oembed(video_id: str) -> tuple[str | None, str | None]:
+    """The video's title and channel from YouTube's public oEmbed (for the list); best effort."""
+    import urllib.request
+
+    try:
+        url = f"https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v={video_id}"
+        with urllib.request.urlopen(url, timeout=6) as r:
+            d = json.loads(r.read())
+        return youtube.clean_title({"title": d.get("title") or "", "channel": d.get("author_name") or "", "uploader": d.get("author_name") or ""})
+    except Exception:
+        return None, None
+
+
+@app.post("/api/requests")
+def request_song(request: Request, url: str = Form(...)) -> dict:
+    vid = youtube.video_id(url)
+    if not vid:
+        raise HTTPException(400, "Paste a YouTube link to the song.")
+    song_id = f"yt-{vid}"
+    if (jobs.song_dir(song_id) / "reference.json").exists() or remote.has(song_id):
+        return {"state": "ready", "id": song_id}  # already in Lemody: just open it
+    title, artist = _oembed(vid)
+    _data(lambda: userdata.request_song(_uid(request), song_id, f"https://www.youtube.com/watch?v={vid}", title, artist))
+    return {"state": "requested", "id": song_id, "title": title, "artist": artist, "days": REQUEST_DAYS}
+
+
+@app.get("/api/requests")
+def my_requests(request: Request) -> list[dict]:
+    return _data(lambda: userdata.my_requests(_uid(request)))
+
+
+@app.delete("/api/requests/{song_id}")
+def cancel_request(request: Request, song_id: str) -> dict:
+    if not SONG_ID.match(song_id):
+        raise HTTPException(400, "invalid song id")
+    _data(lambda: userdata.cancel_request(_uid(request), song_id))
+    return {"ok": True}
+
+
+def deliver_requests() -> None:
+    """Requested songs that are now in Lemody go into the song list of everyone who asked."""
+    try:
+        waiting = userdata.pending_requests()
+    except userdata.Unavailable:
+        return
+    for r in waiting:
+        sid = r["songId"]
+        if not ((jobs.song_dir(sid) / "reference.json").exists() or remote.has(sid)):
+            continue
+        e = catalog.load().get(sid, {})
+        n = userdata.deliver(sid, {"title": e.get("title") or r["title"], "artist": e.get("artist") or r["artist"], "duration": e.get("duration")})
+        worker.log(f"request {sid}: ready, added to {n} singer(s)' songs")
+
+
 @app.put("/api/me/songs/{song_id}")
 def me_save_song(request: Request, song_id: str, body: dict = Body(...)) -> dict:
     if not PREF_KEY.match(song_id):
@@ -615,7 +675,7 @@ def _queue_featured() -> None:
                 break
             while jobs.MANAGER.busy():  # a singer's own song goes first
                 time.sleep(5)
-            jobs.MANAGER.submit(sid, {"kind": "youtube", "videoId": f["videoId"], "title": f["title"], "artist": f.get("artist")})
+            jobs.MANAGER.submit(sid, {"kind": "youtube", "videoId": f["videoId"], "title": f.get("title"), "artist": f.get("artist")})
             while (st := jobs.MANAGER.status(sid)) and st["stage"] not in {"done", "failed", "cancelled"}:
                 time.sleep(3)
             if st and st["stage"] == "failed":

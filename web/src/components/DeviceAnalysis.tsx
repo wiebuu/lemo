@@ -9,10 +9,12 @@ const SONG_SEC = 240 // before the song is fetched its length isn't known: a typ
 const mins = (sec: number) => `~${Math.max(1, Math.round(sec / 60))} min`
 
 /** The two ways to analyse a new song, each with a rough time. Shown when a link isn't in Lemody yet. */
-export function AnalyseChoice({ health, onDevice, onServer, onCancel }: {
+export function AnalyseChoice({ health, onDevice, onServer, onRequest, onCancel }: {
   health: AnalyzerHealth | null | undefined
   onDevice: () => void
   onServer: () => void
+  /** a YouTube link: Lemody can add it for you instead (later) */
+  onRequest?: () => void
   onCancel: () => void
 }) {
   const [sup, setSup] = useState<DeviceSupport | null>(null)
@@ -27,7 +29,7 @@ export function AnalyseChoice({ health, onDevice, onServer, onCancel }: {
   const serverOk = !!health?.separation // a small server may not analyse songs at all
   const pickDevice = !!sup?.ok && (!serverOk || ahead >= 3) // a long queue: this device is quicker
   const Icon = sup?.phone ? Smartphone : Cpu
-  if (sup && !sup.ok && !serverOk) return <TooWeak phone={sup.phone} onClose={onCancel} />
+  if (sup && !sup.ok && !serverOk) return <TooWeak phone={sup.phone} onRequest={onRequest} onClose={onCancel} />
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -54,12 +56,13 @@ export function AnalyseChoice({ health, onDevice, onServer, onCancel }: {
           onClick={onDevice}
         />
       </div>
+      {onRequest && <AskLemody onRequest={onRequest} />}
     </div>
   )
 }
 
 /** This device can't analyse songs (and there's no server to do it): say where to add it instead. */
-function TooWeak({ phone, onClose }: { phone: boolean; onClose: () => void }) {
+function TooWeak({ phone, onRequest, onClose }: { phone: boolean; onRequest?: () => void; onClose: () => void }) {
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -70,6 +73,19 @@ function TooWeak({ phone, onClose }: { phone: boolean; onClose: () => void }) {
         {phone ? 'This phone' : 'This device'} can’t analyse new songs without slowing right down. Open Lemody on a computer
         (Chrome or Edge) or a newer phone and add it there — then it’s here for you to sing on any device.
       </p>
+      {onRequest && <AskLemody onRequest={onRequest} />}
+    </div>
+  )
+}
+
+/** "We'll do it for you": the song is added by hand, within a week, and lands in your songs. */
+export function AskLemody({ onRequest }: { onRequest: () => void }) {
+  return (
+    <div className="mt-3 pt-3 border-t border-line flex flex-wrap items-center justify-between gap-2">
+      <span className="text-[12px] text-sub">Rather not wait here? We’ll add it for you within a week.</span>
+      <button type="button" onClick={onRequest} className="rounded-full bg-main/15 text-main text-xs font-medium px-3 py-1.5 hover:bg-main/25">
+        ask Lemody to add it
+      </button>
     </div>
   )
 }
@@ -113,7 +129,7 @@ function timeLeft(sec: number): string {
  * and keeps the screen awake, warns before the page is closed, and offers the
  * server if this device turns out slow or fails.
  */
-export function DeviceRun({ url, serverSec, onDone, onUseServer, onCancel }: {
+export function DeviceRun({ url, serverSec, onDone, onUseServer, onRequest, onCancel }: {
   /** a YouTube link, or the singer's own audio file */
   url: string | File
   /** how long the server would take (for the "this device is slow" hint) */
@@ -121,6 +137,8 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onCancel }: {
   onDone: (id: string) => void
   /** undefined when the server doesn't analyse songs */
   onUseServer?: () => void
+  /** a YouTube link: Lemody can add it for you instead */
+  onRequest?: () => void
   onCancel: () => void
 }) {
   const [p, setP] = useState<DeviceProgress>({ stage: 'models', progress: 0, detail: 'starting', eta: null })
@@ -195,6 +213,7 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onCancel }: {
             {onUseServer && <button type="button" onClick={onUseServer} className="rounded-full bg-main text-bg text-xs font-medium px-4 py-1.5">use Lemody's server instead</button>}
             <button type="button" onClick={onCancel} className="rounded-full surface text-xs px-4 py-1.5 text-sub hover:text-text">close</button>
           </div>
+          {onRequest && <AskLemody onRequest={onRequest} />}
         </div>
       ) : (
         <div className="mt-3 text-[12px] text-main">Keep Lemody open until it's done.</div>

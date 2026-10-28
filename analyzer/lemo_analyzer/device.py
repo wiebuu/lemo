@@ -161,7 +161,7 @@ def _fetch(job: DeviceJob) -> None:
     except Exception as e:
         msg = str(e)
         if "not a bot" in msg or "Sign in to confirm" in msg:
-            msg = "YouTube didn\u2019t let Lemody get this song. Use \u201cupload & analyse\u201d with the song\u2019s audio file instead."
+            msg = "YouTube didn\u2019t let Lemody get this song. Ask Lemody to add it for you, or use \u201cupload & analyse\u201d with the song\u2019s audio file."
         job.state, job.error, job.message = "failed", msg, "failed"
         worker.log(f"device job {job.id}: fetching failed: {e}")
         shutil.rmtree(wd, ignore_errors=True)

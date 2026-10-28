@@ -44,6 +44,16 @@ CREATE TABLE IF NOT EXISTS lemo_songs (
   added_at double precision,
   PRIMARY KEY (uid, song_id)
 );
+CREATE TABLE IF NOT EXISTS lemo_requests (
+  uid          text NOT NULL REFERENCES lemo_users(uid) ON DELETE CASCADE,
+  song_id      text NOT NULL,
+  url          text NOT NULL,
+  title        text,
+  artist       text,
+  requested_at double precision NOT NULL,
+  done_at      double precision,
+  PRIMARY KEY (uid, song_id)
+);
 """
 
 _lock = threading.Lock()
@@ -214,3 +224,44 @@ def save_song(uid: str, song_id: str, meta: dict[str, Any]) -> None:
 def remove_song(uid: str, song_id: str) -> None:
     _q("DELETE FROM lemo_songs WHERE uid = %s AND song_id = %s", (uid, song_id))
     _q("DELETE FROM lemo_prefs WHERE uid = %s AND song_id = %s", (uid, song_id))
+
+
+# ---- songs a singer asked Lemody to add (analysed later, by hand) ------------------------------
+
+
+def request_song(uid: str, song_id: str, url: str, title: str | None, artist: str | None) -> None:
+    _ensure_user(uid)
+    _q(
+        """INSERT INTO lemo_requests (uid, song_id, url, title, artist, requested_at) VALUES (%s, %s, %s, %s, %s, %s)
+           ON CONFLICT (uid, song_id) DO UPDATE SET done_at = NULL""",
+        (uid, song_id, url, title, artist, time.time()),
+    )
+
+
+def my_requests(uid: str) -> list[dict]:
+    rows = _q("SELECT song_id, title, artist, requested_at FROM lemo_requests WHERE uid = %s AND done_at IS NULL ORDER BY requested_at DESC", (uid,))
+    return [{"songId": r["song_id"], "title": r["title"], "artist": r["artist"], "requestedAt": r["requested_at"]} for r in rows]
+
+
+def cancel_request(uid: str, song_id: str) -> None:
+    _q("DELETE FROM lemo_requests WHERE uid = %s AND song_id = %s AND done_at IS NULL", (uid, song_id))
+
+
+def pending_requests() -> list[dict]:
+    """Every song still waiting, most asked-for first."""
+    rows = _q(
+        """SELECT song_id, MIN(url) AS url, MAX(title) AS title, MAX(artist) AS artist, COUNT(*) AS people,
+                  MIN(requested_at) AS first_at
+           FROM lemo_requests WHERE done_at IS NULL GROUP BY song_id ORDER BY COUNT(*) DESC, MIN(requested_at)""")
+    return [{"songId": r["song_id"], "url": r["url"], "title": r["title"], "artist": r["artist"],
+             "people": int(r["people"]), "firstAt": r["first_at"]} for r in rows]
+
+
+def deliver(song_id: str, meta: dict[str, Any]) -> int:
+    """The song is ready: it goes into the song list of everyone who asked. Returns how many."""
+    rows = _q("SELECT uid FROM lemo_requests WHERE song_id = %s AND done_at IS NULL", (song_id,))
+    now = time.time()
+    for r in rows:
+        save_song(r["uid"], song_id, {**meta, "addedAt": now * 1000})
+    _q("UPDATE lemo_requests SET done_at = %s WHERE song_id = %s AND done_at IS NULL", (now, song_id))
+    return len(rows)

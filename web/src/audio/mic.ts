@@ -54,6 +54,7 @@ export class MicInput {
       if (name === 'NotReadableError') throw new MicError('busy', 'The microphone is in use by another app.')
       throw new MicError('unknown', (e as Error).message)
     }
+    this.stream = await preferBuiltInMic(this.stream)
     this.stream.getAudioTracks()[0]?.addEventListener('ended', () => this.stop())
     await this.attach(ctx, ctx.createMediaStreamSource(this.stream), true)
   }
@@ -149,5 +150,33 @@ export function setAudioSession(type: 'playback' | 'play-and-record') {
     session.type = type
   } catch {
     /* not allowed here */
+  }
+}
+
+const BLUETOOTH = /airpods|buds|bluetooth|headset|hands-?free|\bbt\b/i
+
+/** True when this mic is a Bluetooth headset's (its use puts the earphones in call mode). */
+export const isBluetoothMic = (label: string) => BLUETOOTH.test(label)
+
+/**
+ * Bluetooth earphones drop to call quality (thin, mono, a buzz) while their own mic
+ * records. With the phone's built-in mic instead, they can stay in music mode — and it
+ * hears your voice, not the song (that's only in your ears). Swaps to it when there is one.
+ */
+async function preferBuiltInMic(stream: MediaStream): Promise<MediaStream> {
+  const label = stream.getAudioTracks()[0]?.label ?? ''
+  if (!isBluetoothMic(label)) return stream
+  try {
+    const mics = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default')
+    const builtIn = mics.find((d) => !isBluetoothMic(d.label) && /iphone|built-?in|phone|internal|bottom|microphone/i.test(d.label))
+      ?? mics.find((d) => d.label && !isBluetoothMic(d.label))
+    if (!builtIn) return stream
+    const other = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: { exact: builtIn.deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+    })
+    stream.getTracks().forEach((t) => t.stop()) // let go of the earphones' mic
+    return other
+  } catch {
+    return stream // keep the one that works
   }
 }

@@ -6,7 +6,7 @@ import { analyzer } from '../api/analyzer'
 import { levelTake } from '../lib/level'
 import { demoSource, demoTrack } from '../audio/demo'
 import { analyzerSource, fileSource, PlaybackEngine, type AudioSource } from '../audio/engine'
-import { MicError, MicInput, type MicReading } from '../audio/mic'
+import { isBluetoothMic, MicError, MicInput, type MicReading } from '../audio/mic'
 import { midiToNoteName } from '../lib/music'
 import { tidyTitle } from '../lib/titles'
 import { parseLrc } from '../lib/parsers/lrc'
@@ -1045,9 +1045,9 @@ export class Studio {
       await this.mic.start(this.ensureEngine().ctx)
       this.set({ mic: 'on' })
       this.startLoop()
-      // Bluetooth earphones switch to call mode while their mic records: the song sounds
-      // thinner until the mic is off again (every phone does this, not just Lemody)
-      if (/airpods|buds|bluetooth|headset|hands-?free|bt\b/i.test(this.mic.deviceLabel) && !this.btTipShown) {
+      // Still on a Bluetooth headset's mic (the phone has no other one to use): the
+      // earphones are in call mode until the mic is off again — every phone does this
+      if (isBluetoothMic(this.mic.deviceLabel) && !this.btTipShown) {
         this.btTipShown = true
         this.toast('Bluetooth earphones sound thinner while the mic is on — wired ones sound best')
       }

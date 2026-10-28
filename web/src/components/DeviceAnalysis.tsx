@@ -53,7 +53,7 @@ export function AnalyseChoice({ name, health, onDevice, onServer, onRequest, onC
           icon={<Icon size={15} />}
           title={sup?.phone ? 'This phone' : 'This computer'}
           time={sup?.ok ? mins(deviceSec) : '—'}
-          note={sup === null ? 'checking…' : !sup.ok ? 'not supported here' : cached ? 'keep Lemody open' : '+ 263 MB first time'}
+          note={sup === null ? 'checking…' : !sup.ok ? 'best on a computer' : cached ? 'keep Lemody open' : '+ 263 MB first time'}
           recommended={pickDevice}
           disabled={!sup?.ok}
           onClick={onDevice}
@@ -69,13 +69,13 @@ function TooWeak({ name, phone, onRequest, onClose }: { name: string; phone: boo
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-semibold text-text">Add this song from another device</span>
+        <span className="text-sm font-semibold text-text">Best added from a computer</span>
         <button type="button" onClick={onClose} className="text-xs text-sub hover:text-text">close</button>
       </div>
       <SongName name={name} />
       <p className="mt-2 text-[13px] text-sub leading-relaxed">
-        {phone ? 'This phone' : 'This device'} can’t analyse new songs without slowing right down. Open Lemody on a computer
-        (Chrome or Edge) or a newer phone and add it there — then it’s here for you to sing on any device.
+        Analysing a new song takes a lot of processing power, so it’s done on a computer or a recent phone. Open Lemody there
+        to add it — then you can sing it here{phone ? ' on your phone' : ''}, or on any device.
       </p>
       {onRequest && <AskLemody onRequest={onRequest} />}
     </div>
@@ -96,7 +96,7 @@ function SongName({ name }: { name: string }) {
 export function AskLemody({ onRequest }: { onRequest: () => void }) {
   return (
     <div className="mt-3 pt-3 border-t border-line flex flex-wrap items-center justify-between gap-2">
-      <span className="text-[12px] text-sub">Rather not wait here? We’ll add it for you within a week.</span>
+      <span className="text-[12px] text-sub">Or we can add it for you — usually within a week.</span>
       <button type="button" onClick={onRequest} className="rounded-full bg-main/15 text-main text-xs font-medium px-3 py-1.5 hover:bg-main/25">
         ask Lemody to add it
       </button>

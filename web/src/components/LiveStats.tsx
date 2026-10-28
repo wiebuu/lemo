@@ -9,7 +9,7 @@ import { cx, Tip, usePhone, useStudio } from './ui'
  * Live readout above the graph: one big symbol telling you what to do right now.
  * Updated imperatively (~20 Hz) by toggling visibility — no React re-render per frame.
  */
-export function LiveStats({ big }: { big?: boolean }) {
+export function LiveStats({ big, center }: { big?: boolean; /** phones: the song's name, between the note and the controls */ center?: React.ReactNode }) {
   const s = useStudio()
   const phone = usePhone()
   const note = useRef<HTMLSpanElement>(null)
@@ -42,8 +42,8 @@ export function LiveStats({ big }: { big?: boolean }) {
   const hidden = { display: 'none' }
 
   return (
-    <div className={cx('flex items-center justify-between gap-4 px-1 transition-all duration-500', big ? 'min-h-[4.5rem]' : 'min-h-[2.75rem]')}>
-      <div className="flex items-center gap-3">
+    <div className={cx('relative flex items-center justify-between px-1 transition-all duration-500', center ? 'gap-2' : 'gap-4', big ? 'min-h-[4.5rem]' : 'min-h-[2.75rem]')}>
+      <div className="flex items-center gap-3 shrink-0">
         <Tip tip="The note you're singing right now.">
           <span ref={note} className={cx('font-medium tabular-nums w-[3.5ch] transition-all duration-500', big ? 'text-6xl' : 'text-4xl')} />
         </Tip>
@@ -56,6 +56,10 @@ export function LiveStats({ big }: { big?: boolean }) {
           <span ref={reg('clash')} style={hidden}><Tip tip="This note clashes with the music — try changing the key"><TriangleAlert className="text-error" size={22} /></Tip></span>
         </span>
       </div>
+      {/* centred on the screen; beside the results' controls it takes the space left of them */}
+      {center && (s.lastResult && !s.session
+        ? <div className="flex-1 min-w-0 text-left">{center}</div>
+        : <div className="absolute left-1/2 -translate-x-1/2 max-w-[56%] text-center pointer-events-none">{center}</div>)}
       {s.lastResult && !s.session ? (
         <ListenControls />
       ) : (

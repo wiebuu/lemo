@@ -107,15 +107,20 @@ export default function App() {
           <div className="fold" data-closed={s.session || !!s.lastResult}>
             <div><div className="pb-1"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div></div>
           </div>
-          <ErrorBoundary label="live readout"><LiveStats big={s.session} /></ErrorBoundary>
-          {/* phones: the header has no room for the song's name — it sits just above the graph */}
-          {phone && (
-            <div className={cx('pt-1 text-center truncate leading-tight text-[12px] transition-opacity', s.session && 'opacity-60')}>
-              <span className="text-text font-medium">{s.track.title}</span>
-              {s.track.artist && <span className="text-sub"> · {s.track.artist}</span>}
-            </div>
-          )}
-          <ErrorBoundary label="graph"><Graph onImport={() => setPanel('load')} /></ErrorBoundary>
+          <ErrorBoundary label="live readout">
+            {/* while singing the big note readout needs the room: the name steps aside */}
+            <LiveStats big={s.session} center={phone && !s.session ? (
+              // phones: the header has no room for the song's name — it sits in this row, above the graph
+              <div className="truncate leading-tight text-[12px]">
+                <span className="text-text font-medium">{s.track.title}</span>
+                {s.track.artist && <span className="text-sub"> · {s.track.artist}</span>}
+              </div>
+            ) : undefined} />
+          </ErrorBoundary>
+          {/* phones: a little air between the song's name and the graph */}
+          <div className={cx('flex-1 min-h-0 flex flex-col', phone && 'pt-2')}>
+            <ErrorBoundary label="graph"><Graph onImport={() => setPanel('load')} /></ErrorBoundary>
+          </div>
           {/* fixed-height slot under the graph: lyrics, or the results panel after a test */}
           <div className={cx('shrink-0 flex flex-col justify-center transition-[height] duration-500',
             phone ? (results ? 'h-[8.5rem] py-1' : 'h-[6rem] py-0.5') : results ? 'h-[10rem] py-4' : 'h-[8rem] py-4')}>

@@ -179,6 +179,9 @@ export const analyzer = {
       json<{ state: 'ready' | 'requested'; id: string; title?: string | null; artist?: string | null; days?: number }>(r),
     ),
   requests: () => fetch('/api/requests').then((r) => json<SongRequest[]>(r)),
+  /** A link from YouTube, Spotify, …: the song Lemody already has for it (maybe another upload of it), or null. */
+  matchLink: (url: string) =>
+    fetch(`/api/songs/match?${new URLSearchParams({ url })}`).then((r) => json<{ song: { id: string; title: string; artist?: string | null } | null }>(r)),
   cancelRequest: (id: string) => fetch(`/api/requests/${id}`, { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
   stemUrl: (id: string, stem: 'backing' | 'vocals', speed: number, semis: number) =>
     `/api/songs/${id}/audio/${stem}?speed=${speed}&semitones=${semis}&f=m4a`, // f: new address after the WAV → AAC change (old cache entries)

@@ -72,6 +72,22 @@ class CatalogTest(unittest.TestCase):
             self.assertEqual(catalog.all_songs()[0]["plays"], 2)
             self.assertIsNone(catalog.played("yt-unknown000", "ana"))
 
+    def test_another_upload_of_a_song_we_have_is_found(self):
+        songs = [
+            {"id": "yt-aaaaaaaaaaa", "title": "Dhana", "artist": "Priyanka Meher"},
+            {"id": "yt-bbbbbbbbbbb", "title": "Ivy", "artist": "Frank Ocean"},
+            {"id": "up-0123456789abcdef", "title": "Candy Paint (The Fate of the Furious The Album) Official Audio", "artist": None},
+            {"id": "yt-ccccccccccc", "title": "Love Lockdown", "artist": "Kanye West"},
+        ]
+        with mock.patch.object(catalog, "all_songs", return_value=songs):
+            self.assertEqual(catalog.match("Dhana Priyanka Meher, Rongpaz | 2023", "RTV Muzic")["id"], "yt-aaaaaaaaaaa")
+            self.assertEqual(catalog.match("Post Malone - Candy Paint (Official Video)", "PostMaloneVEVO")["id"], "up-0123456789abcdef")
+            self.assertEqual(catalog.match("Kanye West - Love Lockdown", "KanyeWestVEVO")["id"], "yt-ccccccccccc")
+            self.assertEqual(catalog.match("Ivy", "Frank Ocean")["id"], "yt-bbbbbbbbbbb")
+            self.assertIsNone(catalog.match("Ivy League Wedding Vlog", "someone"))  # one word, no singer
+            self.assertIsNone(catalog.match("Kesariya (Official Video)", "Sony Music India"))
+            self.assertEqual(catalog.match("Ivy", "")["id"], "yt-bbbbbbbbbbb")  # a track name alone (Spotify), the only "Ivy"
+
     def test_every_song_is_for_everyone_uploads_too(self):
         self.assertTrue(catalog.is_public("yt-abcdefghijk"))
         self.assertTrue(catalog.is_public("up-abcdef0123456789"))

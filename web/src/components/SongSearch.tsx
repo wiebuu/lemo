@@ -35,9 +35,24 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
   const preview = usePreview()
   const link = songLink(q)
   const vid = link?.kind === 'youtube' ? link.videoId : null
-  const known = vid ? catalog.find((c) => c.id === `yt-${vid}`) : undefined
-  // a site we can't take songs from (a YouTube song not in Lemody counts too)
-  const locked = link?.kind === 'locked' ? link.site : link?.kind === 'youtube' && !known ? 'YouTube' : null
+  const byId = vid ? catalog.find((c) => c.id === `yt-${vid}`) : undefined
+  // a link from a site we can't take songs from: first, is it a song we already have
+  // (maybe another upload of it)? The server checks by the link's name.
+  const askable = !!link && link.kind !== 'file' && !byId
+  const [matched, setMatched] = useState<{ url: string; song: { id: string; title: string; artist?: string | null } | null } | null>(null)
+  useEffect(() => {
+    if (!askable || !link) return
+    const url = link.url
+    let gone = false
+    const t = setTimeout(() => {
+      analyzer.matchLink(url).then((r) => !gone && setMatched({ url, song: r.song }), () => !gone && setMatched({ url, song: null }))
+    }, 250)
+    return () => { gone = true; clearTimeout(t) }
+  }, [askable, link?.url]) // eslint-disable-line react-hooks/exhaustive-deps
+  const checked = matched && link && matched.url === link.url ? matched : null
+  const known = byId ?? (checked?.song ? { id: checked.song.id, title: checked.song.title } : undefined)
+  const checking = askable && !checked
+  const locked = askable && checked && !checked.song ? (link?.kind === 'locked' ? link.site : 'YouTube') : null
   const found = useMemo(() => (link ? [] : searchSongs(catalog, q)), [catalog, q, link])
   useEffect(() => setSel(0), [q])
   useEffect(() => () => preview.stop(), [])
@@ -93,7 +108,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
               <X size={14} />
             </button>
           )}
-          {link && !locked && (
+          {link && (known || link.kind === 'file') && (
             <button type="submit" disabled={disabled || busy}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg bg-main text-bg disabled:opacity-60">
               {busy && <Loader2 size={12} className="animate-spin" />}
@@ -103,8 +118,12 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
         </span>
       </form>
 
-      {vid && known && (
-        <p className="mt-2 px-1 text-[11px] text-sub fade-in">In Lemody: <span className="text-text">{known.title}</span></p>
+      {checking && (
+        <p className="mt-2 px-1 text-[11px] text-sub fade-in flex items-center gap-1.5"><Loader2 size={11} className="animate-spin" /> checking if Lemody has it…</p>
+      )}
+      {link && known && (
+        <p className="mt-2 px-1 text-[11px] text-sub fade-in">Already in Lemody: <span className="text-text">{known.title}</span>
+          {checked?.song?.artist && <span> · {checked.song.artist}</span>}</p>
       )}
       {link?.kind === 'file' && (
         <p className="mt-2 px-1 text-[11px] text-sub fade-in">A song file from {link.from} — analysed on your device.</p>

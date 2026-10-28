@@ -631,6 +631,19 @@ def _oembed(url: str) -> tuple[str | None, str | None]:
         return None, None
 
 
+@app.get("/api/songs/match")
+def match_link(url: str) -> dict:
+    """A link from a site we can't take songs from (YouTube, Spotify, …): is it a song
+    Lemody already has — maybe as another upload of it? Checked by the link's name."""
+    vid = youtube.video_id(url)
+    if vid and catalog.is_public(f"yt-{vid}") and (f"yt-{vid}" in catalog.load() or remote.has(f"yt-{vid}")):
+        e = catalog.load().get(f"yt-{vid}", {"id": f"yt-{vid}"})
+        return {"song": {k: e.get(k) for k in ("id", "title", "artist")}}
+    title, artist = _oembed(url)
+    hit = catalog.match(title or "", artist or "") if title else None
+    return {"song": {k: hit.get(k) for k in ("id", "title", "artist")} if hit else None, "title": title}
+
+
 @app.post("/api/requests")
 def request_song(request: Request, url: str = Form(...)) -> dict:
     """Any link to a song (YouTube, Spotify, …): Lemody adds it by hand, within a week."""

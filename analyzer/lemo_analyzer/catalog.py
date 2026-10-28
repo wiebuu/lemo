@@ -7,9 +7,11 @@ the songs on this machine at startup (VPS-only entries are kept)."""
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import threading
 import time
+import unicodedata
 from pathlib import Path
 
 from . import storage
@@ -199,3 +201,40 @@ def backfill() -> None:
         add(d)
         if made and (d / remote.PUSHED).exists():
             remote.push(d)  # rsync sends only the new preview
+
+
+# ---- is this link a song we already have? -------------------------------------------------------
+
+# words that say what kind of upload it is, not which song
+_NOISE = set("official video audio lyric lyrics lyrical full song songs hd 4k 8k feat ft with music the album version "
+             "visualizer visualiser live cover remastered remaster mv new latest".split())
+
+
+def _words(text: str | None) -> list[str]:
+    s = unicodedata.normalize("NFKD", text or "")
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    s = re.sub(r"[(\[{].*?[)\]}]", " ", s)  # (Official Video), [4K], {…}
+    return [w for w in re.findall(r"\w+", s) if w not in _NOISE]
+
+
+def match(title: str, author: str = "") -> dict | None:
+    """The song in Lemody that a video / track with this name is (another upload of the
+    same song). Every word of the song's name must be there; a one-word name also needs
+    the singer. The fullest match wins."""
+    seen = set(_words(title)) | set(_words(author))
+    named = set(_words(title))
+    songs = [e for e in all_songs() if is_public(e["id"])]
+    best, best_score = None, 0
+    for e in songs:
+        name = _words(e.get("title"))
+        if not name or not set(name) <= seen:
+            continue
+        singer = set(_words(e.get("artist"))) & seen
+        # a one-word name needs the singer too — or the link names exactly that song, the only one called that
+        exact_only = set(name) == named and sum(set(_words(x.get("title"))) == named for x in songs) == 1
+        if len(name) == 1 and not singer and not exact_only:
+            continue
+        score = 2 * len(name) + (2 if singer else 0)
+        if score > best_score:
+            best, best_score = e, score
+    return best

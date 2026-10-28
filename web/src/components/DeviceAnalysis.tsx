@@ -97,7 +97,8 @@ function timeLeft(sec: number): string {
  * server if this device turns out slow or fails.
  */
 export function DeviceRun({ url, serverSec, onDone, onUseServer, onCancel }: {
-  url: string
+  /** a YouTube link, or the singer's own audio file */
+  url: string | File
   /** how long the server would take (for the "this device is slow" hint) */
   serverSec: number
   onDone: (id: string) => void

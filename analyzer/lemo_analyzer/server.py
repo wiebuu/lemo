@@ -258,6 +258,36 @@ def device_start(url: str = Form(...)) -> dict:
     return device.start(song_id, vid)
 
 
+@app.post("/api/songs/device/upload")
+async def device_upload(file: UploadFile) -> dict:
+    """Step 1, from the singer's own audio file: it's kept here (to check the result
+    against) and handed back to the browser to analyse."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in audio.ALLOWED_EXT and not (file.content_type or "").startswith("audio/"):
+        raise HTTPException(415, f"Unsupported file type. Use one of: {', '.join(sorted(audio.ALLOWED_EXT))}")
+    limit = CONFIG.max_upload_mb * 1024 * 1024
+    h = hashlib.sha1()
+    size = 0
+    tmp = Path(tempfile.mkstemp(suffix=ext or ".audio", dir=CONFIG.data_dir)[1])
+    try:
+        with tmp.open("wb") as out:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > limit:
+                    raise HTTPException(413, f"File is larger than {CONFIG.max_upload_mb} MB.")
+                h.update(chunk)
+                out.write(chunk)
+        song_id = f"up-{h.hexdigest()[:16]}"
+        if (jobs.song_dir(song_id) / "reference.json").exists() or remote.has(song_id):
+            return {"id": song_id, "state": "done", "progress": 1, "message": "ready"}
+        _require_space(song_id)
+        _active()
+        return device.start_upload(song_id, tmp, file.filename or "my song")  # takes the file over
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 @app.get("/api/songs/device/{song_id}")
 def device_status(song_id: str) -> dict:
     _song(song_id)

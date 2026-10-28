@@ -135,12 +135,14 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
   }
 
   // a new song: analyse it on this device or on the server (the user picks)
-  const [choosing, setChoosing] = useState<string | null>(null)
-  const [onDevice, setOnDevice] = useState<string | null>(null)
-  const useServer = (u: string) => {
+  // a YouTube link, or the singer's own audio file
+  const [choosing, setChoosing] = useState<string | File | null>(null)
+  const [onDevice, setOnDevice] = useState<string | File | null>(null)
+  const useServer = (u: string | File) => {
     setChoosing(null)
     setOnDevice(null)
-    void start(analyzer.analyzeUrl(u)) // when storage is full the analyzer says so (a song already stored still opens)
+    // when storage is full the analyzer says so (a song already stored still opens)
+    void start(typeof u === 'string' ? analyzer.analyzeUrl(u) : analyzer.analyzeFile(u))
   }
   const submitUrl = (u: string) => {
     if (!health) return setErr('Lemody\u2019s server can\u2019t be reached right now. Try again in a minute.')
@@ -172,11 +174,9 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       />
 
       <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
-        {health?.separation && (
-          <Btn onClick={() => audioInput.current?.click()} disabled={!!running} title="upload audio and extract its melody">
-            <Upload size={13} /> upload & analyse
-          </Btn>
-        )}
+        <Btn onClick={() => audioInput.current?.click()} disabled={!!running || !health} title={health ? 'a song file from your phone or computer' : 'needs Lemody\u2019s server'}>
+          <Upload size={13} /> upload & analyse
+        </Btn>
         <Btn
           primary
           disabled={!!running}
@@ -198,7 +198,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           </Tip>
         </span>
         <input ref={audioInput} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden
-          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) void start(analyzer.analyzeFile(f)) }} />
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setChoosing(f) } }} />
       </div>
 
       <Suspense fallback={choosing || onDevice ? <div className="mt-4 flex justify-center"><Eq /></div> : null}>

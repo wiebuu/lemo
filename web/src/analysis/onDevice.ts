@@ -162,12 +162,13 @@ export function deviceRate(phone: boolean): number {
 export type DeviceResult = { kind: 'done'; id: string } | { kind: 'server'; id: string }
 
 /**
- * Analyse a YouTube song here. Resolves with the song id when it's stored (or
- * { kind: 'server' } if the server was already analysing it).
+ * Analyse a song here: a YouTube link, or the singer's own audio file. Resolves with
+ * the song id when it's stored (or { kind: 'server' } if the server was already
+ * analysing it).
  */
-export async function analyseOnDevice(url: string, onProgress: (p: DeviceProgress) => void, signal: AbortSignal): Promise<DeviceResult> {
+export async function analyseOnDevice(source: string | File, onProgress: (p: DeviceProgress) => void, signal: AbortSignal): Promise<DeviceResult> {
   const started = performance.now()
-  let title: string | null | undefined
+  let title: string | null | undefined = typeof source === 'string' ? undefined : source.name.replace(/\.[^.]+$/, '')
   let stage: DeviceStage = 'models'
   const report = (s: DeviceStage, frac: number, detail: string, eta: number | null = null) => {
     stage = s
@@ -175,8 +176,17 @@ export async function analyseOnDevice(url: string, onProgress: (p: DeviceProgres
     onProgress({ stage: s, progress: lo + (hi - lo) * Math.max(0, Math.min(1, frac)), detail, eta, title })
   }
 
-  // 1. the server gets the song (no queue) — meanwhile the models download (first time only)
-  const start = await json<ServerState>(await fetch('/api/songs/device/start', { method: 'POST', body: new URLSearchParams({ url }), signal }))
+  // 1. the server gets the song (no queue), or keeps the singer's file to check the result
+  // against — meanwhile the models download (first time only)
+  let start: ServerState
+  if (typeof source === 'string') {
+    start = await json<ServerState>(await fetch('/api/songs/device/start', { method: 'POST', body: new URLSearchParams({ url: source }), signal }))
+  } else {
+    const fd = new FormData()
+    fd.append('file', source)
+    start = await upload('/api/songs/device/upload', fd, (frac) => report('fetching', frac * 0.3, `sending your song · ${Math.round(frac * 100)}%`), signal)
+    report('models', 0, 'getting the analyser')
+  }
   if (start.state === 'done') return { kind: 'done', id: start.id }
   if (start.state === 'server') return { kind: 'server', id: start.id }
   const id = start.id

@@ -1,7 +1,7 @@
 """Songs analysed on the singer's own device instead of waiting in the server's queue.
 
 1. start(): the server fetches the YouTube audio (light work, no queue) and hands it
-   to the browser.
+   to the browser — or start_upload(): the singer sends their own audio file.
 2. The browser separates the vocals (Demucs, same model as here) and tracks their
    pitch (CREPE "full", same model as here) itself.
 3. accept(): the result is checked against the original before it's kept — the
@@ -38,7 +38,8 @@ class Rejected(Exception):
 @dataclass
 class DeviceJob:
     id: str
-    video_id: str
+    video_id: str | None
+    upload: Path | None = None  # the singer's own file (instead of a YouTube video)
     state: str = "fetching"  # fetching → ready → checking → finishing → done | failed
     progress: float = 0.0
     message: str = "getting the song"
@@ -74,6 +75,31 @@ def start(song_id: str, video_id: str) -> dict:
     return job.public()
 
 
+def start_upload(song_id: str, path: Path, name: str) -> dict:
+    """Like start(), from an audio file the singer sent (already saved at `path`)."""
+    with _lock:
+        _forget_old()
+        job = JOBS.get(song_id)
+        if job and job.state not in {"failed", "done"}:
+            job.touched = time.time()
+            path.unlink(missing_ok=True)
+            return job.public()
+        title, artist = upload_names(name)
+        job = JOBS[song_id] = DeviceJob(id=song_id, video_id=None, upload=path, title=title, artist=artist, message="reading your file")
+    threading.Thread(target=_fetch, args=(job,), daemon=True, name=f"device-upload-{song_id}").start()
+    return job.public()
+
+
+def upload_names(filename: str) -> tuple[str, str | None]:
+    """"Artist - Title.mp3" → (Title, Artist); otherwise the file's name is the title."""
+    stem = Path(filename or "my song").stem.replace("_", " ").strip() or "my song"
+    if " - " in stem:
+        artist, title = (p.strip() for p in stem.split(" - ", 1))
+        if artist and title:
+            return title, artist
+    return stem, None
+
+
 def status(song_id: str) -> dict | None:
     job = JOBS.get(song_id)
     if job:
@@ -95,14 +121,20 @@ def _fetch(job: DeviceJob) -> None:
         def progress(frac: float, msg: str) -> None:
             job.progress, job.message = round(0.9 * frac, 3), msg
 
-        src, meta = youtube.fetch(job.video_id, wd, CONFIG.max_duration_min * 60, progress, lambda p: None,
-                                  on_duration=lambda d: setattr(job, "duration", d))
-        job.title, job.artist = meta.get("title"), meta.get("artist")
+        if job.upload:
+            src = wd / f"upload{job.upload.suffix}"
+            shutil.move(str(job.upload), src)
+        else:
+            src, meta = youtube.fetch(job.video_id, wd, CONFIG.max_duration_min * 60, progress, lambda p: None,
+                                      on_duration=lambda d: setattr(job, "duration", d))
+            job.title, job.artist = meta.get("title"), meta.get("artist")
         job.message = "preparing the audio"
         audio.to_wav(src, wd / "mix.wav")  # the original, to check the result against
         info = audio.info(wd / "mix.wav")
         if info["duration"] < 5:
             raise RuntimeError("Audio is too short to analyse.")
+        if info["duration"] > CONFIG.max_duration_min * 60:
+            raise RuntimeError(f"Songs can be up to {CONFIG.max_duration_min:g} minutes long.")
         job.duration = round(info["duration"], 3)
         audio.encode(wd / "mix.wav", wd / "source.m4a", "192k")  # what the browser analyses
         src.unlink(missing_ok=True)
@@ -172,7 +204,7 @@ def _finish(job: DeviceJob) -> None:
 
     d = jobs.song_dir(job.id)
     try:
-        worker.run(finish_in_worker, job.id, {"title": job.title, "artist": job.artist}, job.duration,
+        worker.run(finish_in_worker, job.id, {"title": job.title, "artist": job.artist, "kind": "upload" if job.upload else "youtube"}, job.duration,
                    on_progress=on_progress, heavy=False)
         catalog.finish(d)
         remote.push_later(d)
@@ -200,7 +232,7 @@ def finish_in_worker(song_id: str, meta: dict, duration: float, send) -> float:
     for name in ("vocals", "backing"):
         shutil.move(str(wd / f"{name}.wav"), d / f"{name}.wav")
     midi, conf = melody.contour_from_device(d / "vocals.wav", np.load(wd / "f0.npy"), np.load(wd / "periodicity.npy"))
-    return jobs.build_reference(song_id, d, meta, "youtube", duration, midi, conf,
+    return jobs.build_reference(song_id, d, meta, meta.get("kind", "youtube"), duration, midi, conf,
                                 "demucs + crepe-full (on a device)", t_start, job,
                                 extra={"analysedOn": "device"})
 

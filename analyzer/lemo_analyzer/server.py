@@ -69,6 +69,9 @@ def _startup() -> None:
                     print(f"could not refresh the song list: {e}", flush=True)
 
         threading.Thread(target=relist, daemon=True, name="lemo-relist").start()
+        from . import lyrics_prep
+
+        lyrics_prep.catch_up_forever()  # stored songs still without lyrics, while idle
         remote.push_models(CONFIG.data_dir / "models")  # for browsers that analyse songs themselves
         if CONFIG.enable_youtube and CONFIG.server_analysis:
             # resume featured songs that weren't finished, and look again every 10 minutes

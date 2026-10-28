@@ -210,6 +210,10 @@ class JobManager:
             catalog.finish(d)  # 10-second preview + searchable
             remote.push_later(d)  # keep it safe on the VPS (when one is set up)
             storage.trim()
+            from . import lyrics_prep  # (imports this module)
+
+            e = catalog.load().get(job.id, {})
+            lyrics_prep.for_song(job.id, e.get("title"), e.get("artist"))  # its lyrics, found and timed
         except worker.Cancelled:
             job.stage, job.message = "cancelled", "cancelled"
             worker.log(f"job {job.id} cancelled")

@@ -130,14 +130,14 @@ export default function App() {
           </div>
         </main>
       ) : (
-        <main className="flex-1 min-h-0 flex flex-col py-6">
+        <main className="flex-1 min-h-0 flex flex-col py-3 sm:py-6">
           <LoadPanel inline onDone={() => {}} />
         </main>
       )}
 
       {s.track && <ErrorBoundary label="player"><PlayerBar /></ErrorBoundary>}
 
-      <footer className="flex justify-center text-sub pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[11px] shrink-0">
+      <footer className="flex justify-center text-sub pb-[max(0.4rem,env(safe-area-inset-bottom))] sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[11px] shrink-0">
         {s.track ? (
           <Tip wide tip={
             <span className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">

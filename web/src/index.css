@@ -463,8 +463,8 @@ button:disabled {
   animation-play-state: running;
 }
 
-/* short windows: the start page keeps room for the tracklist */
-@media (max-height: 760px) {
+/* short windows: the start page keeps room for the tracklist (phones have their own sizes) */
+@media (max-height: 760px) and (min-width: 640px) {
   .hero-staff,
   .hero-sub {
     display: none;

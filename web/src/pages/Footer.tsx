@@ -12,14 +12,16 @@ export const FOOTER_LINKS: [string, string][] = [
 /** About · Help · Privacy · Terms · Contact — and who makes Lemody. */
 export function SiteFooter({ className }: { className?: string }) {
   return (
-    <nav aria-label="site" className={cx('flex flex-col items-center gap-2 text-[11px] text-sub', className)}>
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+    // phones: one thin line (links, then the credit); bigger screens: two lines
+    <nav aria-label="site" className={cx('flex flex-wrap sm:flex-col items-center justify-center gap-x-3 gap-y-1 sm:gap-2 text-[10.5px] sm:text-[11px] text-sub', className)}>
+      <div className="contents sm:flex sm:flex-wrap sm:justify-center sm:gap-x-4 sm:gap-y-1">
         {FOOTER_LINKS.map(([href, label]) => (
           <a key={href} href={href} onClick={go} className="hover:text-text transition-colors">{label}</a>
         ))}
       </div>
       <a href="https://wiecodes.com" target="_blank" rel="noopener noreferrer" className="group hover:text-text transition-colors">
-        © {new Date().getFullYear()} Lemody · <span className="font-semibold tracking-wide text-text/90 group-hover:text-main">Wiecodes</span>
+        <span className="hidden sm:inline">© {new Date().getFullYear()} Lemody · </span>
+        <span className="font-semibold tracking-wide text-text/90 group-hover:text-main">Wiecodes</span>
       </a>
     </nav>
   )

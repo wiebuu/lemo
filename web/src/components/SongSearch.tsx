@@ -84,7 +84,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
           disabled={disabled}
           placeholder="search a song or singer — or paste a link"
           aria-label="search songs or paste a link"
-          className="w-full bg-transparent rounded-xl pl-11 pr-28 py-3.5 text-[15px] text-text placeholder:text-sub outline-none"
+          className="w-full bg-transparent rounded-xl pl-11 pr-28 py-2.5 sm:py-3.5 text-[14px] sm:text-[15px] text-text placeholder:text-sub outline-none"
         />
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading && typed && !link && <Loader2 size={15} className="animate-spin text-sub mr-2" aria-label="loading songs" />}

@@ -59,6 +59,12 @@ def _norm(s: str | None) -> str:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
+def _skel(s: str | None) -> str:
+    """Spelling-tolerant: Hindi titles are written many ways in English letters
+    ("Hothon" / "Honthon", "Ajnabee" / "Ajnabi") — compare the consonants."""
+    return re.sub(r"[aeiouyhn]", "", _norm(s).replace("v", "w"))
+
+
 def resolve(title: str, artist: str) -> dict | None:
     """Find the plain studio recording on YouTube Music (an auto-generated "art
     track": just the song — no video intro, dialogue or sound effects)."""
@@ -78,9 +84,10 @@ def resolve(title: str, artist: str) -> dict | None:
         artists = m.get("artists") or [m.get("artist") or m.get("creator") or m.get("channel") or ""]
         artists = [a for part in artists for a in str(part).split(",")]
         dur = float(m.get("duration") or 0)
+        ours = [x for x in re.split(r",|&| ft\.? | feat\.? | and ", artist) if _norm(x)]  # each singer we listed
         if (
-            _norm(title) in _norm(track)
-            and any(_norm(artist) in _norm(a) or (_norm(a) and _norm(a) in _norm(artist)) for a in artists)
+            _skel(title) in _skel(track)
+            and any(_norm(o) in _norm(a) or (_norm(a) and _norm(a) in _norm(o)) for o in ours for a in artists)
             and 90 <= dur <= 600
         ):
             return {"videoId": e["id"], "track": track, "artists": [a.strip() for a in artists], "duration": dur}

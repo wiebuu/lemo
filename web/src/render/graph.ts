@@ -4,7 +4,7 @@
 import { discoLive } from '../lib/discoState'
 import { midiToNoteName, isNatural, formatTime } from '../lib/music'
 import { noteAt } from '../lib/scoring'
-import { foldOctaveSlips, placeOnMelody, runStart, smoothBack, smoothDelay } from '../lib/voiceLine'
+import { cleanVoice, foldOctaveSlips, placeOnMelody, runStart } from '../lib/voiceLine'
 import type { LiveState } from '../lib/scoring'
 import type { LoopRegion } from '../lib/timeline'
 import type { BreathMark, LoudnessEnvelope, NoteResult, Phrase, PitchContour, ReferenceNote, UserFrame } from '../lib/types'
@@ -630,12 +630,14 @@ export class GraphRenderer {
   ): { t: number; y: number } | null {
     if (!frames.length) return null
     const { ctx, p } = this
-    ctx.lineWidth = style === 'main' ? 3.5 : 2.5
+    // 'faded' (your exact pitch under the shape line) is a faint thin guide: two strong
+    // lines nearly on top of each other read as one messy line
+    ctx.lineWidth = style === 'main' ? 3.5 : style === 'faded' ? 1.5 : 2.5
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     // your voice has its own colour, never the original singer's
     if (style === 'main') ctx.strokeStyle = p.voice
-    else ctx.strokeStyle = withAlpha(p.sub, style === 'faded' ? 0.7 : 0.35)
+    else ctx.strokeStyle = withAlpha(p.sub, style === 'faded' ? 0.28 : 0.35)
     let last: { t: number; y: number } | null = null
 
     const runs: UserFrame[][] = []
@@ -687,20 +689,39 @@ export class GraphRenderer {
         // real pitch: fold single frames that slip an octave away from what came just before
         vals = foldOctaveSlips(vals)
       }
-      const sm = smoothBack(vals, v.lineDetail)
-      // each smoothed point belongs a few frames earlier (the filter only looks back)
-      const lag = Math.min(smoothDelay(v.lineDetail), sm.length - 1)
+      // cleaned for drawing: flicks dropped, a calm glide, the fading tail of a finished
+      // phrase trimmed (only looks back: what's drawn stays put)
+      const ended = r[r.length - 1].t < frames[frames.length - 1].t - 0.15
+      const sm = cleanVoice(vals, v.lineDetail, ended, 94, r.map((f) => f.level))
+      // no dots or stubs: a piece shorter than ~60 ms between gaps isn't drawn
+      for (let a = 0; a < sm.length; ) {
+        if (sm[a] === null) { a++; continue }
+        let b = a
+        while (b < sm.length && sm[b] !== null) b++
+        if (b - a < 6) for (let k = a; k < b; k++) sm[k] = null
+        a = b
+      }
+      // each filtered point belongs a few readings earlier (the filter only looks back)
+      const lag = v.lineDetail === 'smooth' ? 4 : v.lineDetail === 'natural' ? 2 : 0
       const at = (k: number) => r[Math.max(0, k - lag)].t
       ctx.beginPath()
-      let px0 = X(at(0)), py0 = Y(sm[0])
-      ctx.moveTo(px0, py0)
-      for (let k = lag; k < sm.length; k++) {
-        const x = X(at(k)), yy = Y(sm[k])
-        ctx.quadraticCurveTo(px0, py0, (px0 + x) / 2, (py0 + yy) / 2)
+      let px0 = 0, py0 = 0, pen = false, drawn = false
+      for (let k = 0; k < sm.length; k++) {
+        const m = sm[k]
+        if (m === null) {
+          if (pen) ctx.lineTo(px0, py0)
+          pen = false
+          continue
+        }
+        const x = X(at(k)), yy = Y(m)
+        if (!pen) ctx.moveTo(x, yy)
+        else ctx.quadraticCurveTo(px0, py0, (px0 + x) / 2, (py0 + yy) / 2)
         px0 = x
         py0 = yy
+        pen = drawn = true
       }
-      ctx.lineTo(px0, py0)
+      if (!drawn) continue
+      if (pen) ctx.lineTo(px0, py0)
       if (discoLive.on && style === 'main') this.neon(() => ctx.stroke(), p.voice, 12)
       else ctx.stroke()
       last = { t: r[r.length - 1].t, y: py0 }

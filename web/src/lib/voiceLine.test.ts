@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { foldOctaveSlips, placeOnMelody, runStart, smoothBack } from './voiceLine'
+import { cleanVoice, foldOctaveSlips, placeOnMelody, runStart, smoothBack } from './voiceLine'
 
 describe('placeOnMelody', () => {
   it('does not flip octaves when singing about half an octave away', () => {
@@ -58,4 +58,47 @@ describe('runStart (the past line keeps still while scrolling)', () => {
   it('stops at a long gap', () => expect(runStart(frames, 4)).toBe(3))
   it('a leap starts a new stretch', () => expect(runStart(frames, 8)).toBe(8))
   it('first frame of a stretch stays put', () => expect(runStart(frames, 2)).toBe(0))
+})
+
+describe('cleanVoice: the voice line as drawn', () => {
+  const held = (m: number, n: number) => Array.from({ length: n }, () => m)
+  it('a flick to a far note and back is dropped, not drawn as a spike', () => {
+    const vals = [...held(60, 20), 72, 71.8, 72.2, 72, 71.9, 72.1, 72, ...held(60, 20)] // 7 readings ≈ 75 ms
+    const out = cleanVoice(vals, 'smooth')
+    expect(out.slice(20, 27).every((x) => x === null)).toBe(true)
+    expect(Math.max(...out.filter((x): x is number => x !== null))).toBeLessThan(60.5)
+  })
+  it('a real move to a new note is followed, without overshooting', () => {
+    const out = cleanVoice([...held(60, 30), ...held(65, 40)], 'smooth') as number[]
+    expect(out.at(-1)!).toBeGreaterThan(64.7)
+    expect(Math.max(...out)).toBeLessThanOrEqual(65.0001)
+    for (let i = 1; i < out.length; i++) if (out[i] !== null && out[i - 1] !== null) expect(out[i]).toBeGreaterThanOrEqual(out[i - 1]! - 1e-9)
+  })
+  it('a wobbly held note comes out calm', () => {
+    const wobble = Array.from({ length: 120 }, (_, i) => 62 + 0.8 * Math.sin((2 * Math.PI * 5.5 * i) / 94) + (i % 3 - 1) * 0.3)
+    const out = (cleanVoice(wobble, 'smooth') as number[]).slice(30)
+    expect(Math.max(...out) - Math.min(...out)).toBeLessThan(0.9) // the raw line swings ~2.2
+  })
+  it('a phrase that starts on a bad reading starts where the voice really is', () => {
+    const out = cleanVoice([72, ...held(60, 30)], 'smooth')
+    expect(out[0]).toBeNull()
+    expect(Math.max(...out.filter((x): x is number => x !== null))).toBeLessThan(60.01)
+  })
+  it('a fading voice (much quieter) is not drawn: no dive into the next note', () => {
+    const vals = [...held(64, 30), 62, 60, 58, ...held(67, 20)]
+    const levels = [...held(-18, 30), -32, -36, -40, ...held(-18, 20)]
+    const out = cleanVoice(vals, 'smooth', false, 94, levels)
+    expect(out.slice(30, 33)).toEqual([null, null, null])
+  })
+  it('the fading tail of a finished phrase is trimmed', () => {
+    const vals = [...held(64, 40), 63, 61.5, 60, 58, 56]
+    const out = cleanVoice(vals, 'smooth', true)
+    expect(out.slice(-4).every((x) => x === null)).toBe(true)
+  })
+  it('a point once drawn never changes as more singing arrives', () => {
+    const vals = Array.from({ length: 200 }, (_, i) => 60 + 3 * Math.sin(i / 30) + (i % 7 === 0 ? 12 : 0) + Math.sin(i * 1.7) * 0.4)
+    const early = cleanVoice(vals.slice(0, 120), 'smooth')
+    const later = cleanVoice(vals, 'smooth')
+    early.forEach((v, i) => { if (v !== null) expect(later[i]).toBeCloseTo(v, 9) })
+  })
 })

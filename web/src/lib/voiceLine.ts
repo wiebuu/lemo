@@ -99,3 +99,98 @@ export function runStart(frames: { t: number; midi: number | null }[], i: number
   }
   return j
 }
+
+const GLIDE = { smooth: { min: 0.8, beta: 0.05 }, natural: { min: 2.2, beta: 0.05 } } as const
+const CONFIRM = 8 // readings (≈ 85 ms) that must agree before a big jump is drawn
+
+/**
+ * Your voice line, cleaned for drawing (scoring never sees this). Returns one value per
+ * reading, or null for a reading that isn't drawn. Like smoothBack it only looks back,
+ * so a point once drawn never changes:
+ * - a jump of more than 2.5 semitones is drawn only once ~8 readings (≈ 85 ms) agree on
+ *   it — a real move to a new note; a reading that flicks away and back (the tracker
+ *   catching a harmonic or the music) is dropped instead of drawn as a vertical stroke;
+ * - then a glide filter ("one-euro", as used for smooth cursors): calm and steady on a
+ *   held note, quick on a deliberate move.
+ * `ended`: the stretch is over (a gap followed), so its fading tail can be trimmed.
+ */
+export function cleanVoice(vals: number[], detail: LineDetail, ended = false, hz = 94, levels?: (number | undefined)[]): (number | null)[] {
+  const out: (number | null)[] = new Array(vals.length).fill(null)
+  const kept: number[] = [] // accepted raw values
+  const loud: number[] = [] // levels of the readings drawn so far
+  let pending: number[] = []
+  for (let i = 0; i < vals.length; i++) {
+    const v = vals[i]
+    // a voice fading out (12 dB under this stretch so far) gives an unreliable pitch:
+    // the dive at the end of a note isn't drawn
+    const lv = levels?.[i]
+    if (lv !== undefined && loud.length >= 8) {
+      const ls = loud.slice(-40).sort((a, b) => a - b)
+      if (lv < ls[ls.length >> 1] - 12) continue
+    }
+    if (lv !== undefined) loud.push(lv)
+    if (!kept.length) {
+      // the line starts once a few readings agree (a stretch can begin on a bad one)
+      pending.push(i)
+      const pv = pending.map((k) => vals[k])
+      if (Math.max(...pv) - Math.min(...pv) > 1.5) pending = pending.slice(1).filter((k) => Math.abs(vals[k] - v) <= 1.5)
+      else if (pending.length >= 4) {
+        for (const k of pending) {
+          kept.push(vals[k])
+          out[k] = vals[k]
+        }
+        pending = []
+      }
+      continue
+    }
+    const recent = kept.slice(-5).sort((a, b) => a - b)
+    const ref = recent[recent.length >> 1]
+    if (Math.abs(v - ref) <= 2.5) {
+      pending = [] // a flick that came back: those readings stay undrawn
+      kept.push(v)
+      out[i] = v
+      continue
+    }
+    pending.push(i)
+    const pv = pending.map((k) => vals[k])
+    if (Math.max(...pv) - Math.min(...pv) > 1.5) pending = [i] // not settling: start again from here
+    else if (pending.length >= CONFIRM) {
+      for (const k of pending) {
+        kept.push(vals[k])
+        out[k] = vals[k]
+      }
+      pending = []
+    }
+  }
+
+  // a stretch that's over: trim the tail that dives away as the voice fades
+  if (ended) {
+    let last = out.length - 1
+    while (last >= 0 && out[last] === null) last--
+    for (let n = 0; n < 12 && last > 8; n++, last--) {
+      const before = out.slice(Math.max(0, last - 16), last).filter((x): x is number => x !== null).sort((a, b) => a - b)
+      if (!before.length || Math.abs(out[last]! - before[before.length >> 1]) <= 1.2) break
+      out[last] = null
+    }
+  }
+
+  if (detail === 'detailed') return out
+  // the glide filter
+  const { min, beta } = GLIDE[detail]
+  const dt = 1 / hz
+  const alpha = (fc: number) => 1 / (1 + 1 / (2 * Math.PI * fc * dt))
+  let x: number | null = null
+  let prev = 0 // the previous raw reading: how fast the voice really moves
+  let dx = 0
+  return out.map((v) => {
+    if (v === null) return null
+    if (x === null) {
+      x = prev = v
+      return x
+    }
+    dx += alpha(1) * ((v - prev) / dt - dx)
+    prev = v
+    x += alpha(min + beta * Math.abs(dx)) * (v - x)
+    return x
+  })
+}

@@ -44,7 +44,8 @@ export function LiveStats({ big, center }: { big?: boolean; /** phones: the song
   return (
     <div className={cx('relative flex items-center justify-between px-1 transition-all duration-500', center ? 'gap-2' : 'gap-4', big ? 'min-h-[4.5rem]' : 'min-h-[2.75rem]')}>
       {/* phones: a little smaller, the hints right beside it — clear of the centred switch */}
-      <div className={cx('flex items-center shrink-0', phone ? 'gap-1' : 'gap-3')}>
+      {/* phones: a fixed width (fits "C#4" and two hints), so what's centred beside it never moves */}
+      <div className={cx('flex items-center shrink-0', phone ? 'gap-1 w-[8.25rem] overflow-hidden' : 'gap-3')}>
         <Tip tip="The note you're singing right now.">
           <span ref={note} className={cx('font-medium tabular-nums w-[3.5ch] transition-all duration-500', big ? 'text-6xl' : phone ? 'text-3xl' : 'text-4xl')} />
         </Tip>

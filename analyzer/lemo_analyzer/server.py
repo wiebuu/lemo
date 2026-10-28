@@ -710,8 +710,10 @@ def align_plain_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     cache = d / f"align-{key}.json"
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
-    if not _can_align():
-        return {"status": "failed", "error": "word timing isn't available on this server"}
+    if not _can_align():  # no alignment model here: lines timed to the sung phrases instead
+        from . import phrase_timing
+
+        return {"status": "done", "lines": phrase_timing.time_lines(lines, ref.get("notes", []), float(ref.get("duration") or 0))}
     with _align_lock:
         job = _align_jobs.get(key)
         if job and job["status"] == "failed":
@@ -758,7 +760,7 @@ def align_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
     if not _can_align():
-        return {"status": "failed", "error": "word timing isn't available on this server"}
+        return {"status": "unavailable"}  # line timing stays; words are estimated in the browser
     with _align_lock:
         job = _align_jobs.get(key)
         if job and job["status"] == "failed":

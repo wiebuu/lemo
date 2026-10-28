@@ -688,6 +688,7 @@ export class Studio {
           this.set({ lyricsNote: r.error ?? 'word alignment failed' })
           break
         }
+        if (r.status === 'unavailable') break // this server doesn't time words: estimated timing stays
         if (r.message) this.set({ lyricsStatus: r.message })
         await new Promise((res) => setTimeout(res, 2000))
       }

@@ -165,7 +165,7 @@ export const analyzer = {
     `/api/songs/${id}/audio/${stem}?speed=${speed}&semitones=${semis}&f=m4a`, // f: new address after the WAV → AAC change (old cache entries)
   align: (id: string, lines: { start: number; end: number; text: string }[]) =>
     fetch(`/api/songs/${id}/align`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lines }) }).then((r) =>
-      json<{ status: 'running' | 'done' | 'failed'; lines?: ({ start: number; end: number; text: string }[] | null)[]; message?: string; error?: string }>(r),
+      json<{ status: 'running' | 'done' | 'failed' | 'unavailable'; lines?: ({ start: number; end: number; text: string }[] | null)[]; message?: string; error?: string }>(r),
     ),
   /** Time plain lyrics (no timestamps) to the singer, line by line. Poll until done. */
   alignPlain: (id: string, lines: string[]) =>

@@ -179,7 +179,7 @@ def _no_server_analysis() -> None:
     if not CONFIG.server_analysis:
         raise HTTPException(503, {
             "code": "server_analysis_off",
-            "message": "Lemody's server doesn't analyse new songs. Paste the song's YouTube link and choose \u201cthis computer\u201d or \u201cthis phone\u201d to analyse it on your device.",
+            "message": "We\u2019re on cheap servers, sorry \U0001F972 They can\u2019t analyse songs \u2014 do it on your device instead.",
         })
 
 

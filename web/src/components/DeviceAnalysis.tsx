@@ -44,7 +44,7 @@ export function AnalyseChoice({ name, health, onDevice, onServer, onRequest, onC
           icon={<Server size={15} />}
           title="Lemody's server"
           time={serverOk ? mins(serverSec) : '—'}
-          note={!serverOk ? 'not available' : ahead ? `${ahead} song${ahead > 1 ? 's' : ''} ahead` : 'no queue'}
+          note={!serverOk ? 'cheap servers, sorry 🥲 use your device' : ahead ? `${ahead} song${ahead > 1 ? 's' : ''} ahead` : 'no queue'}
           recommended={serverOk && !pickDevice}
           disabled={!serverOk}
           onClick={onServer}

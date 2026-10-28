@@ -40,6 +40,7 @@ export class MicInput {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       throw new MicError('insecure', 'Microphone needs a secure page (https or localhost).')
     }
+    setAudioSession('play-and-record') // recording: the phone may switch earphones to call mode
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
@@ -106,6 +107,11 @@ export class MicInput {
     return this.node?.context.sampleRate ?? 48000
   }
 
+  /** The microphone in use (e.g. "AirPods Pro"), once it's on. */
+  get deviceLabel(): string {
+    return this.stream?.getAudioTracks()[0]?.label ?? ''
+  }
+
   stop() {
     this.recPort?.close()
     this.recPort = null
@@ -127,5 +133,21 @@ export class MicInput {
     this.node = null
     this.sink = null
     this.worker = null
+    setAudioSession('playback') // back to full-quality music
+  }
+}
+
+/**
+ * iPhones (Safari): once a page has used the microphone, its audio stays in "call" mode
+ * (thin, mono, a buzz on Bluetooth earphones) even after the mic is off, unless the page
+ * says it's music again. Safari 16.4+ lets it; elsewhere this does nothing.
+ */
+export function setAudioSession(type: 'playback' | 'play-and-record') {
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+  if (!session) return
+  try {
+    session.type = type
+  } catch {
+    /* not allowed here */
   }
 }

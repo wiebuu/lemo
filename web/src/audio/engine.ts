@@ -5,6 +5,7 @@
 
 import { clampSeek, ctxTimeFor, loopJump, songTimeAt, type ClockAnchor, type LoopRegion } from '../lib/timeline'
 import { VoiceChain } from './voiceChain'
+import { setAudioSession } from './mic'
 
 export interface StemSet {
   backing: AudioBuffer
@@ -61,6 +62,7 @@ export class PlaybackEngine {
   onEnded: (() => void) | null = null
 
   constructor() {
+    setAudioSession('playback') // music: full quality, and it plays even with an iPhone on silent
     this.ctx = new AudioContext({ latencyHint: 'interactive' })
     this.backingGain = this.ctx.createGain()
     this.guideGain = this.ctx.createGain()

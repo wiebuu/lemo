@@ -1030,6 +1030,8 @@ export class Studio {
 
   // ---- microphone -----------------------------------------------------------
 
+  private btTipShown = false
+
   async toggleMic() {
     if (this.mic.active) {
       this.endSession()
@@ -1043,6 +1045,12 @@ export class Studio {
       await this.mic.start(this.ensureEngine().ctx)
       this.set({ mic: 'on' })
       this.startLoop()
+      // Bluetooth earphones switch to call mode while their mic records: the song sounds
+      // thinner until the mic is off again (every phone does this, not just Lemody)
+      if (/airpods|buds|bluetooth|headset|hands-?free|bt\b/i.test(this.mic.deviceLabel) && !this.btTipShown) {
+        this.btTipShown = true
+        this.toast('Bluetooth earphones sound thinner while the mic is on — wired ones sound best')
+      }
     } catch (e) {
       this.set({ mic: 'error', micError: e instanceof MicError ? e.message : (e as Error).message })
     }

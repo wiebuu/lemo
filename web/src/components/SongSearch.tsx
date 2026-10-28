@@ -102,7 +102,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
           disabled={disabled}
           placeholder={phone ? 'search or paste a link' : 'search a song or singer — or paste a link'}
           aria-label="search songs or paste a link"
-          className={cx('w-full bg-transparent rounded-xl pl-11 py-2.5 sm:py-3.5 text-[14px] sm:text-[15px] text-text placeholder:text-sub outline-none', link ? 'pr-28' : 'pr-9')}
+          className={cx('w-full bg-transparent rounded-xl pl-11 py-2.5 sm:py-3.5 text-[14px] sm:text-[15px] text-text placeholder:text-sub outline-none', link ? 'pr-28' : typed ? 'pr-9' : 'pr-3')}
         />
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading && typed && !link && <Loader2 size={15} className="animate-spin text-sub mr-2" aria-label="loading songs" />}

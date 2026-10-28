@@ -215,8 +215,8 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
             <Tip className="flex" tip={health ? 'Upload a song from your phone or computer' : 'Needs Lemody\u2019s server'}>
               <button type="button" aria-label="upload a song" disabled={!!running || !health}
                 onClick={() => (cantAnalyse ? setWeak(true) : audioInput.current?.click())}
-                className="w-11 sm:w-[52px] shrink-0 flex items-center justify-center rounded-xl surface text-sub hover:text-text hover:border-main/50 transition-colors disabled:opacity-40">
-                <Upload size={17} />
+                className="w-11 sm:w-[52px] shrink-0 flex items-center justify-center rounded-xl surface text-sub hover:text-main hover:border-main/30 transition-all active:scale-[.97] disabled:opacity-35">
+                <Upload size={16} />
               </button>
             </Tip>
             <Tip className="flex" tip="Try the demo song">
@@ -225,8 +225,8 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
                   await studio.loadDemo()
                   onDone()
                 }}
-                className="shrink-0 flex items-center gap-1.5 px-3.5 rounded-xl bg-text text-bg text-[13px] font-medium hover:opacity-90 transition-opacity disabled:opacity-40">
-                <Play size={13} className="fill-current" /> try
+                className="group shrink-0 flex items-center gap-1.5 px-3 sm:px-4 rounded-xl surface text-text text-[13px] hover:text-main hover:border-main/30 transition-all active:scale-[.97] disabled:opacity-35">
+                <Play size={12} className="text-main fill-current" /> demo
               </button>
             </Tip>
             <input ref={audioInput} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden

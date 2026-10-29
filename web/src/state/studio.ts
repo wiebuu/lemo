@@ -12,7 +12,7 @@ import { tidyTitle } from '../lib/titles'
 import { parseLrc } from '../lib/parsers/lrc'
 import { parseMidi } from '../lib/parsers/midi'
 import { applyChart, parseUltraStar } from '../lib/parsers/ultrastar'
-import { buildPhrases, lyricLineAt, phraseAt, plainTextToLines, suggestBreaths } from '../lib/phrases'
+import { buildPhrases, lyricLineAt, phraseAt, phraseForNav, PHRASE_LEAD_IN, plainTextToLines, suggestBreaths } from '../lib/phrases'
 import { lineEnd, lyricGate, retextLine, withWordTiming } from '../lib/lyricTiming'
 import { CoachState, voiceIssue, type VoiceIssue } from '../lib/voiceCoach'
 import { reviewNotes, type NoteReview, type ReviewAspect } from '../lib/review'
@@ -1089,20 +1089,26 @@ export class Studio {
     this.renderOnce()
   }
 
+  /** The phrase you're at, for next / previous: the looped one, or where the playhead is (its lead-in counts). */
+  private navPhrase(): number {
+    const ph = this.snap.phrases
+    if (this.snap.loop) return phraseAt(ph, this.snap.loop.start + 1.01)
+    return phraseForNav(ph, this.heardTime())
+  }
+
   seekPhrase(delta: number) {
     const ph = this.snap.phrases
     if (!ph.length) return
-    const cur = phraseAt(ph, this.heardTime())
-    const idx = Math.max(0, Math.min(ph.length - 1, cur + delta))
+    const idx = Math.max(0, Math.min(ph.length - 1, this.navPhrase() + delta))
     if (this.snap.loop) this.loopPhrase(idx)
-    this.seek(Math.max(0, ph[idx].start - 1))
+    this.seek(Math.max(0, ph[idx].start - PHRASE_LEAD_IN))
   }
 
   restartPhrase() {
     const ph = this.snap.phrases
     if (this.snap.loop) return this.seek(this.snap.loop.start)
     if (!ph.length) return this.seek(0)
-    this.seek(Math.max(0, ph[Math.max(0, phraseAt(ph, this.heardTime()))].start - 1))
+    this.seek(Math.max(0, ph[Math.max(0, this.navPhrase())].start - PHRASE_LEAD_IN))
   }
 
   toggleLoop() {

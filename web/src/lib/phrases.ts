@@ -37,6 +37,21 @@ export function phraseAt(phrases: Phrase[], t: number): number {
   return phrases.length - 1
 }
 
+/** How early a jump to a phrase starts playing (a short lead-in). */
+export const PHRASE_LEAD_IN = 1
+
+/**
+ * The phrase "next / previous / again" moves from. Within the lead-in before a phrase
+ * (where a jump to it lands) you're already at that phrase — judged by the playhead
+ * alone you'd still be in the one before, and "next" would land on the same phrase
+ * again and again.
+ */
+export function phraseForNav(phrases: Phrase[], t: number): number {
+  let i = phraseAt(phrases, t)
+  while (i >= 0 && phrases[i + 1] && t >= phrases[i + 1].start - PHRASE_LEAD_IN - 0.05) i++
+  return i
+}
+
 /**
  * Suggested breaths: only at phrase boundaries with a real gap in the melody.
  * Marked 'suggested' so the UI shows them differently from manual marks.

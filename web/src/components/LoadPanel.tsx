@@ -6,6 +6,7 @@ import { songLink } from '../lib/songLinks'
 import { cloudSongs, refreshCloudSongs } from '../state/cloud'
 import { events } from '../state/events'
 import { formatTime } from '../lib/music'
+import { go } from '../pages/router'
 import { studio } from '../state/studio'
 const AnalyseChoice = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.AnalyseChoice })))
 const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
@@ -267,7 +268,8 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         <div className="fade-in mt-4 surface rounded-2xl p-4 flex items-start justify-between gap-3">
           <div className="text-[13px] text-sub leading-relaxed">
             <span className="text-text font-medium">Got it.</span> We’ll add <span className="text-text">{asked}</span> within a week —
-            it’ll show up in your songs, and everyone can sing it.
+            it’ll show up in your songs, and everyone can sing it.{' '}
+            <a href="/coming" onClick={go} className="text-main underline underline-offset-2">See what’s coming</a>
           </div>
           <button type="button" onClick={() => setAsked(null)} className="text-xs text-sub hover:text-text shrink-0">close</button>
         </div>

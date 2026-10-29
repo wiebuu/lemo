@@ -114,6 +114,28 @@ class UserDataTests(unittest.TestCase):
             server.deliver_requests()
         self.assertEqual([s["songId"] for s in self.call("GET", "/api/me").json()["songs"]], ["yt-AbCdEfGhIjK"])
 
+    def test_everyone_sees_what_is_coming_and_anyone_can_analyse_it_for_them(self):
+        self.call("GET", "/api/me")  # profiles (names shown with the request)
+        self.call("GET", "/api/me", who="b")
+        with mock.patch.object(server, "_oembed", return_value=("Kesariya", "Arijit Singh")):
+            r = self.call("POST", "/api/requests", data={"url": "https://open.spotify.com/track/abc123"}).json()
+            self.call("POST", "/api/requests", who="b", data={"url": "https://open.spotify.com/track/abc123"})
+        board = self.call("GET", "/api/requests/all", who="b").json()
+        [p] = board["pending"]
+        self.assertEqual((p["title"], p["people"], p["names"], p["mine"]), ("Kesariya", 2, ["Alice", "Bob"], True))
+        self.assertEqual(board["added"], [])
+        # Bob analyses his own copy on his device: it's stored as an upload, then given to everyone who asked
+        target = "up-1234567890abcdef"
+        self.assertEqual(self.call("POST", f"/api/requests/{r['id']}/fulfil", who="b", json={"target": target}).status_code, 409)  # not stored
+        with mock.patch.object(server.remote, "has", return_value=True):
+            self.assertEqual(self.call("POST", f"/api/requests/{r['id']}/fulfil", who="b", json={"target": target}).status_code, 200)
+            self.assertEqual(self.call("POST", f"/api/requests/{r['id']}/fulfil", json={"target": target}).status_code, 404)  # done already
+        for who in ("a", "b"):
+            self.assertEqual([s["songId"] for s in self.call("GET", "/api/me", who=who).json()["songs"]], [target])
+        board = self.call("GET", "/api/requests/all").json()
+        self.assertEqual(board["pending"], [])
+        self.assertEqual((board["added"][0]["target"], board["added"][0]["helper"]), (target, "Bob"))
+
     def test_a_request_can_be_cancelled(self):
         with mock.patch.object(server, "_oembed", return_value=(None, None)):
             self.call("POST", "/api/requests", data={"url": "https://youtu.be/AbCdEfGhIjK"})

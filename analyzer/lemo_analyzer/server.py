@@ -673,6 +673,28 @@ def my_requests(request: Request) -> list[dict]:
     return _data(lambda: userdata.my_requests(_uid(request)))
 
 
+@app.get("/api/requests/all")
+def all_requests(request: Request) -> dict:
+    """Coming soon: every song people asked for (and who), and the ones added this week."""
+    return _data(lambda: userdata.public_requests(_uid(request), time.time() - 7 * 86400))
+
+
+@app.post("/api/requests/{song_id}/fulfil")
+async def fulfil_request(request: Request, song_id: str, body: dict = Body(...)) -> dict:
+    """A singer analysed a requested song on their own device (the link itself, or their own
+    copy of the song): everyone who asked gets it now."""
+    target = body.get("target")
+    if not REQUEST_ID.match(song_id) or not isinstance(target, str) or not SONG_ID.match(target):
+        raise HTTPException(400, "send {target: song id}")
+    if not ((jobs.song_dir(target) / "reference.json").exists() or remote.has(target)):
+        raise HTTPException(409, "that song isn't stored yet")
+    n = _data(lambda: userdata.fulfil(song_id, target, _uid(request)))
+    if not n:
+        raise HTTPException(404, "this song was already added")
+    await run_in_threadpool(deliver_requests)
+    return {"ok": True}
+
+
 @app.delete("/api/requests/{song_id}")
 def cancel_request(request: Request, song_id: str) -> dict:
     if not REQUEST_ID.match(song_id):

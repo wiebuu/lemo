@@ -1,4 +1,4 @@
-import { ChartColumn, CircleHelp, Crown, Info, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
+import { ChartColumn, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
 import { signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
 import { navigate } from '../pages/router'
@@ -108,6 +108,7 @@ function Account() {
             )}
           </div>
           <MenuItem icon={<Crown size={14} />} label="today's top" tip="The best takes sung today — open one to hear it." onClick={() => { close(); navigate('/top') }} />
+          <MenuItem icon={<ListMusic size={14} />} label="coming soon" tip="Songs people asked for — help add one." onClick={() => { close(); navigate('/coming') }} />
           <MenuItem icon={<ChartColumn size={14} />} label="stats" tip="Lemody in numbers." onClick={() => { close(); navigate('/stats') }} />
           <MenuItem icon={<CircleHelp size={14} />} label="help & questions" tip="Answers to common questions." onClick={() => { close(); navigate('/help') }} />
           <MenuItem icon={<Shield size={14} />} label="privacy" tip="What Lemody keeps, and what it never does." onClick={() => { close(); navigate('/privacy') }} />

@@ -4,11 +4,13 @@ import { Wordmark } from '../components/Brand'
 
 import { SiteFooter } from './Footer'
 import { StatsPage, TopPage } from './Board'
+import { ComingPage } from './Coming'
 import { go, navigate } from './router'
 
 export const PAGES: Record<string, { title: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean }> = {
   '/top': { title: 'Today’s top', body: TopPage, compact: true },
   '/stats': { title: 'Stats', body: StatsPage, compact: true },
+  '/coming': { title: 'Coming soon', body: ComingPage, compact: true },
   '/about': { title: 'About Lemody', body: About },
   '/help': { title: 'Help & questions', body: Help },
   '/privacy': { title: 'Privacy policy', body: Privacy },
@@ -136,6 +138,8 @@ function Privacy() {
       <p className="lead">Short version: your singing is scored on your device. Your voice is uploaded only if a take makes today's top 100 and you choose to share it. Otherwise we keep only what's needed to give you your account — your song list, settings and scores.</p>
       <h2>Your voice</h2>
       <p>Your microphone is processed entirely in your browser to draw your pitch and work out your scores. Your last take is kept in your device's memory so you can listen back; it's gone when you close the page.</p>
+      <h2>Songs you ask for</h2>
+      <p>When you ask Lemody to add a song, it's listed on <A href="/coming">coming soon</A> for signed-in singers to see: the song, its link, when it was asked for, and the first name of everyone who asked. If someone adds it by analysing it on their own device, their first name is shown with it. Cancel a request and your name comes off the list.</p>
       <h2>Today's top</h2>
       <p>If a take scores among the best 100 of the day (at least a minute of a library song), it is shared on <A href="/top">today's top</A>: your Google name and photo, the song, your result and your pitch line are stored on our server so other signed-in singers can open it. You're then asked whether they may also hear your voice: only if you say yes is the recording of that take stored. Only your best take of the day is kept. A take is deleted as soon as it drops out of the 100, and every take is deleted when the day ends (midnight, India time). To stay off today's top entirely, choose Settings → scoring → today's top → don't share.</p>
       <h2>Your account</h2>

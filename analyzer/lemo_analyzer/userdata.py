@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS lemo_requests (
 );
 -- a link from a site we can't use (Spotify, …): the song it becomes, set when it's added
 ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS target_id text;
+-- who analysed it on their own device, for everyone who asked (the "coming soon" page)
+ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS helper_uid text;
 -- today's top: each singer's best take of the day (only the best 100 are kept, with their voice)
 CREATE TABLE IF NOT EXISTS lemo_top (
   id         text PRIMARY KEY,
@@ -280,6 +282,35 @@ def pending_requests() -> list[dict]:
              "people": int(r["people"]), "firstAt": r["first_at"],
              # the song it becomes: a YouTube link's own id, or what was picked for another link
              "target": r["target_id"] or (r["song_id"] if r["song_id"].startswith("yt-") else None)} for r in rows]
+
+
+def public_requests(uid: str, since: float) -> dict:
+    """The "coming soon" page: every song still waiting (who asked, when), and the ones
+    added since `since`."""
+    pending = _q(
+        """SELECT r.song_id, MIN(r.url) AS url, MAX(r.title) AS title, MAX(r.artist) AS artist, COUNT(*) AS people,
+                  MIN(r.requested_at) AS first_at, array_agg(COALESCE(u.name, 'a singer') ORDER BY r.requested_at) AS names,
+                  bool_or(r.uid = %s) AS mine
+           FROM lemo_requests r JOIN lemo_users u ON u.uid = r.uid
+           WHERE r.done_at IS NULL GROUP BY r.song_id ORDER BY COUNT(*) DESC, MIN(r.requested_at)""", (uid,))
+    added = _q(
+        """SELECT r.song_id, MAX(COALESCE(r.target_id, CASE WHEN r.song_id LIKE 'yt-%%' THEN r.song_id END)) AS target,
+                  MAX(r.title) AS title, MAX(r.artist) AS artist, COUNT(*) AS people, MAX(r.done_at) AS done_at,
+                  array_agg(COALESCE(u.name, 'a singer') ORDER BY r.requested_at) AS names, MAX(h.name) AS helper
+           FROM lemo_requests r JOIN lemo_users u ON u.uid = r.uid LEFT JOIN lemo_users h ON h.uid = r.helper_uid
+           WHERE r.done_at > %s GROUP BY r.song_id ORDER BY MAX(r.done_at) DESC""", (since,))
+    return {
+        "pending": [{"songId": r["song_id"], "url": r["url"], "title": r["title"], "artist": r["artist"], "people": int(r["people"]),
+                     "firstAt": r["first_at"], "names": r["names"], "mine": r["mine"]} for r in pending],
+        "added": [{"songId": r["song_id"], "target": r["target"], "title": r["title"], "artist": r["artist"], "people": int(r["people"]),
+                   "doneAt": r["done_at"], "names": r["names"], "helper": r["helper"]} for r in added],
+    }
+
+
+def fulfil(song_id: str, target_id: str, helper_uid: str) -> int:
+    """Someone analysed a requested song on their own device: it becomes this song."""
+    return _q("UPDATE lemo_requests SET target_id = %s, helper_uid = %s WHERE song_id = %s AND done_at IS NULL",
+              (target_id, helper_uid, song_id))
 
 
 def set_target(song_id: str, target_id: str) -> int:

@@ -129,6 +129,12 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** The "coming soon" page: songs people asked for, and the ones added this week. */
+export interface RequestBoard {
+  pending: { songId: string; url: string; title: string | null; artist: string | null; people: number; firstAt: number; names: string[]; mine: boolean }[]
+  added: { songId: string; target: string | null; title: string | null; artist: string | null; people: number; doneAt: number; names: string[]; helper: string | null }[]
+}
+
 /** One place in today's top: a singer's best take of the day. */
 export interface TopEntry {
   id: string
@@ -261,6 +267,12 @@ export const analyzer = {
       json<{ state: 'ready' | 'requested'; id: string; title?: string | null; artist?: string | null; days?: number }>(r),
     ),
   requests: () => fetch('/api/requests').then((r) => json<SongRequest[]>(r)),
+  /** everyone's requests (coming soon) */
+  allRequests: () => fetch('/api/requests/all').then((r) => json<RequestBoard>(r)),
+  /** a requested song, analysed on this device: everyone who asked gets it */
+  fulfilRequest: (songId: string, target: string) =>
+    fetch(`/api/requests/${songId}/fulfil`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target }) })
+      .then((r) => json<{ ok: boolean }>(r)),
   /** A link from YouTube, Spotify, …: the song Lemody already has for it (maybe another upload of it), or null. */
   matchLink: (url: string) =>
     fetch(`/api/songs/match?${new URLSearchParams({ url })}`).then((r) => json<{ song: { id: string; title: string; artist?: string | null } | null }>(r)),

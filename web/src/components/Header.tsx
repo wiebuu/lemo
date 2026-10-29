@@ -29,6 +29,18 @@ export function Header({ open }: { open: (p: Panel) => void }) {
         <IconToggle tip="Lyrics & breath marks" onClick={() => open('lyrics')} disabled={!t} why="Load a song first.">
           <PencilLine size={17} />
         </IconToggle>
+        <IconToggle tip="Today's top" onClick={() => navigate('/top')}>
+          <Crown size={17} />
+        </IconToggle>
+        <IconToggle tip="Stats" onClick={() => navigate('/stats')}>
+          <ChartColumn size={17} />
+        </IconToggle>
+        <IconToggle tip="Settings" onClick={() => open('settings')}>
+          <Settings size={17} />
+        </IconToggle>
+        <IconToggle tip="How Lemody works" onClick={() => open('tutorial')}>
+          <Info size={17} />
+        </IconToggle>
       </nav>
       <div className="flex-1" />
       {t && (
@@ -48,21 +60,6 @@ export function Header({ open }: { open: (p: Panel) => void }) {
           </button>
         </Tip>
       )}
-      {/* settings, help, today's top, stats: together on the right, next to your account */}
-      <nav aria-label="more" className={cx('flex items-center -mr-1 sm:mr-0 transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')}>
-        <IconToggle tip="Settings" onClick={() => open('settings')}>
-          <Settings size={17} />
-        </IconToggle>
-        <IconToggle tip="How Lemody works" onClick={() => open('tutorial')}>
-          <Info size={17} />
-        </IconToggle>
-        <IconToggle tip="Today's top" onClick={() => navigate('/top')}>
-          <Crown size={17} />
-        </IconToggle>
-        <IconToggle tip="Stats" onClick={() => navigate('/stats')}>
-          <ChartColumn size={17} />
-        </IconToggle>
-      </nav>
       <Account />
     </header>
   )

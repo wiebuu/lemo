@@ -153,7 +153,9 @@ export function setAudioSession(type: 'playback' | 'play-and-record') {
   }
 }
 
-const BLUETOOTH = /airpods|buds|bluetooth|headset|hands-?free|\bbt\b/i
+// not "headset" alone: Android names wired earphones' mic "Headset earpiece" / "Wired
+// headset", and moving off that mic sent the sound to the phone's speaker instead
+const BLUETOOTH = /airpods|buds|bluetooth|hands-?free|\bbt\b|\bsco\b/i
 
 /** True when this mic is a Bluetooth headset's (its use puts the earphones in call mode). */
 export const isBluetoothMic = (label: string) => BLUETOOTH.test(label)

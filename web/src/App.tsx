@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { detectOutput, onOutputChange, type OutputKind } from './audio/output'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { detectOutput, onOutputChange } from './audio/output'
 import { SiteFooter } from './pages/Footer'
 import { ConfigBar } from './components/ConfigBar'
 import { Graph } from './components/Graph'
@@ -28,7 +28,7 @@ export default function App() {
   const s = useStudio()
   const phone = usePhone()
   const [panel, setPanel] = useState<Panel>(null)
-  const headphones = useHeadphoneCheck(s.mic === 'on')
+  const headphones = useHeadphoneNotice(s.session)
   const close = useCallback(() => setPanel(null), [])
   const results = !!s.lastResult && !s.session
 
@@ -167,7 +167,7 @@ export default function App() {
         </div>
       )}
       <Suspense fallback={null}>
-        {headphones.note && <HeadphoneNote kind={headphones.note} onDone={headphones.done} />}
+        {headphones.show && <HeadphoneNote onClose={headphones.close} />}
         {s.settings.disco && s.track && !phone && <Disco />}
       </Suspense>
       {(s.error || s.micError) && (
@@ -197,62 +197,36 @@ export default function App() {
   )
 }
 
+/** Once per visit: has the first test checked where the sound goes? */
+let outputChecked = false
+
 /**
- * When singing starts (mic on), make sure the sound goes to headphones. Known
- * headphones: nothing to say. The speaker, or can't tell: explain why they matter,
- * with the music paused meanwhile. The answer holds for this visit; unplugging
- * headphones mid-session brings the note back.
+ * The first test after opening the site: if the sound is going to the speaker, a short
+ * note says earphones work best. Nothing to answer, the music keeps playing, and it's
+ * not shown again this visit. Phones that don't say where the sound goes (iPhones)
+ * get no note rather than a guess.
  */
-function useHeadphoneCheck(micOn: boolean) {
-  const [note, setNote] = useState<Exclude<OutputKind, 'headphones'> | null>(null)
-  const resume = useRef(false)
-  const answered = () => sessionStorage.getItem('lemo.headphones') !== null
+function useHeadphoneNotice(session: boolean) {
+  const [show, setShow] = useState(false)
+  const close = useCallback(() => setShow(false), [])
 
-  const open = useCallback((kind: Exclude<OutputKind, 'headphones'>) => {
-    if (studio.snap.playing) {
-      resume.current = true
-      void studio.togglePlay()
-    }
-    setNote(kind)
-  }, [])
-
-  const done = useCallback((wearing: boolean) => {
-    try {
-      sessionStorage.setItem('lemo.headphones', wearing ? 'yes' : 'no')
-    } catch {
-      /* private mode */
-    }
-    setNote(null)
-    if (resume.current) {
-      resume.current = false
-      void studio.togglePlay()
-    }
-  }, [])
-
-  // mic turned on → check once per visit
   useEffect(() => {
-    if (!micOn || answered()) return
+    if (!session || outputChecked) return
+    outputChecked = true
     let live = true
-    void detectOutput().then((kind) => live && kind !== 'headphones' && open(kind))
+    void detectOutput().then((kind) => live && kind === 'speaker' && setShow(true))
     return () => {
       live = false
     }
-  }, [micOn, open])
+  }, [session])
 
-  // headphones plugged in while the note is open → it goes away; unplugged mid-session → it comes back
+  // earphones plugged in while it shows → it goes away
   useEffect(
-    () =>
-      onOutputChange(() => {
-        void detectOutput().then((kind) => {
-          if (kind === 'headphones') {
-            if (note) done(true)
-          } else if (kind === 'speaker' && micOn && !note) open('speaker')
-        })
-      }),
-    [micOn, note, open, done],
+    () => (show ? onOutputChange(() => void detectOutput().then((kind) => kind === 'headphones' && setShow(false))) : undefined),
+    [show],
   )
 
-  return { note, done }
+  return { show, close }
 }
 
 /** While a window's code arrives (first open only, a moment): a small spinner, no jump. */

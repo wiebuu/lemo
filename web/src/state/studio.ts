@@ -232,6 +232,7 @@ export class Studio {
     if (!this.engine) {
       const e = new PlaybackEngine()
       e.onDiscontinuity = () => this.endTake()
+      e.onSilenced = () => this.toast('no sound? tap anywhere to bring it back', 4000)
       e.onEnded = () => {
         this.set({ playing: false })
         this.endSession()
@@ -828,10 +829,10 @@ export class Studio {
   }
 
   /** A short message near the bottom that fades away — feedback for actions with no other visible effect. */
-  toast(text: string) {
+  toast(text: string, ms = 1800) {
     const id = Date.now()
     this.set({ toast: { id, text } })
-    setTimeout(() => this.snap.toast?.id === id && this.set({ toast: null }), 1800)
+    setTimeout(() => this.snap.toast?.id === id && this.set({ toast: null }), ms)
   }
 
   removeBreath(id: string) {

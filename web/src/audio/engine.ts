@@ -60,6 +60,8 @@ export class PlaybackEngine {
   /** Emitted when the loop wraps or a seek happens (used to split takes). */
   onDiscontinuity: (() => void) | null = null
   onEnded: (() => void) | null = null
+  /** The sound stopped and only a tap can bring it back (shown as a note). */
+  onSilenced: (() => void) | null = null
 
   constructor() {
     setAudioSession('playback') // music: full quality, and it plays even with an iPhone on silent
@@ -75,6 +77,40 @@ export class PlaybackEngine {
     this.musicTap.fftSize = 2048
     this.musicTap.smoothingTimeConstant = 0.15
     this.backingGain.connect(this.musicTap)
+    this.keepSoundOn()
+  }
+
+  /**
+   * Phones can stop the audio under us: turning the mic on or off switches the phone's
+   * audio mode, plugging in earphones changes the route, a call comes in. The audio then
+   * sits "interrupted" or "suspended" — silent, the clock frozen — and before, nothing
+   * started it again until the page was reloaded. Now: try to resume at once, and if the
+   * phone wants a touch first, the next tap anywhere does it.
+   */
+  private keepSoundOn() {
+    const wanted = () => this.playing && this.ctx.state !== 'running' && this.ctx.state !== 'closed'
+    this.ctx.addEventListener('statechange', () => {
+      if (!wanted()) return
+      void this.resumeSoon().then((ok) => {
+        if (!ok && wanted()) this.onSilenced?.()
+      })
+    })
+    const onTouch = () => {
+      if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') void this.ctx.resume().catch(() => undefined)
+    }
+    for (const ev of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(ev, onTouch, { capture: true, passive: true })
+  }
+
+  /** Resume, but never wait forever: an interrupted iPhone audio can hold this promise until it's touched. */
+  private async resumeSoon(ms = 700): Promise<boolean> {
+    if (this.ctx.state === 'running') return true
+    try {
+      await Promise.race([this.ctx.resume(), new Promise((r) => setTimeout(r, ms))])
+    } catch {
+      /* not allowed without a touch */
+    }
+    this.steady = null
+    return (this.ctx.state as string) === 'running'
   }
 
   /**
@@ -133,15 +169,17 @@ export class PlaybackEngine {
    * which don't switch.
    */
   async refreshOutput() {
-    if (!matchMedia('(pointer: coarse)').matches || this.ctx.state !== 'running') return
+    if (!matchMedia('(pointer: coarse)').matches || this.ctx.state === 'closed') return
     try {
-      await this.ctx.suspend()
-      await new Promise((r) => setTimeout(r, 80))
-      await this.ctx.resume()
+      if (this.ctx.state === 'running') {
+        await this.ctx.suspend()
+        await new Promise((r) => setTimeout(r, 80))
+      }
     } catch {
       /* closed meanwhile */
     }
-    this.steady = null // the clock picks up from the audio again
+    // never left suspended: if the phone won't resume it on its own, the next tap does
+    if (!(await this.resumeSoon()) && this.playing) this.onSilenced?.()
   }
 
   // The audio clock moves in uneven steps (5–16 ms between screen frames here, bigger
@@ -250,7 +288,10 @@ export class PlaybackEngine {
 
   async play() {
     if (!this.stems || this.playing) return
-    if (this.ctx.state !== 'running') await this.ctx.resume()
+    if (this.ctx.state !== 'running' && !(await this.resumeSoon())) {
+      // (play is always a tap, so this rarely happens; the next tap resumes it)
+      this.onSilenced?.()
+    }
     if (this.pausedAt >= this.duration - 0.05) this.pausedAt = this.loop?.start ?? 0
     if (this.window && (this.pausedAt >= this.window.end - 0.05 || this.pausedAt < this.window.start)) this.pausedAt = this.window.start
     const startCtx = this.ctx.currentTime + 0.03

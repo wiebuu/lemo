@@ -255,10 +255,8 @@ export function Tip({ tip, children, className, wide, preview }: {
   const ref = useRef<HTMLSpanElement>(null)
   const [pos, setPos] = useState<{ x: number; y: number; above: boolean } | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  // Touch screens have no hover: a tap just acts, a long-press shows the tip.
+  // Touch screens have no hover: tips never show there — a tap just acts.
   const touchAt = useRef(0)
-  const press = useRef<{ x: number; y: number } | null>(null)
-  const longPressed = useRef(false)
   const place = () => {
     const r = ref.current?.getBoundingClientRect()
     if (!r) return
@@ -267,6 +265,7 @@ export function Tip({ tip, children, className, wide, preview }: {
   }
   const show = () => {
     if (Date.now() - touchAt.current < 1000) return // the browser's fake hover after a tap
+    if (matchMedia('(hover: none)').matches) return // a phone: no hover, no tips
     clearTimeout(timer.current)
     timer.current = setTimeout(place, 220)
   }
@@ -276,35 +275,12 @@ export function Tip({ tip, children, className, wide, preview }: {
   }
   const onPointerDown = (e: React.PointerEvent) => {
     hide()
-    if (e.pointerType === 'mouse') return
-    touchAt.current = Date.now()
-    longPressed.current = false
-    press.current = { x: e.clientX, y: e.clientY }
-    timer.current = setTimeout(() => {
-      longPressed.current = true
-      place()
-      timer.current = setTimeout(() => setPos(null), 2800)
-    }, 450)
-  }
-  const cancelPress = (e: React.PointerEvent) => {
-    if (e.pointerType === 'mouse' || !press.current) return
-    if (e.type === 'pointermove' && Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) < 10) return
-    press.current = null
-    if (!longPressed.current) clearTimeout(timer.current)
+    if (e.pointerType !== 'mouse') touchAt.current = Date.now()
   }
   useEffect(() => () => clearTimeout(timer.current), [])
   return (
     <span ref={ref} className={cx('inline-flex', className)} onMouseEnter={show} onMouseLeave={hide} onFocus={() => Date.now() - touchAt.current > 1000 && show()} onBlur={hide}
-      onPointerDown={onPointerDown} onPointerUp={cancelPress} onPointerCancel={cancelPress} onPointerMove={cancelPress}
-      onContextMenu={(e) => Date.now() - touchAt.current < 1500 && e.preventDefault()}
-      onClickCapture={(e) => {
-        // a long-press was for reading the tip, not for pressing the button
-        if (longPressed.current) {
-          e.preventDefault()
-          e.stopPropagation()
-          longPressed.current = false
-        }
-      }}>
+      onPointerDown={onPointerDown}>
       {children}
       {pos &&
         createPortal(

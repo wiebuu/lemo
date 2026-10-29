@@ -156,8 +156,9 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
                 key={s.id}
                 role="option"
                 aria-selected={i === sel}
-                onMouseEnter={() => setSel(i)}
-                className={cx('group grid grid-cols-[2rem_1fr_auto] items-center gap-2 px-1.5 py-1.5 rounded-lg', i === sel && 'bg-sub-alt/60')}
+                onPointerEnter={(e) => e.pointerType === 'mouse' && setSel(i)}
+                // the highlighted row (for the keyboard / mouse) — not on touch screens, where it read as a stuck hover
+                className={cx('group grid grid-cols-[2rem_1fr_auto] items-center gap-2 px-1.5 py-1.5 rounded-lg', i === sel && '[@media(pointer:fine)]:bg-sub-alt/60')}
               >
                 <PreviewButton id={s.id} has={s.preview !== false} preview={preview} />
                 <button type="button" disabled={!!opening} onClick={() => { preview.stop(); onOpen(s.id) }} className="min-w-0 text-left truncate">

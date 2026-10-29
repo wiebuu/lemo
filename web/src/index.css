@@ -163,8 +163,10 @@ input[type='range']::-webkit-slider-thumb {
   background: var(--sub);
   transition: background 0.15s;
 }
-input[type='range']:hover::-webkit-slider-thumb {
-  background: var(--grad);
+@media (hover: hover) and (pointer: fine) {
+  input[type='range']:hover::-webkit-slider-thumb {
+    background: var(--grad);
+  }
 }
 /* touch screens: a fingertip-sized target (the bar still looks thin), and a drag on a
    slider never scrolls the page */
@@ -457,28 +459,31 @@ button:disabled {
   content-visibility: auto;
   contain-intrinsic-size: auto 34px;
 }
-.track:not(:disabled):hover {
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-}
 .track:disabled {
   cursor: default;
 }
-/* the track number turns into a little equaliser on hover */
+/* the track number turns into a little equaliser on hover — with a mouse only: on a
+   touch screen a tap would leave it stuck on */
 .track-eq {
-  opacity: 0;
-}
-.track:hover .track-eq {
-  opacity: 1;
-}
-.track:hover .track-no:has(+ .track-eq) {
   opacity: 0;
 }
 .track .eq span {
   animation-play-state: paused;
   background: var(--main);
 }
-.track:hover .eq span {
-  animation-play-state: running;
+@media (hover: hover) and (pointer: fine) {
+  .track:not(:disabled):hover {
+    background: color-mix(in srgb, var(--text) 4%, transparent);
+  }
+  .track:hover .track-eq {
+    opacity: 1;
+  }
+  .track:hover .track-no:has(+ .track-eq) {
+    opacity: 0;
+  }
+  .track:hover .eq span {
+    animation-play-state: running;
+  }
 }
 
 /* short windows: the start page keeps room for the tracklist (phones have their own sizes) */

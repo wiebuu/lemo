@@ -52,6 +52,8 @@ export interface Settings {
   /** Lyrics script: as found, Hinglish (latin), Hindi (deva) or Urdu. */
   lyricsScript: LyricsScript
   layers: GraphLayers
+  /** Which default set of layers the saved ones were made from (see LAYERS_VERSION). */
+  layersVersion: number
   /** Disco lights: glows at the screen's edges that pulse with the beat and follow the melody. */
   disco: boolean
   /** A take good enough for today's top is shared there (your name, photo, result and voice). */
@@ -79,7 +81,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showHistory: false,
   showBreaths: true,
   lyricsScript: 'original',
-  layers: { shape: true, loudness: true, exact: false, timing: true },
+  layers: { shape: true, loudness: true, exact: true, timing: false },
+  layersVersion: 2,
   disco: false,
   shareTop: true,
 }
@@ -121,6 +124,9 @@ function pickTheme(saved: Partial<Settings>): ThemeName {
   return THEMES.includes(t) ? t : 'studio'
 }
 
+/** Bumped when the default graph layers change, to switch everyone over once. */
+const LAYERS_VERSION = 2
+
 export const persist = {
   settings: (): Settings => {
     const saved = read<Partial<Settings>>('lemo.settings') ?? {}
@@ -131,7 +137,12 @@ export const persist = {
       melodyView: saved.melodyView === 'bars' ? 'bars' : 'line',
       lineDetail: (['smooth', 'natural', 'detailed'] as const).includes(saved.lineDetail as LineDetail) ? saved.lineDetail! : 'smooth',
       weights: { ...DEFAULT_WEIGHTS, ...(saved.weights ?? {}) },
-      layers: { ...DEFAULT_SETTINGS.layers, ...(saved.layers ?? {}) },
+      // saved before the defaults changed (timing off, real pitch on): switched over once;
+      // after that, what you pick stays
+      layers: saved.layersVersion === LAYERS_VERSION
+        ? { ...DEFAULT_SETTINGS.layers, ...(saved.layers ?? {}) }
+        : { ...DEFAULT_SETTINGS.layers, ...(saved.layers ?? {}), timing: false, exact: true },
+      layersVersion: LAYERS_VERSION,
     }
   },
   /** fromCloud: it came from your account — save it here without sending it back */

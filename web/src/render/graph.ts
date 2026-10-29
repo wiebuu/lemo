@@ -772,6 +772,16 @@ export class GraphRenderer {
       }
       if (!drawn) continue
       if (pen) ctx.lineTo(px0, py0)
+      if (style === 'main') {
+        // a thin dark edge first, so your line stands apart from whatever is under it —
+        // the lit melody especially (white on white in mono)
+        const w = ctx.lineWidth
+        ctx.save()
+        ctx.strokeStyle = withAlpha(p.bg, 0.9)
+        ctx.lineWidth = w + 3
+        ctx.stroke()
+        ctx.restore()
+      }
       if (discoLive.on && style === 'main') this.neon(() => ctx.stroke(), p.voice, 12)
       else ctx.stroke()
       last = { t: r[r.length - 1].t, y: py0 }

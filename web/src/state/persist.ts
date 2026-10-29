@@ -8,7 +8,7 @@ import { events } from './events'
 
 export type LyricsScript = 'original' | 'latin' | 'deva' | 'urdu'
 export type ThemeName = 'studio' | 'ink' | 'sage' | 'velvet' | 'mono'
-export const THEMES: ThemeName[] = ['studio', 'ink', 'sage', 'velvet', 'mono']
+export const THEMES: ThemeName[] = ['mono', 'studio', 'ink', 'sage', 'velvet']
 /** Themes from earlier versions → their closest current one. */
 const RENAMED: Record<string, ThemeName> = { stage: 'studio', midnight: 'ink', neon: 'velvet', serika: 'mono' }
 /** line = one continuous melody line (default); bars = one block per note. */
@@ -61,7 +61,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  theme: 'studio',
+  theme: 'mono',
   themePicked: false,
   toleranceCents: 50,
   latencyMs: null,
@@ -119,9 +119,9 @@ function write(key: string, value: unknown) {
 }
 
 function pickTheme(saved: Partial<Settings>): ThemeName {
-  if (!saved.themePicked || !saved.theme) return 'studio'
+  if (!saved.themePicked || !saved.theme) return 'mono' // the default, until you pick one
   const t = RENAMED[saved.theme] ?? saved.theme
-  return THEMES.includes(t) ? t : 'studio'
+  return THEMES.includes(t) ? t : 'mono'
 }
 
 /** Bumped when the default graph layers change, to switch everyone over once. */

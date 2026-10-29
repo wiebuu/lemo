@@ -147,5 +147,5 @@ const SWATCH: Record<ThemeName, { bg: string; main: string; main2: string; text:
   ink: { bg: '#0d1117', main: '#8fb4f6', main2: '#a3a9f2', text: '#e6edf3', mood: 'Ink — blue-black and periwinkle.' },
   sage: { bg: '#111412', main: '#a3c9a8', main2: '#8bbcae', text: '#e7ece8', mood: 'Sage — green-grey and soft sage.' },
   velvet: { bg: '#151114', main: '#e3a7b6', main2: '#cfa5d6', text: '#f0e9ee', mood: 'Velvet — aubergine and dusty rose.' },
-  mono: { bg: '#111111', main: '#f0f0f0', main2: '#c4c4c4', text: '#eeeeee', mood: 'Mono — no colour, just light on charcoal.' },
+  mono: { bg: '#111111', main: '#f0f0f0', main2: '#c4c4c4', text: '#eeeeee', mood: 'Mono — no colour, just light on charcoal. The default.' },
 }

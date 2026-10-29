@@ -7,8 +7,7 @@
 
 /* Themes — restrained palettes: a neutral dark base and one refined accent.
    --main-2 is a close shade of the accent (never a different hue family), so
-   the few gradients read as a sheen, not a rainbow. "studio" is the default. */
-:root,
+   the few gradients read as a sheen, not a rainbow. "mono" is the default. */
 :root[data-theme='studio'] {
   --bg: #131313;
   --sub-alt: #1c1c1d;
@@ -62,6 +61,7 @@
   --flat: #93b2ea;
 }
 /* mono — no colour at all, white on charcoal */
+:root,
 :root[data-theme='mono'] {
   --bg: #111111;
   --sub-alt: #1a1a1a;
@@ -69,7 +69,7 @@
   --sub: #7a7a7a;
   --main: #f0f0f0;
   --main-2: #c4c4c4;
-  --voice: #8cc8ff; /* your line on the graph — always unlike the original's */
+  --voice: #ffffff; /* your line: bright white, over the original's grey */
   --error: #ff6b6b;
   --sharp: #e9a06a;
   --flat: #7fa7e0;

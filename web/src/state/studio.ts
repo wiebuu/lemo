@@ -1509,6 +1509,11 @@ export class Studio {
   setListenSource(src: 'me' | 'original') {
     if (!this.snap.replay || src === this.snap.listenSource) return
     if (src === 'original' && !this.snap.caps?.hasGuide) return
+    const v = this.snap.viewing
+    if (src === 'me' && v && !v.hasVoice) {
+      this.toast(`${v.name} kept their voice private`) // a take from today's top, shared without the voice
+      return
+    }
     this.set({ listenSource: src })
     this.applyVolumes()
   }

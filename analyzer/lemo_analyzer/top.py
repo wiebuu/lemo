@@ -104,6 +104,9 @@ def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path | None = None) 
         raise Rejected("invalid score")
     if not isinstance(seconds, (int, float)) or seconds < MIN_SECONDS or seconds > 1200:
         raise Rejected(f"a take needs at least {MIN_SECONDS} seconds of the song")
+    tol = meta.get("toleranceCents", 50)
+    if not isinstance(tol, (int, float)) or tol >= 100 or tol <= 0:
+        raise Rejected("easy difficulty doesn't count for today's top")
     day = today()
     if userdata.top_rank(day, uid, float(score))["rank"] is None:
         return {"rank": None, "id": None}

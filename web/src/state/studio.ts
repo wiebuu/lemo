@@ -915,7 +915,7 @@ export class Studio {
     if (ev) void analyzer.countTest(true, Math.max(0, ev.to - ev.from))
     if (ev && this.analyzerId) {
       void analyzer.played(this.analyzerId) // counts towards Explore's most played
-      void this.offerToTop(this.analyzerId)
+      void this.offerToTop(this.analyzerId, ev, { toleranceCents: st.toleranceCents, scoringMode: st.scoringMode })
     } else if (!ev) this.toast('test too short to score')
   }
 
@@ -967,22 +967,24 @@ export class Studio {
 
   // ---- today's top -------------------------------------------------------------------------
 
-  /** Scored the same way for everyone (normal difficulty, melody shape, the default mix), so places are fair. */
-  private topEval(take: RecordedTake, track: ReferenceTrack): Evaluation {
-    return evaluate(track.notes, take.frames, take.from, take.to, DEFAULT_EVAL, track.harmony)
+  /** A take scored at the difficulty and mode it was sung with: the very result its singer saw. */
+  private topEval(take: RecordedTake, track: ReferenceTrack, mode: { toleranceCents: number; scoringMode: 'shape' | 'exact' }): Evaluation {
+    return evaluate(track.notes, take.frames, take.from, take.to,
+      { ...DEFAULT_EVAL, toleranceCents: mode.toleranceCents, exactEnabled: mode.scoringMode === 'exact' }, track.harmony)
   }
 
   /**
    * A finished test that could make today's top: a library song, at least a minute of
-   * it, normal speed, the original key. If its score makes the 100, its result and pitch
-   * line are sent so others can open it; the voice only if the singer then shares it.
+   * it, normal speed, the original key, normal or strict difficulty. It goes in with the
+   * exact score on the singer's result; if that makes the 100, its result and pitch line
+   * are sent so others can open it; the voice only if the singer then shares it.
    */
-  private async offerToTop(songId: string) {
+  private async offerToTop(songId: string, ev: Evaluation, mode: { toleranceCents: number; scoringMode: 'shape' | 'exact' }) {
     const take = this.lastTake
     const track = this.snap.track
     if (!take || !track || !this.snap.settings.shareTop || this.snap.viewing) return
     if (take.speed !== 1 || take.transpose !== 0 || take.to - take.from < TOP_MIN_SECONDS) return
-    const ev = this.topEval(take, track)
+    if (mode.toleranceCents >= 100) return // easy doesn't count
     const score = ev.overall.score
     if (score === null) return
     try {
@@ -993,7 +995,7 @@ export class Studio {
         songId, title: track.title, artist: track.artist ?? null, score, seconds: take.to - take.from,
         from: take.from, to: take.to, start: take.start, keyOffset: ev.keyOffset,
         scores: { ...Object.fromEntries(Object.entries(ev.metrics).map(([k, m]) => [k, m.score])), overall: score },
-        toleranceCents: DEFAULT_EVAL.toleranceCents, scoringMode: 'shape',
+        toleranceCents: mode.toleranceCents, scoringMode: mode.scoringMode,
       }
       const res = await analyzer.topSubmit(meta, JSON.stringify(packFrames(take.frames)))
       if (this.lastTake !== take) return
@@ -1052,9 +1054,11 @@ export class Studio {
       this.ghost = frames
       this.results.clear()
       this.reviewCache = null
+      // scored exactly as its singer's result was: the same number as on today's top
+      const mode = { toleranceCents: t.meta.toleranceCents ?? DEFAULT_EVAL.toleranceCents, scoringMode: t.meta.scoringMode ?? 'shape' }
       this.set({
-        busy: null, canReplay: true, lastResult: this.topEval(take, track), resultsView: 'results',
-        resultMode: { toleranceCents: DEFAULT_EVAL.toleranceCents, scoringMode: 'shape' },
+        busy: null, canReplay: true, lastResult: this.topEval(take, track, mode), resultsView: 'results',
+        resultMode: mode,
         viewing: { id: t.id, name: t.name, photo: t.photo, rank: t.rank, hasVoice: t.hasVoice },
       })
       await this.enterReview()

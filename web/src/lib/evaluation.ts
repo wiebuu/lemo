@@ -10,8 +10,8 @@
 //   stability  steadiness on sustained notes; healthy vibrato is not penalised
 //   exact      absolute pitch vs. the original (optional mode)
 //
-// The optional overall score is a weighted mean of the available metrics with
-// the weights reported alongside it.
+// The optional overall score is the plain average of the scores shown next to it
+// (every available metric counts the same), so it's the same number everywhere.
 
 import { centsBetweenMidi, clamp, median } from './music'
 import { isScorable, lowerBound, scoreRange } from './scoring'
@@ -636,15 +636,15 @@ export function evaluate(
   }
 }
 
+/** The average of the scores shown (exact notes only in exact mode); each counts the same. */
 export function overallScore(metrics: Record<MetricKey, MetricResult>, s: EvalSettings): Evaluation['overall'] {
   const used: Partial<Record<MetricKey, number>> = {}
   let wsum = 0
   for (const k of Object.keys(metrics) as MetricKey[]) {
     if (k === 'exact' && !s.exactEnabled) continue
-    const w = s.weights[k] ?? 0
-    if (w <= 0 || metrics[k].score === null) continue
-    used[k] = w
-    wsum += w
+    if (metrics[k].score === null) continue
+    used[k] = 1
+    wsum += 1
   }
   if (!wsum) return { score: null, weights: {} }
   let score = 0

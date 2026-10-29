@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import { DEFAULT_WEIGHTS, METRIC_LABELS } from '../lib/evaluation'
-import type { MetricKey } from '../lib/types'
 import { studio } from '../state/studio'
 import { THEMES, type LineDetail, type MelodyView, type ThemeName } from '../state/persist'
 import { WiecodesCredit } from './Credit'
@@ -91,17 +89,9 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
             <Choice value={st.toleranceCents} onChange={(v) => studio.updateSettings({ toleranceCents: v })}
               options={[{ value: 100, label: 'easy' }, { value: 50, label: 'normal' }, { value: 25, label: 'strict' }]} />
           </Section>
-          <Section title="overall score" hint="a weighted mix of the separate scores. it's a practice guide, not a verdict on your voice.">
-            <div className="grid grid-cols-[auto_1fr_2rem] whitespace-nowrap items-center gap-x-3 gap-y-2 text-xs w-full max-w-md">
-              {(['shape', 'harmony', 'rhythm', 'tone', 'attack', 'stability', 'dynamics', 'exact'] as MetricKey[]).map((k) => (
-                <WeightRow key={k} k={k} value={st.weights[k]} disabled={k === 'exact' && st.scoringMode !== 'exact'} />
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2 w-full">
-              <Choice value={st.showOverall ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ showOverall: v === 'on' })}
-                options={[{ value: 'on', label: 'show overall' }, { value: 'off', label: 'separate scores only' }]} />
-              <Btn onClick={() => studio.updateSettings({ weights: DEFAULT_WEIGHTS })}>reset mix</Btn>
-            </div>
+          <Section title="overall score" hint="the average of the separate scores. it's a practice guide, not a verdict on your voice.">
+            <Choice value={st.showOverall ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ showOverall: v === 'on' })}
+              options={[{ value: 'on', label: 'show overall' }, { value: 'off', label: 'separate scores only' }]} />
           </Section>
           <Section title="today's top" hint="Your best take of the day goes on today's top if it makes the best 100: your name, photo and result, for other singers to open. You're asked each time whether they may hear your voice too. Takes that drop out are deleted.">
             <Choice value={st.shareTop ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ shareTop: v === 'on' })}
@@ -149,18 +139,6 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
         <WiecodesCredit />
       </div>
     </Modal>
-  )
-}
-
-function WeightRow({ k, value, disabled }: { k: MetricKey; value: number; disabled: boolean }) {
-  const st = studio.snap.settings
-  return (
-    <>
-      <span className={disabled ? 'text-sub/50' : 'text-sub'}>{METRIC_LABELS[k]}</span>
-      <input type="range" min={0} max={60} step={5} value={value} disabled={disabled}
-        onChange={(e) => studio.updateSettings({ weights: { ...st.weights, [k]: Number(e.target.value) } })} />
-      <span className={cx('tabular-nums text-right', disabled ? 'text-sub/50' : 'text-text')}>{value}</span>
-    </>
   )
 }
 

@@ -150,6 +150,9 @@ export interface TopEntry {
   mine: boolean
   /** the singer chose to let everyone hear it */
   hasVoice: boolean
+  /** the difficulty it was sung (and scored) at */
+  toleranceCents: number | null
+  scoringMode: 'shape' | 'exact' | null
 }
 
 export interface TopBoard {

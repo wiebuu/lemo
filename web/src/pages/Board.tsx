@@ -61,7 +61,7 @@ export function TopPage() {
       <p className="lead">The best takes sung today. Tap one to open the full result — and hear how they sang it, where the singer shared their voice (🎤).</p>
       <p>
         Each singer’s best take of the day counts — at least {Math.round((data?.minSeconds ?? 60) / 60)} minute of a song from the library,
-        at normal speed and in the original key, scored the same way for everyone (normal difficulty, melody shape).
+        at normal speed and in the original key, on normal or strict difficulty. The score is the one on the singer’s own result.
         {data && <> Starts again in {until(data.resetsAt)} (midnight, India time).</>}
       </p>
       {error && <p className="card">{error}</p>}
@@ -90,7 +90,10 @@ export function TopPage() {
                       {e.hasVoice && <MicVocal size={12} className="text-main shrink-0" aria-label="voice shared" />}
                       {e.mine && <span className="text-main text-xs shrink-0">· you</span>}
                     </span>
-                    <span className="block text-[11px] sm:text-xs text-sub truncate">{t.title || 'a song'}{t.artist ? ` · ${t.artist}` : ''} · {formatTime(e.seconds)} · {ago(e.at)}</span>
+                    <span className="block text-[11px] sm:text-xs text-sub truncate">
+                      {t.title || 'a song'}{t.artist ? ` · ${t.artist}` : ''} · {formatTime(e.seconds)} · {ago(e.at)}
+                      {e.toleranceCents === 25 && <span className="text-main"> · strict</span>}
+                    </span>
                   </span>
                   <span className="text-main text-sm sm:text-lg tabular-nums font-medium shrink-0">{pct(e.score)}</span>
                   <Play size={12} className="text-sub group-hover:text-text shrink-0" />

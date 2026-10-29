@@ -211,7 +211,7 @@ describe('harmony check (informational)', () => {
 })
 
 describe('overall matches the scores shown', () => {
-  it('overall is the weighted mean of the scores next to it — in key or not, it sits among them', () => {
+  it('overall is the average of the scores next to it — in key or not, it sits among them', () => {
     for (const off of [0, 5, -10]) {
       const e = evaluate(notes, sing(follow(off)), 0, END, S)
       const shown = Object.entries(e.overall.weights).map(([k]) => e.metrics[k as keyof typeof e.metrics].score!)
@@ -232,11 +232,13 @@ describe('overall score is transparent', () => {
     const total = Object.values(e.overall.weights).reduce((a, b) => a + b!, 0)
     expect(total).toBeCloseTo(1, 9)
   })
-  it('respects custom weights', () => {
+  it('is the plain average of the scores shown, whatever the old weights setting says', () => {
     const m = evaluate(notes, sing(follow()), 0, END, S).metrics
-    const only = overallScore({ ...m, rhythm: { ...m.rhythm, score: 0 } }, { ...S, weights: { shape: 0, harmony: 0, tone: 0, attack: 0, dynamics: 0, stability: 0, exact: 0, rhythm: 1 } })
-    expect(only.score).toBe(0)
-    expect(only.weights).toEqual({ rhythm: 1 })
+    const lopsided = { ...S, weights: { shape: 0, harmony: 0, tone: 0, attack: 0, dynamics: 0, stability: 0, exact: 0, rhythm: 1 } }
+    const o = overallScore(m, lopsided)
+    const shown = (Object.keys(m) as (keyof typeof m)[]).filter((k) => k !== 'exact' && m[k].score !== null).map((k) => m[k].score!)
+    expect(o.score!).toBeCloseTo(shown.reduce((a, b) => a + b, 0) / shown.length, 9)
+    expect(o.score).toBe(overallScore(m, S).score)
   })
 })
 

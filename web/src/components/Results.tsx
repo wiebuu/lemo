@@ -5,7 +5,7 @@ const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default:
 import { LyricTicker } from './LyricTicker'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
 import { formatTime } from '../lib/music'
-import { METRIC_LABELS, type MetricResult } from '../lib/evaluation'
+import type { MetricResult } from '../lib/evaluation'
 import type { MetricKey } from '../lib/types'
 import { studio } from '../state/studio'
 import { centsInWords, cx, Tabs, Tip, usePhone, useStudio } from './ui'
@@ -127,7 +127,7 @@ function ResultsBody({ tabs, compact }: { tabs: React.ReactNode; /** phones: all
   const keys = ORDER.filter((k) => k !== 'exact' || s.settings.scoringMode === 'exact')
   const aspects = availableAspects(r, notes)
   const aspect = aspects.includes(s.reviewAspect) ? s.reviewAspect : 'pitch'
-  const weights = Object.entries(r.overall.weights).map(([k, w]) => `${METRIC_LABELS[k as MetricKey]} ${Math.round(w! * 100)}%`)
+  const weights = Object.keys(r.overall.weights).map((k) => SHORT[k as MetricKey])
   const phrase = s.loop ? s.attempts[s.attempts.length - 1]?.phrase ?? null : null
   const history = s.attempts.filter((a) => a.phrase === phrase).slice(-12)
   return (
@@ -137,7 +137,7 @@ function ResultsBody({ tabs, compact }: { tabs: React.ReactNode; /** phones: all
       <div className={compact ? 'flex-1 min-w-0 grid grid-cols-4 items-end gap-x-2 gap-y-2'
         : 'edge-fade flex-1 min-w-0 flex flex-nowrap items-end gap-x-5 overflow-x-auto [&>*]:shrink-0 -mx-1 px-1 py-0.5'}>
         {s.settings.showOverall && (
-          <Tip wide tip={weights.length ? <>The average of your scores, weighted: {weights.join(', ')}. Change the mix in settings.</> : 'Not enough singing for an overall score.'}>
+          <Tip wide tip={weights.length ? <>The average of your {weights.length} scores ({weights.join(', ')}), each counting the same. Today's top shows this same number.</> : 'Not enough singing for an overall score.'}>
             <div className="cursor-default">
               <div className={cx('text-main font-medium tabular-nums leading-none', compact ? 'text-3xl' : 'text-4xl')}>{pct(r.overall.score)}</div>
               <div className="text-sub text-[11px] mt-1">overall</div>

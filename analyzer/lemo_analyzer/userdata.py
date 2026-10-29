@@ -373,10 +373,12 @@ def top_ids() -> set[str]:
 
 
 def top_list(day: str) -> list[dict]:
-    rows = _q(f"""SELECT r.rank, t.id, t.uid, t.song_id, t.title, t.artist, t.score, t.seconds, t.created_at, u.name, u.photo
+    rows = _q(f"""SELECT r.rank, t.id, t.uid, t.song_id, t.title, t.artist, t.score, t.seconds, t.created_at, u.name, u.photo,
+                         (t.meta->>'toleranceCents')::int AS tolerance, t.meta->>'scoringMode' AS mode
                   FROM ({_RANKED}) r JOIN lemo_top t ON t.id = r.id JOIN lemo_users u ON u.uid = t.uid ORDER BY r.rank""", (day,))
     return [{"rank": int(r["rank"]), "id": r["id"], "uid": r["uid"], "songId": r["song_id"], "title": r["title"], "artist": r["artist"],
-             "score": r["score"], "seconds": r["seconds"], "at": r["created_at"], "name": r["name"] or "a singer", "photo": r["photo"]} for r in rows]
+             "score": r["score"], "seconds": r["seconds"], "at": r["created_at"], "name": r["name"] or "a singer", "photo": r["photo"],
+             "toleranceCents": r["tolerance"], "scoringMode": r["mode"]} for r in rows]
 
 
 def top_get(take_id: str) -> dict | None:

@@ -133,11 +133,11 @@ function Privacy() {
   return (
     <>
       <Updated />
-      <p className="lead">Short version: your singing is scored on your device. Your voice is uploaded only if a take makes today's top 100 — and you can turn that off. Otherwise we keep only what's needed to give you your account — your song list, settings and scores.</p>
+      <p className="lead">Short version: your singing is scored on your device. Your voice is uploaded only if a take makes today's top 100 and you choose to share it. Otherwise we keep only what's needed to give you your account — your song list, settings and scores.</p>
       <h2>Your voice</h2>
       <p>Your microphone is processed entirely in your browser to draw your pitch and work out your scores. Your last take is kept in your device's memory so you can listen back; it's gone when you close the page.</p>
       <h2>Today's top</h2>
-      <p>If a take scores among the best 100 of the day (at least a minute of a library song), it is shared on <A href="/top">today's top</A>: your Google name and photo, the song, your result and the recording of that take are stored on our server so other signed-in singers can open it and listen. Only your best take of the day is kept. A take is deleted as soon as it drops out of the 100, and every take is deleted when the day ends (midnight, India time). To never share, choose Settings → scoring → today's top → don't share.</p>
+      <p>If a take scores among the best 100 of the day (at least a minute of a library song), it is shared on <A href="/top">today's top</A>: your Google name and photo, the song, your result and your pitch line are stored on our server so other signed-in singers can open it. You're then asked whether they may also hear your voice: only if you say yes is the recording of that take stored. Only your best take of the day is kept. A take is deleted as soon as it drops out of the 100, and every take is deleted when the day ends (midnight, India time). To stay off today's top entirely, choose Settings → scoring → today's top → don't share.</p>
       <h2>Your account</h2>
       <p>You sign in with Google (through Firebase Authentication). We receive your name, email address, profile picture and a Google account ID. We use them only to sign you in and to show who's signed in.</p>
       <h2>What we store</h2>

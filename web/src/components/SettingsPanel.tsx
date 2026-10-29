@@ -103,9 +103,9 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
               <Btn onClick={() => studio.updateSettings({ weights: DEFAULT_WEIGHTS })}>reset mix</Btn>
             </div>
           </Section>
-          <Section title="today's top" hint="Your best take of the day goes on today's top if it makes the best 100: your name, photo, result and voice, for other singers to open. Takes that drop out are deleted.">
+          <Section title="today's top" hint="Your best take of the day goes on today's top if it makes the best 100: your name, photo and result, for other singers to open. You're asked each time whether they may hear your voice too. Takes that drop out are deleted.">
             <Choice value={st.shareTop ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ shareTop: v === 'on' })}
-              options={[{ value: 'on', label: 'share my best take' }, { value: 'off', label: 'don’t share' }]} />
+              options={[{ value: 'on', label: 'take part' }, { value: 'off', label: 'don’t take part' }]} />
           </Section>
           <Section title="attempt history" hint={s.track ? `${s.attempts.length} attempts saved for this song, in your account.` : 'your recent tries for each song.'}>
             <Choice value={st.showHistory ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ showHistory: v === 'on' })}

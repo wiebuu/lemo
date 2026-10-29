@@ -1,5 +1,5 @@
-"""Today's top: each singer's best take of the day, the best 100 kept — with their voice, so
-anyone can open the full result and hear how they sang it.
+"""Today's top: each singer's best take of the day, the best 100 kept, so anyone can open
+the full result — and hear how they sang it, if the singer chose to share their voice.
 
 Storage stays small: a take that drops out of the 100 (or is from an earlier day) is
 deleted, files and all. A day runs midnight to midnight, India time."""
@@ -84,8 +84,21 @@ def _frames(raw: bytes) -> dict:
         raise Rejected("the pitch line couldn't be read") from e
 
 
-def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path) -> dict:
-    """Keep a take if it makes today's 100. Returns {rank} (None: it didn't make it)."""
+def _encode(voice_wav: Path, d: Path) -> None:
+    """The voice as small AAC (plays in every browser): ~0.5 MB a minute."""
+    r = subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(voice_wav), "-ac", "1", "-ar", "24000",
+                        "-c:a", "aac", "-b:a", "48k", "-movflags", "+faststart", str(d / (VOICE + ".tmp.m4a"))],
+                       capture_output=True, timeout=120)
+    tmp = d / (VOICE + ".tmp.m4a")
+    if r.returncode != 0 or not tmp.exists():
+        tmp.unlink(missing_ok=True)
+        raise Rejected("the recording couldn't be read")
+    tmp.replace(d / VOICE)
+
+
+def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path | None = None) -> dict:
+    """Keep a take if it makes today's 100 (the voice only if the singer shares it, now or
+    later). Returns {rank, id} (rank None: it didn't make it)."""
     score, seconds = meta.get("score"), meta.get("seconds")
     if not isinstance(score, (int, float)) or not 0 <= score <= 1:
         raise Rejected("invalid score")
@@ -93,18 +106,14 @@ def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path) -> dict:
         raise Rejected(f"a take needs at least {MIN_SECONDS} seconds of the song")
     day = today()
     if userdata.top_rank(day, uid, float(score))["rank"] is None:
-        return {"rank": None}
+        return {"rank": None, "id": None}
     frames = _frames(frames_raw)
     take_id = secrets.token_hex(8)
     d = take_dir(take_id)
     d.mkdir(parents=True)
     try:
-        # the voice as small AAC (plays in every browser): ~0.5 MB a minute
-        r = subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(voice_wav), "-ac", "1", "-ar", "24000",
-                            "-c:a", "aac", "-b:a", "48k", "-movflags", "+faststart", str(d / VOICE)],
-                           capture_output=True, timeout=120)
-        if r.returncode != 0 or not (d / VOICE).exists():
-            raise Rejected("the recording couldn't be read")
+        if voice_wav is not None:
+            _encode(voice_wav, d)
         (d / FRAMES).write_bytes(gzip.compress(json.dumps(frames, separators=(",", ":")).encode()))
         keep = {k: meta.get(k) for k in ("from", "to", "start", "keyOffset", "scores", "toleranceCents", "scoringMode")}
         rank, gone = userdata.top_add({"id": take_id, "day": day, "uid": uid, "songId": meta["songId"], "title": meta.get("title"),
@@ -113,7 +122,19 @@ def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path) -> dict:
         shutil.rmtree(d, ignore_errors=True)
         raise
     _delete(gone)
-    return {"rank": rank}
+    return {"rank": rank, "id": take_id if rank else None}
+
+
+def add_voice(uid: str, take_id: str, voice_wav: Path) -> None:
+    """The singer chose to share their voice with a take that's on today's top."""
+    d = take_dir(take_id)
+    if userdata.top_owner(take_id) != uid or not d.exists():
+        raise Rejected("this take is no longer in today's top")
+    _encode(voice_wav, d)
+
+
+def has_voice(take_id: str) -> bool:
+    return (take_dir(take_id) / VOICE).exists()
 
 
 def get(take_id: str) -> dict | None:
@@ -121,7 +142,7 @@ def get(take_id: str) -> dict | None:
     d = take_dir(take_id)
     if not e or not (d / FRAMES).exists():
         return None
-    return {**e, "frames": json.loads(gzip.decompress((d / FRAMES).read_bytes()))}
+    return {**e, "hasVoice": has_voice(take_id), "frames": json.loads(gzip.decompress((d / FRAMES).read_bytes()))}
 
 
 def voice(take_id: str) -> Path | None:

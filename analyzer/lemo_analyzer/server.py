@@ -952,7 +952,8 @@ def top_list(request: Request) -> dict:
     def run():
         top.tidy()
         uid = _uid(request)
-        entries = [{k: v for k, v in e.items() if k != "uid"} | {"mine": e["uid"] == uid} for e in userdata.top_list(top.today())]
+        entries = [{k: v for k, v in e.items() if k != "uid"} | {"mine": e["uid"] == uid, "hasVoice": top.has_voice(e["id"])}
+                   for e in userdata.top_list(top.today())]
         return {"day": top.today(), "resetsAt": top.resets_at(), "minSeconds": top.MIN_SECONDS, "entries": entries}
 
     return _data(run)
@@ -967,9 +968,23 @@ def top_check(request: Request, body: dict = Body(...)) -> dict:
     return _data(lambda: top.check(_uid(request), float(score)))
 
 
+async def _wav_upload(voice: UploadFile, tmp: str) -> Path:
+    """The voice upload, to a file (at most 40 MB)."""
+    wav = Path(tmp) / "voice.wav"
+    size, limit = 0, 40 * 1024 * 1024
+    with wav.open("wb") as out:
+        while chunk := await voice.read(1 << 20):
+            size += len(chunk)
+            if size > limit:
+                raise HTTPException(413, "recording too large")
+            out.write(chunk)
+    return wav
+
+
 @app.post("/api/top/submit")
-async def top_submit(request: Request, frames: UploadFile, voice: UploadFile, meta: str = Form(...)) -> dict:
-    """A take that made today's top: its result, pitch line and voice (kept while it stays in the 100)."""
+async def top_submit(request: Request, frames: UploadFile, voice: UploadFile | None = None, meta: str = Form(...)) -> dict:
+    """A take that made today's top: its result and pitch line — and the voice, if the singer
+    shares it (kept while the take stays in the 100)."""
     try:
         m = json.loads(meta)
     except ValueError as e:
@@ -980,16 +995,8 @@ async def top_submit(request: Request, frames: UploadFile, voice: UploadFile, me
     fr = await frames.read(8 * 1024 * 1024 + 1)
     if len(fr) > 8 * 1024 * 1024:
         raise HTTPException(413, "pitch line too large")
-    limit = 40 * 1024 * 1024
     with tempfile.TemporaryDirectory() as tmp:
-        wav = Path(tmp) / "voice.wav"
-        size = 0
-        with wav.open("wb") as out:
-            while chunk := await voice.read(1 << 20):
-                size += len(chunk)
-                if size > limit:
-                    raise HTTPException(413, "recording too large")
-                out.write(chunk)
+        wav = await _wav_upload(voice, tmp) if voice is not None else None
         try:
             def run():
                 userdata.touch_user(request.state.user)  # the name and photo shown with the take
@@ -1010,6 +1017,18 @@ def top_take(take_id: str) -> dict:
     if not e:
         raise HTTPException(404, "this take is no longer in today's top")
     return e
+
+
+@app.post("/api/top/{take_id}/voice")
+async def top_share_voice(request: Request, take_id: str, voice: UploadFile) -> dict:
+    """The singer chose to let everyone hear their take."""
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = await _wav_upload(voice, tmp)
+        try:
+            await run_in_threadpool(lambda: _data(lambda: top.add_voice(_uid(request), take_id, wav)))
+        except top.Rejected as e:
+            raise HTTPException(422, str(e)) from e
+    return {"ok": True}
 
 
 @app.get("/api/top/{take_id}/voice")

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Crown, Play } from 'lucide-react'
+import { Crown, MicVocal, Play } from 'lucide-react'
 import { analyzer, type SiteStats, type TopBoard, type TopEntry } from '../api/analyzer'
 import { useAuth } from '../auth/firebase'
 import { formatTime } from '../lib/music'
@@ -58,7 +58,7 @@ export function TopPage() {
   }
   return (
     <>
-      <p className="lead">The best takes sung today. Tap one to open the full result and hear how they sang it.</p>
+      <p className="lead">The best takes sung today. Tap one to open the full result — and hear how they sang it, where the singer shared their voice (🎤).</p>
       <p>
         Each singer’s best take of the day counts — at least {Math.round((data?.minSeconds ?? 60) / 60)} minute of a song from the library,
         at normal speed and in the original key, scored the same way for everyone (normal difficulty, melody shape).
@@ -85,7 +85,11 @@ export function TopPage() {
                   </span>
                   <Avatar e={e} />
                   <span className="flex-1 min-w-0 leading-tight">
-                    <span className="block text-[13px] sm:text-base text-text truncate">{e.name}{e.mine && <span className="text-main text-xs"> · you</span>}</span>
+                    <span className="flex items-center gap-1 text-[13px] sm:text-base text-text min-w-0">
+                      <span className="truncate">{e.name}</span>
+                      {e.hasVoice && <MicVocal size={12} className="text-main shrink-0" aria-label="voice shared" />}
+                      {e.mine && <span className="text-main text-xs shrink-0">· you</span>}
+                    </span>
                     <span className="block text-[11px] sm:text-xs text-sub truncate">{t.title || 'a song'}{t.artist ? ` · ${t.artist}` : ''} · {formatTime(e.seconds)} · {ago(e.at)}</span>
                   </span>
                   <span className="text-main text-sm sm:text-lg tabular-nums font-medium shrink-0">{pct(e.score)}</span>

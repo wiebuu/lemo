@@ -195,17 +195,17 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
   return (
     <div className="edge-fade flex flex-nowrap items-center gap-x-3 text-xs text-sub min-h-5 whitespace-nowrap overflow-x-auto [&>*]:shrink-0">
       {s.viewing && (
-        <Tip tip="A take from today's top. ▶ plays their voice with the music.">
+        <Tip tip={s.viewing.hasVoice ? 'A take from today’s top. ▶ plays their voice with the music.' : 'A take from today’s top. They kept their voice private: ▶ plays the original singer, with their pitch line.'}>
           <button type="button" onClick={() => navigate('/top')} className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-main text-bg">
             {s.viewing.photo
               ? <img src={s.viewing.photo} alt="" referrerPolicy="no-referrer" className="w-4 h-4 rounded-full" />
               : <Crown size={12} className="ml-1" />}
-            {s.viewing.name}{s.viewing.rank ? ` · #${s.viewing.rank} today` : ''}
+            {s.viewing.name}{s.viewing.rank ? ` · #${s.viewing.rank} today` : ''}{s.viewing.hasVoice ? '' : ' · voice private'}
           </button>
         </Tip>
       )}
       {s.topRank && (
-        <Tip tip={s.topRank.saving ? 'Saving your take to today’s top…' : 'Your take is on today’s top — others can open it and hear it.'}>
+        <Tip tip={s.topRank.saving ? 'Saving your take to today’s top…' : s.topRank.voice === 'shared' ? 'Your take is on today’s top — others can open it and hear you.' : 'Your take is on today’s top — others can see your result and pitch line (your voice stays private).'}>
           <button type="button" onClick={() => navigate('/top')} className={cx('flex items-center gap-1 px-2 py-0.5 rounded-full bg-main text-bg', s.topRank.saving && 'opacity-60')}>
             <Crown size={12} /> #{s.topRank.rank} in today’s top{s.topRank.saving ? '…' : ''}
           </button>

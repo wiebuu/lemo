@@ -89,10 +89,13 @@ export interface Snapshot {
   focus: { start: number; end: number } | null
   /** The difficulty and scoring mode the shown result was scored with. */
   resultMode: { toleranceCents: number; scoringMode: 'shape' | 'exact' } | null
-  /** Your result made today's top: its place (saving: being uploaded). */
-  topRank: { rank: number; saving: boolean } | null
+  /**
+   * Your result made today's top: its place (saving: being sent) and whether everyone
+   * can hear your voice — you're asked first ('ask').
+   */
+  topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'no' } | null
   /** The result shown is someone's take from today's top, not yours. */
-  viewing: { id: string; name: string; photo: string | null; rank: number | null } | null
+  viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean } | null
 }
 
 /** The last take's voice, in memory (uploaded only when it makes today's top, and only if you share). */
@@ -970,8 +973,8 @@ export class Studio {
 
   /**
    * A finished test that could make today's top: a library song, at least a minute of
-   * it, normal speed, the original key. If its score makes the 100, the take (voice and
-   * pitch line) is sent so others can open it.
+   * it, normal speed, the original key. If its score makes the 100, its result and pitch
+   * line are sent so others can open it; the voice only if the singer then shares it.
    */
   private async offerToTop(songId: string) {
     const take = this.lastTake
@@ -984,23 +987,43 @@ export class Studio {
     try {
       const { rank } = await analyzer.topCheck(score)
       if (!rank || this.lastTake !== take) return
-      this.set({ topRank: { rank, saving: true } })
+      this.set({ topRank: { rank, id: null, saving: true, voice: 'ask' } })
       const meta = {
         songId, title: track.title, artist: track.artist ?? null, score, seconds: take.to - take.from,
         from: take.from, to: take.to, start: take.start, keyOffset: ev.keyOffset,
         scores: { ...Object.fromEntries(Object.entries(ev.metrics).map(([k, m]) => [k, m.score])), overall: score },
         toleranceCents: DEFAULT_EVAL.toleranceCents, scoringMode: 'shape',
       }
-      const res = await analyzer.topSubmit(meta, JSON.stringify(packFrames(take.frames)), wavOf(take.samples, take.sampleRate))
+      const res = await analyzer.topSubmit(meta, JSON.stringify(packFrames(take.frames)))
       if (this.lastTake !== take) return
-      this.set({ topRank: res.rank ? { rank: res.rank, saving: false } : null })
-      if (res.rank) this.toast(`#${res.rank} in today's top`)
+      this.set({ topRank: res.rank ? { rank: res.rank, id: res.id, saving: false, voice: 'ask' } : null })
     } catch {
       if (this.lastTake === take) this.set({ topRank: null }) // offline etc.: it just doesn't count
     }
   }
 
-  /** Open a take from today's top: its song, its full result, and the singer's voice to play. */
+  /** On today's top: let everyone hear your take. */
+  async shareTopVoice() {
+    const take = this.lastTake
+    const top = this.snap.topRank
+    if (!take || !top?.id || top.voice === 'sending') return
+    this.set({ topRank: { ...top, voice: 'sending' } })
+    try {
+      await analyzer.topShareVoice(top.id, wavOf(take.samples, take.sampleRate))
+      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'shared' } })
+    } catch (e) {
+      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'ask' } })
+      this.toast(`couldn't share your voice: ${(e as Error).message}`)
+    }
+  }
+
+  /** On today's top, without your voice (your score and pitch line still show). */
+  keepTopVoicePrivate() {
+    const top = this.snap.topRank
+    if (top) this.set({ topRank: { ...top, voice: 'no' } })
+  }
+
+  /** Open a take from today's top: its song, its full result, and the singer's voice to play (if shared). */
   async openTopTake(id: string) {
     this.set({ busy: 'opening the take', error: null })
     try {
@@ -1009,11 +1032,18 @@ export class Studio {
       const e = this.engine
       const track = this.snap.track
       if (!e || !track || this.analyzerId !== t.songId) return
-      this.set({ busy: 'loading their voice' })
-      const audio = await e.ctx.decodeAudioData(await analyzer.topVoice(id))
+      // no voice shared: a silent take, and the original singer plays instead
+      let samples = new Float32Array(e.ctx.sampleRate)
+      let sampleRate = e.ctx.sampleRate
+      if (t.hasVoice) {
+        this.set({ busy: 'loading their voice' })
+        const audio = await e.ctx.decodeAudioData(await analyzer.topVoice(id))
+        samples = audio.getChannelData(0)
+        sampleRate = audio.sampleRate
+      }
       const frames = unpackFrames(t.frames)
       const take: RecordedTake = {
-        samples: audio.getChannelData(0), sampleRate: audio.sampleRate, start: t.meta.start, speed: 1, transpose: 0,
+        samples, sampleRate, start: t.meta.start, speed: 1, transpose: 0,
         from: t.meta.from, to: t.meta.to, frames,
       }
       this.lastTake = take
@@ -1024,9 +1054,13 @@ export class Studio {
       this.set({
         busy: null, canReplay: true, lastResult: this.topEval(take, track), resultsView: 'results',
         resultMode: { toleranceCents: DEFAULT_EVAL.toleranceCents, scoringMode: 'shape' },
-        viewing: { id: t.id, name: t.name, photo: t.photo, rank: t.rank },
+        viewing: { id: t.id, name: t.name, photo: t.photo, rank: t.rank, hasVoice: t.hasVoice },
       })
       await this.enterReview()
+      if (!t.hasVoice) {
+        this.set({ canReplay: false })
+        if (this.snap.caps?.hasGuide) this.setListenSource('original')
+      }
     } catch (err) {
       this.set({ busy: null, error: (err as Error).message })
     }

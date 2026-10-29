@@ -60,11 +60,13 @@ class TopTests(unittest.TestCase):
         self.tmp.cleanup()
         userdata.use(None)
 
-    def submit(self, score, who="a", seconds=75.0, song=SONG):
+    def submit(self, score, who="a", seconds=75.0, song=SONG, voice=True):
         meta = {"songId": song, "title": "Song", "artist": "Singer", "score": score, "seconds": seconds,
                 "from": 10.0, "to": 10.0 + seconds, "start": 9.5, "keyOffset": 0, "scores": {"overall": score}}
-        return self.c.post("/api/top/submit", headers={"Authorization": f"Bearer {who}"}, data={"meta": json.dumps(meta)},
-                           files={"frames": ("frames.json", FRAMES, "application/json"), "voice": ("voice.wav", _wav(), "audio/wav")})
+        files = {"frames": ("frames.json", FRAMES, "application/json")}
+        if voice:
+            files["voice"] = ("voice.wav", _wav(), "audio/wav")
+        return self.c.post("/api/top/submit", headers={"Authorization": f"Bearer {who}"}, data={"meta": json.dumps(meta)}, files=files)
 
     def fill(self, n, score=0.5):
         """n other singers already in today's top."""
@@ -94,6 +96,20 @@ class TopTests(unittest.TestCase):
         v = self.get(f"/api/top/{e['id']}/voice", who="b")
         self.assertEqual(v.status_code, 200)
         self.assertGreater(len(v.content), 100)
+
+    def test_the_voice_is_only_kept_when_the_singer_shares_it(self):
+        r = self.submit(0.8, voice=False).json()
+        self.assertEqual(r["rank"], 1)
+        take = r["id"]
+        self.assertFalse(self.get("/api/top", who="b").json()["entries"][0]["hasVoice"])
+        self.assertFalse(self.get(f"/api/top/{take}", who="b").json()["hasVoice"])
+        self.assertEqual(self.get(f"/api/top/{take}/voice", who="b").status_code, 404)
+        share = lambda who: self.c.post(f"/api/top/{take}/voice", headers={"Authorization": f"Bearer {who}"},
+                                        files={"voice": ("voice.wav", _wav(), "audio/wav")})
+        self.assertEqual(share("b").status_code, 422)  # only the singer can share it
+        self.assertEqual(share("a").status_code, 200)
+        self.assertTrue(self.get("/api/top", who="b").json()["entries"][0]["hasVoice"])
+        self.assertEqual(self.get(f"/api/top/{take}/voice", who="b").status_code, 200)
 
     def test_less_than_a_minute_does_not_count(self):
         self.assertEqual(self.submit(0.9, seconds=40).status_code, 422)

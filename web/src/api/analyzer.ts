@@ -142,6 +142,8 @@ export interface TopEntry {
   seconds: number
   at: number
   mine: boolean
+  /** the singer chose to let everyone hear it */
+  hasVoice: boolean
 }
 
 export interface TopBoard {
@@ -162,6 +164,7 @@ export interface TopTake {
   seconds: number
   name: string
   photo: string | null
+  hasVoice: boolean
   meta: { from: number; to: number; start: number; keyOffset: number | null; toleranceCents?: number; scoringMode?: 'shape' | 'exact' }
   /** the pitch line: time, midi (null: no voice), clarity, level */
   frames: { t: number[]; m: (number | null)[]; c: number[]; l?: (number | null)[] }
@@ -215,12 +218,19 @@ export const analyzer = {
   topCheck: (score: number) =>
     fetch('/api/top/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) })
       .then((r) => json<{ rank: number | null; reason: string | null }>(r)),
-  topSubmit(meta: Record<string, unknown>, frames: string, voice: Blob) {
+  /** a take that makes today's top: its result and pitch line (the voice only if the singer shares it) */
+  topSubmit(meta: Record<string, unknown>, frames: string, voice?: Blob) {
     const fd = new FormData()
     fd.append('meta', JSON.stringify(meta))
     fd.append('frames', new Blob([frames], { type: 'application/json' }), 'frames.json')
+    if (voice) fd.append('voice', voice, 'voice.wav')
+    return fetch('/api/top/submit', { method: 'POST', body: fd }).then((r) => json<{ rank: number | null; id: string | null }>(r))
+  },
+  /** the singer lets everyone hear their take */
+  topShareVoice(id: string, voice: Blob) {
+    const fd = new FormData()
     fd.append('voice', voice, 'voice.wav')
-    return fetch('/api/top/submit', { method: 'POST', body: fd }).then((r) => json<{ rank: number | null }>(r))
+    return fetch(`/api/top/${id}/voice`, { method: 'POST', body: fd }).then((r) => json<{ ok: boolean }>(r))
   },
   stats: () => fetch('/api/stats').then((r) => json<SiteStats>(r)),
   /** a test started, or finished after `seconds` of singing (for the stats page) */

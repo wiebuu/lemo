@@ -358,6 +358,11 @@ def top_get(take_id: str) -> dict | None:
             "name": row["name"] or "a singer", "photo": row["photo"], "meta": row["meta"]}
 
 
+def top_owner(take_id: str) -> str | None:
+    row = _q("SELECT uid FROM lemo_top WHERE id = %s", (take_id,), one=True)
+    return row["uid"] if row else None
+
+
 def _today_for(take_id: str) -> str:
     row = _q("SELECT day FROM lemo_top WHERE id = %s", (take_id,), one=True)
     return row["day"] if row else ""

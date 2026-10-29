@@ -10,6 +10,7 @@ import type { LoopRegion } from '../lib/timeline'
 import type { BreathMark, LoudnessEnvelope, NoteResult, Phrase, PitchContour, ReferenceNote, UserFrame } from '../lib/types'
 import type { GraphLayers, LineDetail, MelodyView } from '../state/persist'
 import type { NoteReview } from '../lib/review'
+import { Juice } from './juice'
 
 export interface GraphView {
   time: number
@@ -66,6 +67,9 @@ export class GraphRenderer {
   private p: Palette = readPalette()
   private font = '"Roboto Mono", ui-monospace, monospace'
   private canvas: HTMLCanvasElement
+  /** lit melody, the dot's spring, sparks, pops and the streak (see juice.ts) */
+  private juice = new Juice()
+  private live = { on: false, onPitch: false, dt: 1 / 60 }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -124,6 +128,12 @@ export class GraphRenderer {
     const span = Math.max(v.semitoneSpan, lo === Infinity ? 0 : hi - lo + 4)
     const sp = plotH / span
     const Y = (m: number) => plotH / 2 - (m - this.center) * sp
+
+    // Singing (not the results): the feedback that makes it feel alive
+    const live = !v.review && !v.focus && v.live.state !== 'idle'
+    const onPitch = live && v.live.state === 'on-pitch'
+    const dt = this.juice.tick(v.time, live, onPitch, v.frames.length === 0)
+    this.live = { on: live, onPitch, dt }
 
     // Loop region
     if (v.loop) {
@@ -244,6 +254,7 @@ export class GraphRenderer {
     if (v.melodyView === 'bars') this.drawBars(v, X, Y, t0, t1, sp)
     else if (v.lineDetail !== 'smooth' && v.contour) this.drawContour(v, X, Y, t0, t1, plotH)
     else this.drawRefLine(v, X, Y, t0, t1, sp, plotH)
+    if (live) this.juice.scoreNotes(v.results, v.notes, v.time, (n) => Y(n.midiPitch + v.transpose), p.main)
 
     // Singer: one smoothed line in the accent colour. Shape = shifted into the
     // song's key; exact = true pitch (faded when both are shown).
@@ -260,18 +271,32 @@ export class GraphRenderer {
     ctx.fillStyle = ph
     ctx.fillRect(Math.round(px) - 1, 0, 2, plotH)
     if (head && v.time - head.t < 0.15 && v.time - head.t > -0.05) {
+      // the dot has a little weight (a spring), and glows gold while you're on the note
+      const y = live ? this.juice.dotAt(head.y, dt) : head.y
+      if (onPitch) {
+        const close = v.live.cents === null ? 0.6 : Math.max(0, 1 - Math.abs(v.live.cents) / 50)
+        const r = 15 + 7 * this.juice.pulse + 5 * close
+        const g = ctx.createRadialGradient(px, y, 0, px, y, r)
+        g.addColorStop(0, withAlpha(p.main, 0.42 + 0.3 * this.juice.pulse))
+        g.addColorStop(1, withAlpha(p.main, 0))
+        ctx.fillStyle = g
+        ctx.fillRect(px - r, y - r, r * 2, r * 2)
+        this.juice.spark(v.time, y, dt, p.main, close)
+      }
       ctx.fillStyle = p.voice
       ctx.beginPath()
-      ctx.arc(px, head.y, 6, 0, Math.PI * 2)
+      ctx.arc(px, y, 6 + 1.5 * this.juice.pulse, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = withAlpha(p.bg, 0.9)
+      ctx.strokeStyle = onPitch ? p.main : withAlpha(p.bg, 0.9)
       ctx.lineWidth = 2
       ctx.stroke()
     }
+    if (live) this.juice.draw(ctx, X)
 
     if (laneH) this.drawLoudness(v, X, t0, t1, plotH + 8, laneH)
     this.fadeSides(plotH)
     if (v.focus) this.fadeOutside(X(v.focus.start), X(v.focus.end), h)
+    if (live) this.juice.drawStreak(ctx, w, p.main, p.sub, this.font)
 
     // Note names gutter
     if (v.showNoteNames) {
@@ -380,6 +405,25 @@ export class GraphRenderer {
     ctx.strokeStyle = g
     ctx.lineWidth = width
     ctx.stroke(path)
+    ctx.restore()
+  }
+
+  /**
+   * Where you were on pitch, the melody stays lit: gold, glowing — a trail of what you
+   * nailed (like the letters you got right in a typing test).
+   */
+  private paintLit(path: Path2D, X: (t: number) => number, t0: number, plotH: number, width: number) {
+    const spans = this.juice.spans.filter((s) => s.end > t0)
+    if (!spans.length) return
+    const { ctx, p } = this
+    ctx.save()
+    ctx.beginPath()
+    for (const s of spans) ctx.rect(X(s.start), 0, Math.max(1, X(s.end) - X(s.start)), plotH)
+    ctx.clip()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = width
+    this.neon(() => ctx.stroke(path), p.main, 10)
     ctx.restore()
   }
 
@@ -506,7 +550,10 @@ export class GraphRenderer {
     // The sung part lights up just behind the playhead and fades out —
     // it glides forward with the music instead of jumping note to note.
     if (v.review) this.paintReview(path, v, X, t0, t1, plotH, 4.5)
-    else this.paintTrail(path, X(v.time), v.pxPerSec, plotH, 4.5)
+    else {
+      this.paintTrail(path, X(v.time), v.pxPerSec, plotH, 4.5)
+      if (this.live.on) this.paintLit(path, X, t0, plotH, 4.5)
+    }
 
     ctx.font = `11px ${this.font}`
     ctx.textBaseline = 'bottom'

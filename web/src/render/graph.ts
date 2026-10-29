@@ -675,9 +675,12 @@ export class GraphRenderer {
           const mid = r[r.length >> 1]
           const ni = noteAt(v.notes, mid.t)
           const runAnchor = ni >= 0 ? v.notes[ni].midiPitch + v.transpose : this.center
+          // every melody note within a fraction of a second: on a leap, you and the
+          // melody never step at the same instant (see placeOnMelody)
           const anchors = r.map((f) => {
+            const near = notesNear(v.notes, f.t, 0.25).map((n) => n.midiPitch + v.transpose)
             const nj = noteAt(v.notes, f.t)
-            return nj >= 0 ? v.notes[nj].midiPitch + v.transpose : runAnchor
+            return near.length ? near : [nj >= 0 ? v.notes[nj].midiPitch + v.transpose : runAnchor]
           })
           vals = placeOnMelody(vals, anchors, v.keyOffset ?? 0)
         }
@@ -798,6 +801,19 @@ function lowerBoundT(frames: UserFrame[], t: number): number {
 
 function clampN(v: number, lo: number, hi: number) {
   return v < lo ? lo : v > hi ? hi : v
+}
+
+/** The notes sounding within `w` seconds of `t` (notes are in time order). */
+function notesNear(notes: ReferenceNote[], t: number, w: number): ReferenceNote[] {
+  let lo = 0, hi = notes.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (notes[mid].startTime < t - w - 4) lo = mid + 1 // no note is held longer than a few seconds
+    else hi = mid
+  }
+  const out: ReferenceNote[] = []
+  for (let i = lo; i < notes.length && notes[i].startTime < t + w; i++) if (notes[i].endTime > t - w) out.push(notes[i])
+  return out
 }
 
 /**

@@ -12,6 +12,17 @@ describe('placeOnMelody', () => {
     const vals = [60, 60.2, 72.1, 60.1, 60]
     expect(placeOnMelody(vals, vals.map(() => 60), 0).map(Math.round)).toEqual([60, 60, 60, 60, 60])
   })
+  it('a big leap a moment early or late never flips the line an octave', () => {
+    // the melody leaps 60 → 70 at frame 4; the singer gets there two frames early,
+    // then sings it. Against the note at each instant, frames 2–3 looked an octave off.
+    const vals = [60, 60, 70, 70, 70, 70, 70]
+    const atInstant = [60, 60, 60, 60, 70, 70, 70]
+    const around = [[60], [60, 70], [60, 70], [60, 70], [60, 70], [70], [70]]
+    expect(placeOnMelody(vals, atInstant, 0)).toEqual([60, 60, 58, 58, 70, 70, 70]) // the dip it used to draw
+    expect(placeOnMelody(vals, around, 0)).toEqual(vals)
+    // and late: still on the old note when the melody has already leapt
+    expect(placeOnMelody([60, 60, 60, 70, 70], [[60], [60, 70], [60, 70], [60, 70], [70]], 0)).toEqual([60, 60, 60, 70, 70])
+  })
   it('removes the key offset (singing in another key lands on the melody)', () => {
     const out = placeOnMelody([57, 59, 57], [60, 62, 60], -3)
     expect(out).toEqual([60, 62, 60])
@@ -44,6 +55,12 @@ describe('foldOctaveSlips', () => {
   it('folds values about an octave away back next to the voice', () => {
     const out = foldOctaveSlips([60, 72.4, 61, 47.8, 63], 61)
     ;[60, 60.4, 61, 59.8, 63].forEach((v, i) => expect(out[i]).toBeCloseTo(v, 6))
+  })
+  it('a real leap of nearly an octave is followed after a few frames, not folded for long', () => {
+    const sung = [...Array(30).fill(60), ...Array(20).fill(70.5)]
+    const out = foldOctaveSlips(sung)
+    expect(out.slice(0, 30)).toEqual(sung.slice(0, 30))
+    expect(out.slice(34)).toEqual(sung.slice(34)) // from the 5th frame up there, drawn where sung
   })
   it('leaves real intervals inside the octave alone', () => {
     expect(foldOctaveSlips([60, 67, 55, 68], 61)).toEqual([60, 67, 55, 68])

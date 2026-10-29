@@ -9,13 +9,26 @@ import type { LineDetail } from '../state/persist'
  * original's note right then — but the octave only changes when you're clearly
  * (more than 7 semitones) away from it, so singing about half an octave off
  * doesn't make the line flip between octaves. A brief pitch-tracker octave slip
- * is still folded back. `anchors[i]`: the melody note at frame i.
+ * is still folded back.
+ *
+ * `anchors[i]`: the melody note at frame i — or every note around then (a fraction
+ * of a second either side). On a big leap you never land at the exact instant the
+ * melody does; judged against that one note, the frames in between looked an octave
+ * off and the line flipped down (or up) for a moment. Close to any of them is fine.
  */
-export function placeOnMelody(vals: number[], anchors: number[], offset: number): number[] {
+export function placeOnMelody(vals: number[], anchors: (number | number[])[], offset: number): number[] {
   let k: number | null = null
   return vals.map((m, i) => {
-    const rel = m - offset - anchors[i]
-    if (k === null || Math.abs(rel - 12 * k) > 7) k = Math.round(rel / 12)
+    const around = anchors[i]
+    const list = typeof around === 'number' ? [around] : around
+    const rels = list.map((a) => m - offset - a)
+    const fits = (kk: number) => rels.some((r) => Math.abs(r - 12 * kk) <= 7)
+    if (k === null || !fits(k)) {
+      // the octave that puts you nearest to one of the melody's notes
+      let best = rels[0]
+      for (const r of rels) if (Math.abs(r - 12 * Math.round(r / 12)) < Math.abs(best - 12 * Math.round(best / 12))) best = r
+      k = Math.round(best / 12)
+    }
     return m - offset - 12 * k
   })
 }
@@ -28,15 +41,33 @@ export function foldOctaveSlips(midis: number[], around?: number): number[] {
   // Each frame is judged against the frames before it (their median), never later ones:
   // a stretch still being sung grows, and a judgement that used the whole stretch made
   // the part already drawn jump an octave mid-song. `around` (fixed) is used when given.
+  // A slip is brief; a real leap stays. After LEAP frames at the new height the voice is
+  // taken to be there (those few frames stay as drawn), instead of folding it down until
+  // the median caught up — about a third of a second of the line diving under the note.
+  const LEAP = 5
   const out: number[] = []
+  let base: number[] = [] // what the median is taken over
+  let away: number[] = [] // raw values of the frames folded in a row
   for (let i = 0; i < midis.length; i++) {
     let ref = around
     if (ref === undefined) {
-      const prev = out.slice(Math.max(0, i - 40), i)
+      const prev = base.slice(-40)
       ref = prev.length ? [...prev].sort((a, b) => a - b)[prev.length >> 1] : midis[i]
     }
     const d = midis[i] - ref
-    out.push(Math.abs(d) >= 9 && Math.abs(Math.abs(d) - 12) <= 3 ? midis[i] - 12 * Math.sign(d) : midis[i])
+    const slip = Math.abs(d) >= 9 && Math.abs(Math.abs(d) - 12) <= 3
+    if (slip && around === undefined && away.length + 1 >= LEAP) {
+      // it stayed: a real leap. Judge what follows from here.
+      base = [...away, midis[i]]
+      away = []
+      out.push(midis[i])
+      continue
+    }
+    if (slip) away.push(midis[i])
+    else away = []
+    const v = slip ? midis[i] - 12 * Math.sign(d) : midis[i]
+    out.push(v)
+    base.push(v)
   }
   return out
 }

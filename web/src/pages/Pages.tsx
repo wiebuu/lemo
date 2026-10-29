@@ -33,7 +33,8 @@ export function SitePage({ path }: { path: string }) {
     }
   }, [path, page])
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && navigate('/')
+    // Esc leaves the page — unless a popup on it is open (that one closes instead)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('[data-page-dialog]') && navigate('/')
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])

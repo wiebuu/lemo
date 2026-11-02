@@ -155,6 +155,8 @@ export function ConfigBar() {
             ))}
           </div>
           <MenuLabel>show</MenuLabel>
+          <MenuItem icon={<Crosshair size={14} />} label="centred on the line" active={st.centred}
+            tip="The graph follows the original line, so it stays in the middle. Only the shape counts." onClick={() => studio.updateSettings({ centred: !st.centred })} />
           <MenuItem icon={<Spline size={14} />} label="my line, in the song's key" active={st.layers.shape} preview={PREVIEW.shapeLine}
             tip="Your line shifted onto the melody, whatever key you sing in." onClick={() => toggleLayer('shape')} />
           <MenuItem icon={<Target size={14} />} label="my line, real pitch" active={st.layers.exact} preview={PREVIEW.exactLine}

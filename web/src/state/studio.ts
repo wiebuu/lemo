@@ -1754,6 +1754,7 @@ export class Studio {
       beatsPerBar: t?.beatsPerBar ?? 4,
       pxPerSec: s.pxPerSec,
       semitoneSpan: s.semitoneSpan,
+      centred: s.centred,
       showGrid: s.showGrid,
       showNoteNames: s.showNoteNames,
       melodyView: s.melodyView,

@@ -41,6 +41,8 @@ export interface Settings {
   voiceVolume: number
   pxPerSec: number
   semitoneSpan: number
+  /** The graph keeps the original line on the middle of the playhead (shape only, key-free). */
+  centred: boolean
   tutorialDone: boolean
   scoringMode: ScoringMode
   weights: Weights
@@ -74,6 +76,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceVolume: 1,
   pxPerSec: 140,
   semitoneSpan: 16,
+  centred: true,
   tutorialDone: false,
   scoringMode: 'shape',
   weights: DEFAULT_WEIGHTS,

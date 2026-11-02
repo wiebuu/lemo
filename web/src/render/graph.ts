@@ -34,6 +34,8 @@ export interface GraphView {
   beatsPerBar: number
   pxPerSec: number
   semitoneSpan: number
+  /** Centred: the graph moves up and down so the original line stays on the middle of the playhead. */
+  centred: boolean
   showGrid: boolean
   showNoteNames: boolean
   melodyView: MelodyView
@@ -121,11 +123,13 @@ export class GraphRenderer {
       hi = Math.max(hi, n.midiPitch + v.transpose)
     }
     if (lo === Infinity && v.live.midi !== null) lo = hi = v.live.midi
-    if (lo !== Infinity) {
+    const lock = v.centred ? refPitchAt(v.notes, v.time, v.transpose) : null
+    if (lock !== null) this.center = lock
+    else if (lo !== Infinity) {
       const target = (lo + hi) / 2
       this.center += (target - this.center) * (Math.abs(target - this.center) > 18 ? 1 : 0.06)
     }
-    const span = Math.max(v.semitoneSpan, lo === Infinity ? 0 : hi - lo + 4)
+    const span = lock !== null ? v.semitoneSpan : Math.max(v.semitoneSpan, lo === Infinity ? 0 : hi - lo + 4)
     const sp = plotH / span
     const Y = (m: number) => plotH / 2 - (m - this.center) * sp
 
@@ -258,8 +262,9 @@ export class GraphRenderer {
 
     // Singer: one smoothed line in the accent colour. Shape = shifted into the
     // song's key; exact = true pitch (faded when both are shown).
-    const showShape = v.layers.shape
-    const showExact = v.layers.exact
+    // centred: only the shape counts, so your line is always the key-free one
+    const showShape = v.centred || v.layers.shape
+    const showExact = !v.centred && v.layers.exact
     if (showShape || showExact) this.drawUser(v.ghost, v, X, Y, t0, t1, 'ghost', showShape)
     if (showExact) this.drawUser(v.frames, v, X, Y, t0, t1, showShape ? 'faded' : 'main', false)
     const head = showShape || showExact ? this.drawUser(v.frames, v, X, Y, t0, t1, 'main', showShape) : null
@@ -854,6 +859,35 @@ function lowerBoundT(frames: UserFrame[], t: number): number {
     else hi = mid
   }
   return lo
+}
+
+/**
+ * The original's pitch around time t (with transpose), eased across gaps and leaps:
+ * averaged over ±0.2 s so the graph glides between notes instead of jumping.
+ */
+function refPitchAt(notes: ReferenceNote[], t: number, transpose: number): number | null {
+  const at = (u: number): number | null => {
+    let prev: ReferenceNote | undefined, next: ReferenceNote | undefined
+    for (const n of notesNear(notes, u, 3)) {
+      if (n.offLyrics) continue
+      if (n.startTime <= u && n.endTime > u) return n.midiPitch
+      if (n.endTime <= u && (!prev || n.endTime > prev.endTime)) prev = n
+      if (n.startTime > u && (!next || n.startTime < next.startTime)) next = n
+    }
+    if (prev && next) {
+      const k = (u - prev.endTime) / Math.max(0.01, next.startTime - prev.endTime)
+      return prev.midiPitch + (next.midiPitch - prev.midiPitch) * k * k * (3 - 2 * k)
+    }
+    return (prev ?? next)?.midiPitch ?? null
+  }
+  let sum = 0, wsum = 0
+  for (let i = -4; i <= 4; i++) {
+    const m = at(t + i * 0.05)
+    if (m === null) continue
+    sum += m * (5 - Math.abs(i))
+    wsum += 5 - Math.abs(i)
+  }
+  return wsum ? sum / wsum + transpose : null
 }
 
 function clampN(v: number, lo: number, hi: number) {

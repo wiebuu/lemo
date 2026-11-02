@@ -393,15 +393,14 @@ function forgetJob() {
 
 const GROUPS: { id: string; label: string }[] = [
   { id: 'garhwali', label: 'garhwali' },
-  { id: 'kanye', label: 'kanye' },
   { id: 'hindi', label: 'hindi' },
   { id: 'english', label: 'english' },
 ]
 const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : f.lang === 'hi' ? 'hindi' : 'english')
 
 /**
- * Featured songs live on the server for everyone, in three short lists: garhwali,
- * hindi, kanye. Explore has every song, most played first. "your songs" are the ones you added
+ * Featured songs live on the server for everyone, in short lists: garhwali,
+ * hindi, english. Explore has every song, most played first. "your songs" are the ones you added
  * (kept in your account; the songs themselves live on Lemody's server).
  */
 function SongList({ featured, catalog, online, canPrepare, requests, onCancelRequest, fill, opening, loading, onOpen, onFetch, onPrepare, onRemove }: {

@@ -56,7 +56,7 @@ export interface FeaturedItem {
   title: string
   artist?: string
   lang?: string
-  /** featured section: garhwali | hindi | kanye | english */
+  /** featured section: garhwali | hindi | english */
   group?: string
   duration: number | null
   ready: boolean

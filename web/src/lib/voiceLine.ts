@@ -131,7 +131,7 @@ export function runStart(frames: { t: number; midi: number | null }[], i: number
   return j
 }
 
-const GLIDE = { smooth: { min: 0.8, beta: 0.05 }, natural: { min: 2.2, beta: 0.05 } } as const
+const GLIDE = { smooth: { min: 1.5, beta: 0.08 }, natural: { min: 3, beta: 0.08 } } as const
 const CONFIRM = 8 // readings (≈ 85 ms) that must agree before a big jump is drawn
 
 /**

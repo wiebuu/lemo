@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { Check, HardDrive, Loader2, Play, Trash2, Upload, X } from 'lucide-react'
+import { Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
 import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
 import { tidyTitle } from '../lib/titles'
+import { searchSongs } from '../lib/songSearch'
 import { songLink } from '../lib/songLinks'
 import { cloudSongs, refreshCloudSongs } from '../state/cloud'
 import { events } from '../state/events'
@@ -37,6 +38,19 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
   const [sending, setSending] = useState(false)
   const [opening, setOpening] = useState<string | null>(null)
   const [typing, setTyping] = useState(false)
+  // the start page keeps search in a popup (opened from the headline, or with "/")
+  const [searching, setSearching] = useState(false)
+  useEffect(() => {
+    if (!inline) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || t?.closest('input, textarea, [contenteditable="true"]')) return
+      e.preventDefault()
+      setSearching(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [inline])
   const audioInput = useRef<HTMLInputElement>(null)
 
   const catalogAt = useRef(0)
@@ -166,6 +180,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
   // "we'll do it for you": added by hand within a week, then it's in your songs
   const [asked, setAsked] = useState<string | null>(null)
   const askLemody = async (u: string) => {
+    setSearching(false)
     setChoosing(null)
     setOnDevice(null)
     setErr(null)
@@ -187,6 +202,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
 
   /** a link to a song file (Drive, Dropbox, …): analysed on this device */
   const submitUrl = (u: string) => {
+    setSearching(false)
     if (!health) return setErr('Lemody\u2019s server can\u2019t be reached right now. Try again in a minute.')
     if (cantAnalyse) return setWeak(true)
     setErr(null)
@@ -198,9 +214,8 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
   const running = (job && !['done', 'failed', 'cancelled'].includes(job.stage)) || !!onDevice
   const stageIdx = job ? STAGES.findIndex((s) => s.id === job.stage) : -1
 
-  return (
-    <div className={cx('w-full', inline && 'max-w-3xl mx-auto my-auto max-h-full min-h-0 flex flex-col')}>
-      {inline && <Hero />}
+  const searchBox = (
+    <>
       <SongSearch
         catalog={catalog}
         loading={catalogLoading}
@@ -211,6 +226,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         onLink={submitUrl}
         onAsk={(u) => void askLemody(u)}
         onTyping={setTyping}
+        autoFocus={inline || undefined}
         actions={
           <>
             <Tip className="flex" tip={health ? 'Upload a song from your phone or computer' : 'Needs Lemody\u2019s server'}>
@@ -231,7 +247,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
               </button>
             </Tip>
             <input ref={audioInput} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setChoosing(f) } }} />
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f && !storageFull()) { setErr(null); setSearching(false); setChoosing(f) } }} />
           </>
         }
       />
@@ -242,6 +258,14 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
           <li><span className="text-text/80">YouTube, Spotify & more:</span> paste the link, we add it in about a week</li>
         </ul>
       )}
+    </>
+  )
+
+  return (
+    <div className={cx('w-full', inline && 'max-w-3xl mx-auto my-auto max-h-full min-h-0 flex flex-col')}>
+      {inline && <Hero onSearch={() => setSearching(true)} />}
+      {!inline && searchBox}
+      {inline && searching && <SearchPopup onClose={() => setSearching(false)}>{searchBox}</SearchPopup>}
 
       <Suspense fallback={choosing || onDevice ? <div className="mt-4 flex justify-center"><Eq /></div> : null}>
       {choosing && !onDevice && (
@@ -314,7 +338,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       {full && <StorageFull {...full} onClose={() => setFull(null)} />}
       {err && <div className="mt-4 text-xs text-error leading-relaxed">{err}</div>}
 
-      {!typing && <SongList
+      {(inline || !typing) && <SongList
         featured={featured}
         catalog={catalog}
         online={!!health}
@@ -430,6 +454,9 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   const preview = usePreview()
   useEffect(() => () => preview.stop(), [])
   const [tab, setTab] = useState<'featured' | 'explore' | 'mine'>('featured')
+  const [find, setFind] = useState('')
+  useEffect(() => setFind(''), [tab])
+  const ownShown = find.trim() ? searchSongs(own, find, 500) : own
   // Featured stays the first tab while it loads (placeholder rows), instead of showing
   // "your songs" and then jumping to featured when it arrives.
   const featuredLoading = loading && !featured.length
@@ -453,9 +480,12 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
           <span className="flex-1 h-px bg-line" />
         </div>
       )}
+      {(show === 'explore' || (show === 'mine' && own.length > 0)) && (
+        <ListSearch value={find} onChange={setFind} label={show === 'explore' ? 'search every song' : 'search your songs'} />
+      )}
       <div className={cx('overflow-y-auto -mx-2 px-2', fill ? 'flex-1 min-h-0' : 'max-h-[42vh]')}>
         {show === 'explore' ? (
-          <Explore catalog={catalog} opening={opening} online={online} onOpen={onOpen} />
+          <Explore catalog={catalog} find={find} opening={opening} online={online} onOpen={onOpen} />
         ) : show === 'featured' && featuredLoading ? (
           <SkeletonRows />
         ) : show === 'featured' ? (
@@ -476,7 +506,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
           </>
         ) : own.length || requests.length ? (
           <ol className="flex flex-col">
-            {requests.map((r) => (
+            {!find.trim() && requests.map((r) => (
               <li key={r.songId} className="group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
                 <span className="text-[11px] text-sub">··</span>
                 <span className="min-w-0 truncate text-[14px] text-sub" title={r.title ?? ''}>{r.title ?? 'requested song'}</span>
@@ -489,7 +519,8 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                 </Tip>
               </li>
             ))}
-            {own.map((it, n) => (
+            {find.trim() && !ownShown.length && <li className="px-2 py-2 text-xs text-sub">none of your songs match “{find.trim()}”</li>}
+            {ownShown.map((it, n) => (
               <li key={it.id} className="track group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
                 <span className="text-[11px] text-sub tabular-nums">{String(n + 1).padStart(2, '0')}</span>
                 <button
@@ -542,14 +573,17 @@ function pageList(at: number, pages: number): (number | '…')[] {
 }
 
 /** Every song, most played first (then the newest), 20 to a page. */
-function Explore({ catalog, opening, online, onOpen }: { catalog: CatalogItem[]; opening: string | null; online: boolean; onOpen: (id: string) => void }) {
+function Explore({ catalog, find, opening, online, onOpen }: { catalog: CatalogItem[]; find: string; opening: string | null; online: boolean; onOpen: (id: string) => void }) {
   const preview = usePreview()
   const [page, setPage] = useState(0)
   const top = useRef<HTMLDivElement>(null)
   useEffect(() => () => preview.stop(), [])
+  useEffect(() => setPage(0), [find])
   if (!catalog.length) return <SkeletonRows />
-  const ranked = [...catalog].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0))
-  const pages = Math.ceil(ranked.length / EXPLORE_PAGE)
+  const q = find.trim()
+  const ranked = q ? searchSongs(catalog, q, catalog.length) : [...catalog].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0))
+  if (q && !ranked.length) return <div className="text-xs text-sub py-2 px-2">no song matches “{q}” — tap “search or add a song” above to add it</div>
+  const pages = Math.max(1, Math.ceil(ranked.length / EXPLORE_PAGE))
   const at = Math.min(page, pages - 1)
   const songs = ranked.slice(at * EXPLORE_PAGE, (at + 1) * EXPLORE_PAGE).map((c) => ({ ...c, ...tidyTitle(c.title, c.artist) }))
   const go = (p: number) => {
@@ -634,8 +668,8 @@ function ListSkeleton({ fill }: { fill?: boolean }) {
   )
 }
 
-/** The start screen's headline, under a staff with a melody drifting across it. */
-function Hero() {
+/** The start screen's headline, under a staff with a melody drifting across it — and the way into search. */
+function Hero({ onSearch }: { onSearch: () => void }) {
   return (
     <div className="hero mb-5 sm:mb-7 shrink-0 fade-in">
       <svg viewBox="0 0 640 46" className="hero-staff w-full h-6 mb-3 sm:h-9 sm:mb-4" aria-hidden preserveAspectRatio="none">
@@ -645,9 +679,74 @@ function Hero() {
         <path d="M0 34 C60 34 70 16 120 16 S190 38 250 30 S330 8 390 12 S470 34 520 22 S600 10 640 14"
           fill="none" stroke="var(--main)" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
       </svg>
-      <h1 className="hero-title text-[28px] sm:text-[44px] leading-[1.05] font-semibold text-text tracking-[-0.035em]">
-        What are we <span className="text-main">singing</span> today?
-      </h1>
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2.5">
+        <h1 className="hero-title text-[28px] sm:text-[44px] leading-[1.05] font-semibold text-text tracking-[-0.035em]">
+          What are we <span className="text-main">singing</span> today?
+        </h1>
+        <button type="button" onClick={onSearch} aria-label="search songs, upload one or paste a link"
+          className="group flex items-center gap-2 -ml-0.5 sm:ml-0 sm:mb-1.5 py-1 text-[13px] sm:text-sm text-sub hover:text-text transition-colors">
+          <Search size={16} className="text-text/80 group-hover:text-main transition-colors" />
+          <span>search or add a song</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Search, upload and links in a popup over the start page. It hangs from the top, so a
+ * phone's keyboard never covers the box, and it's no taller than what the keyboard leaves.
+ */
+function SearchPopup({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  const [room, setRoom] = useState<number | null>(null)
+  useEffect(() => {
+    // Esc clears what's typed first, then closes
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLInputElement | null
+      if (e.key === 'Escape' && !(t?.tagName === 'INPUT' && t.value)) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    const vv = window.visualViewport
+    const fit = () => vv && setRoom(vv.height)
+    fit()
+    vv?.addEventListener('resize', fit)
+    const body = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      vv?.removeEventListener('resize', fit)
+      document.body.style.overflow = body
+    }
+  }, [onClose])
+  return (
+    <div data-page-dialog className="overlay-in fixed inset-0 z-[80] bg-black/55 backdrop-blur-[2px] flex items-start justify-center px-3 sm:px-6 pt-[max(12px,env(safe-area-inset-top))] sm:pt-[12vh]"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal aria-label="search songs"
+        style={room ? { maxHeight: `calc(${room}px - max(24px, env(safe-area-inset-top) + 12px))` } : undefined}
+        className="modal-in modal-card w-full sm:max-w-2xl max-h-[calc(100dvh-24px)] sm:max-h-[76vh] overflow-y-auto overscroll-contain rounded-2xl shadow-2xl p-3 sm:p-4">
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <span className="text-[11px] tracking-wide text-sub">search, upload or paste a link</span>
+          <button type="button" onClick={onClose} aria-label="close" className="w-7 h-7 -mr-1 rounded-full text-sub hover:text-text flex items-center justify-center"><X size={15} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** The small search above Explore and your songs. */
+function ListSearch({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  return (
+    <div className="relative mb-2 shrink-0 max-w-xs">
+      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sub pointer-events-none" />
+      <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && onChange('')}
+        placeholder={label} aria-label={label}
+        className="w-full h-8 rounded-lg bg-sub-alt/50 focus:bg-sub-alt/80 pl-8 pr-7 text-[16px] sm:text-[13px] text-text placeholder:text-sub outline-none transition-colors" />
+      {value && (
+        <button type="button" onClick={() => onChange('')} aria-label="clear" className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-sub hover:text-text">
+          <X size={12} />
+        </button>
+      )}
     </div>
   )
 }

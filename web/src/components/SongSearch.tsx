@@ -12,7 +12,7 @@ import { cx, Tip, usePhone } from './ui'
  * file (Drive, Dropbox, …) is analysed on this device; a YouTube link to a song that's
  * already here opens it; any other site's link can be sent to Lemody to add.
  */
-export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, onLink, onAsk, onTyping, actions }: {
+export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, onLink, onAsk, onTyping, actions, autoFocus }: {
   catalog: CatalogItem[]
   /** the song list is still on its way */
   loading: boolean
@@ -30,6 +30,8 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
   onTyping?: (typing: boolean) => void
   /** buttons beside the box (upload, try the demo) */
   actions?: React.ReactNode
+  /** focus the box even on a phone (it was opened on purpose) */
+  autoFocus?: boolean
 }) {
   const phone = usePhone()
   const [q, setQ] = useState('')
@@ -91,7 +93,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
           <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-sub pointer-events-none" />
         )}
         <input
-          autoFocus={!phone} // phones: the keyboard would cover the page
+          autoFocus={autoFocus ?? !phone} // phones: the keyboard would cover the page
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
@@ -100,9 +102,9 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
             else if (e.key === 'Escape') setQ('')
           }}
           disabled={disabled}
-          placeholder={phone ? 'search or paste a link' : 'search a song or singer — or paste a link'}
+          placeholder={phone ? 'song, singer or link' : 'search a song or singer — or paste a link'}
           aria-label="search songs or paste a link"
-          className={cx('w-full bg-transparent rounded-xl pl-11 py-2.5 sm:py-3.5 text-[14px] sm:text-[15px] text-text placeholder:text-sub outline-none', link ? 'pr-28' : typed ? 'pr-9' : 'pr-3')}
+          className={cx('w-full bg-transparent rounded-xl pl-11 py-2.5 sm:py-3.5 text-[16px] sm:text-[15px] text-text placeholder:text-sub outline-none', link ? 'pr-28' : typed ? 'pr-9' : 'pr-3')}
         />
         <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {loading && typed && !link && <Loader2 size={15} className="animate-spin text-sub mr-2" aria-label="loading songs" />}

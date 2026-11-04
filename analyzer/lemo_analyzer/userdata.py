@@ -194,10 +194,15 @@ def touch_user(claims: dict) -> dict:
     return {"settings": row["settings"], "settingsUpdatedAt": row["settings_updated_at"]}
 
 
+GUEST = "guest-"  # uid prefix of someone not signed in (their take on today's top)
+
+
 def _ensure_user(uid: str) -> None:
-    """A save can arrive before the profile does (e.g. right at sign-in): make the row first."""
+    """A save can arrive before the profile does (e.g. right at sign-in): make the row first.
+    A guest gets a row too (today's top needs one), never counted as a singer."""
     now = time.time()
-    _q("INSERT INTO lemo_users (uid, created_at, last_seen) VALUES (%s, %s, %s) ON CONFLICT (uid) DO NOTHING", (uid, now, now))
+    _q("INSERT INTO lemo_users (uid, name, created_at, last_seen) VALUES (%s, %s, %s, %s) ON CONFLICT (uid) DO NOTHING",
+       (uid, "a guest singer" if uid.startswith(GUEST) else None, now, now))
 
 
 def save_settings(uid: str, settings: dict, updated_at: float) -> dict:
@@ -409,7 +414,8 @@ def count_test(day: str, finished: bool, seconds: float = 0.0) -> None:
 
 
 def stats(day: str) -> dict:
-    users = _q("SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE last_seen > %s) AS today FROM lemo_users", (time.time() - 86400,), one=True)
+    users = _q("SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE last_seen > %s) AS today FROM lemo_users WHERE uid NOT LIKE %s",
+               (time.time() - 86400, GUEST + "%"), one=True)
     tot = _q("SELECT COALESCE(SUM(started), 0) AS started, COALESCE(SUM(finished), 0) AS finished, COALESCE(SUM(seconds), 0) AS seconds FROM lemo_daily", one=True)
     today = _q("SELECT started, finished, seconds FROM lemo_daily WHERE day = %s", (day,), one=True) or {"started": 0, "finished": 0, "seconds": 0}
     return {"singers": int(users["n"]), "singersToday": int(users["today"]),

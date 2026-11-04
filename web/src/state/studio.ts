@@ -95,7 +95,8 @@ export interface Snapshot {
    * can hear your voice — you're asked first ('ask').
    */
   /** guest: the take would make it, but a guest's can't be listed until they sign in */
-  topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'no'; guest?: boolean } | null
+  /** guest: on it as "a guest singer"; seen: the guest closed the note about it */
+  topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'no'; guest?: boolean; seen?: boolean } | null
   /** The result shown is someone's take from today's top, not yours. */
   viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean } | null
 }
@@ -274,7 +275,7 @@ export class Studio {
     take.start -= dt
     take.from -= dt
     take.to -= dt
-    const ev = evaluate(track.notes, take.frames, take.from, take.to, this.evalSettings(), track.harmony)
+    const ev = evaluate(track.notes, take.frames, take.from, take.to, this.evalSettings(), track.harmony, track.contour)
     if (this.engine?.playing) this.engine.pause()
     const e = this.engine
     if (e && this.snap.replay) {
@@ -972,7 +973,7 @@ export class Studio {
   /** A take scored at the difficulty and mode it was sung with: the very result its singer saw. */
   private topEval(take: RecordedTake, track: ReferenceTrack, mode: { toleranceCents: number; scoringMode: 'shape' | 'exact' }): Evaluation {
     return evaluate(track.notes, take.frames, take.from, take.to,
-      { ...DEFAULT_EVAL, toleranceCents: mode.toleranceCents, exactEnabled: mode.scoringMode === 'exact' }, track.harmony)
+      { ...DEFAULT_EVAL, toleranceCents: mode.toleranceCents, exactEnabled: mode.scoringMode === 'exact' }, track.harmony, track.contour)
   }
 
   /**
@@ -992,11 +993,9 @@ export class Studio {
     try {
       const { rank } = await analyzer.topCheck(score)
       if (!rank || this.lastTake !== take) return
-      if (!signedIn()) {
-        this.unclaimed = { songId, ev, mode }
-        return this.set({ topRank: { rank, id: null, saving: false, voice: 'no', guest: true } })
-      }
-      this.set({ topRank: { rank, id: null, saving: true, voice: 'ask' } })
+      // a guest goes on it too, as "a guest singer" (their voice stays with them)
+      const guest = !signedIn()
+      this.set({ topRank: { rank, id: null, saving: true, voice: guest ? 'no' : 'ask', guest } })
       const meta = {
         songId, title: track.title, artist: track.artist ?? null, score, seconds: take.to - take.from,
         from: take.from, to: take.to, start: take.start, keyOffset: ev.keyOffset,
@@ -1005,28 +1004,22 @@ export class Studio {
       }
       const res = await analyzer.topSubmit(meta, JSON.stringify(packFrames(take.frames)))
       if (this.lastTake !== take) return
-      this.set({ topRank: res.rank ? { rank: res.rank, id: res.id, saving: false, voice: 'ask' } : null })
+      this.set({ topRank: res.rank ? { rank: res.rank, id: res.id, saving: false, voice: guest ? 'no' : 'ask', guest } : null })
     } catch {
       if (this.lastTake === take) this.set({ topRank: null }) // offline etc.: it just doesn't count
     }
   }
 
-  private unclaimed: { songId: string; ev: Evaluation; mode: { toleranceCents: number; scoringMode: 'shape' | 'exact' } } | null = null
-
-  /** A guest's take would make today's top: sign in, and it's sent. */
-  async claimTop() {
-    const u = this.unclaimed
-    const take = this.lastTake
+  /** A guest on today's top: sign in, so next time it carries their name. */
+  async signInFromTop() {
     await signInWithGoogle()
-    if (!signedIn() || !u || this.lastTake !== take) return
-    this.unclaimed = null
-    await this.offerToTop(u.songId, u.ev, u.mode)
+    if (signedIn()) this.set({ topRank: null })
   }
 
-  /** "not now": the guest leaves the spot unclaimed. */
+  /** "ok": the guest's note about today's top is closed (the take stays on it). */
   skipTop() {
-    this.unclaimed = null
-    this.set({ topRank: null })
+    const top = this.snap.topRank
+    if (top) this.set({ topRank: { ...top, seen: true } })
   }
 
   /** On today's top: let everyone hear your take. */
@@ -1449,7 +1442,7 @@ export class Studio {
       this.set({ canReplay: true })
     }
     if (!track || to - from < 1) return
-    const ev = evaluate(track.notes, this.frames, from, to, this.evalSettings(), track.harmony)
+    const ev = evaluate(track.notes, this.frames, from, to, this.evalSettings(), track.harmony, track.contour)
     if (ev.notesTotal < 2) return
     const scores = { ...Object.fromEntries(Object.entries(ev.metrics).map(([k, m]) => [k, m.score])), overall: ev.overall.score } as Attempt['scores']
     const attempt: Attempt = {
@@ -1735,7 +1728,7 @@ export class Studio {
 
   private liveEvaluate(track: ReferenceTrack, now: number, exact: boolean) {
     const from = Math.max(this.takeFrom!, now - 30)
-    const ev = evaluate(track.notes, this.frames, from, now, this.evalSettings(), track.harmony)
+    const ev = evaluate(track.notes, this.frames, from, now, this.evalSettings(), track.harmony, track.contour)
     if (ev.keyOffset !== null) this.live.keyOffset = ev.keyOffset
     const tol = this.snap.settings.toleranceCents
     for (const n of ev.notes) {

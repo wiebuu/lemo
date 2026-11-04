@@ -15,7 +15,7 @@
 
 import { centsBetweenMidi, clamp, median } from './music'
 import { isScorable, lowerBound, scoreRange } from './scoring'
-import type { HarmonySegment, MetricKey, ReferenceNote, UserFrame } from './types'
+import type { HarmonySegment, MetricKey, PitchContour, ReferenceNote, UserFrame } from './types'
 
 export type Weights = Record<MetricKey, number>
 
@@ -141,6 +141,21 @@ export function estimateLag(notes: ReferenceNote[], frames: UserFrame[], maxLag 
   return bestScore - base > voiced.length * 0.03 ? Math.round(best * 100) / 100 : 0
 }
 
+/** The original singer's pitch line as frames like the mic's (~94 a second), for [a, b]. */
+export function contourFrames(c: PitchContour, a: number, b: number): UserFrame[] {
+  const out: UserFrame[] = []
+  const hop = 1 / 94
+  for (let t = Math.max(a, c.t0); t < b; t += hop) {
+    const x = (t - c.t0) / c.hop
+    const i = Math.floor(x)
+    const m0 = c.midi[i], m1 = c.midi[i + 1]
+    if (m0 === undefined) break
+    const midi = m0 === null ? null : m1 === null || m1 === undefined ? m0 : m0 + (m1 - m0) * (x - i)
+    out.push({ t, midi, clarity: 1 })
+  }
+  return out
+}
+
 // ---- stability -----------------------------------------------------------------
 
 /**
@@ -232,6 +247,13 @@ export function evaluate(
   to: number,
   s: EvalSettings = DEFAULT_EVAL,
   harmony?: HarmonySegment[],
+  /**
+   * The original singer's own pitch line (analysed songs). Timing, steadiness and note
+   * attack are then judged against how they actually sang it — their glides into notes,
+   * ornaments and phrasing are the target, not faults — rather than against the note
+   * boxes alone, which even the original singer only half matches.
+   */
+  contour?: PitchContour,
 ): Evaluation {
   const idx: number[] = []
   notesAll.forEach((n, i) => {
@@ -289,27 +311,40 @@ export function evaluate(
   // moment the pitch crosses over from the previous note to this one (in the
   // singer's own key). Repeated same-pitch legato notes have no audible onset.
   const off = keyOffset ?? 0
-  for (const e of sung) {
-    const n = notesAll[e.noteIndex]
-    const prev = notesAll[e.noteIndex - 1]
+  function onsetOf(fr: UserFrame[], ni: number, shift: number): number | null {
+    const n = notesAll[ni]
+    const prev = notesAll[ni - 1]
     const gap = prev ? n.startTime - prev.endTime : Infinity
     const lo = prev ? Math.max(n.startTime - 0.3, prev.endTime + Math.min(gap, 0.3) / 2) : n.startTime - 0.3
-    const win = framesIn(frames, gap >= 0.25 ? lo : n.startTime - 0.3, n.startTime + Math.min(0.4, (n.endTime - n.startTime) * 0.6))
+    const win = framesIn(fr, gap >= 0.25 ? lo : n.startTime - 0.3, n.startTime + Math.min(0.4, (n.endTime - n.startTime) * 0.6))
     const dist = (m: number, ref: number) => {
-      const d = m - (ref + s.transpose + off)
+      const d = m - (ref + shift)
       return Math.abs(d - 12 * Math.round(d / 12))
     }
     if (gap >= 0.25 || !prev) {
       const f = win.find((x) => x.midi !== null)
-      if (f) e.onsetMs = (f.t - n.startTime) * 1000
-    } else if (Math.abs(prev.midiPitch - n.midiPitch) >= 0.5) {
+      return f ? (f.t - n.startTime) * 1000 : null
+    }
+    if (Math.abs(prev.midiPitch - n.midiPitch) >= 0.5) {
       for (let k = 0; k + 2 < win.length; k++) {
         const run = win.slice(k, k + 3)
-        if (run.every((x) => x.midi !== null && dist(x.midi, n.midiPitch) < dist(x.midi, prev.midiPitch))) {
-          e.onsetMs = (run[0].t - n.startTime) * 1000
-          break
-        }
+        if (run.every((x) => x.midi !== null && dist(x.midi, n.midiPitch) < dist(x.midi, prev.midiPitch))) return (run[0].t - n.startTime) * 1000
       }
+    }
+    return null
+  }
+  for (const e of sung) e.onsetMs = onsetOf(frames, e.noteIndex, s.transpose + off)
+
+  // The original singer, measured the same way (their line is in the song's own key).
+  const ref = contour ? contourFrames(contour, from - 1, to + 1) : null
+  const refOnset = new Map<number, number | null>()
+  const refStab = new Map<number, NoteEval['stability']>()
+  const refAttack = new Map<number, NoteEval['attack']>()
+  if (ref) {
+    for (const e of evals) {
+      const n = notesAll[e.noteIndex]
+      refOnset.set(e.noteIndex, onsetOf(ref, e.noteIndex, 0))
+      if (n.endTime - n.startTime >= 0.55) refStab.set(e.noteIndex, analyseStability(framesIn(ref, n.startTime + 0.2, n.endTime - 0.06)))
     }
   }
 
@@ -331,16 +366,16 @@ export function evaluate(
   // Attack: on notes that start fresh (after a rest or a real jump), how long until the
   // voice settles on the note (in the singer's key), and whether it scooped up from below.
   const keyOff = keyOffset ?? 0
-  for (const e of sung) {
-    const n = notesAll[e.noteIndex]
-    const prev = notesAll[e.noteIndex - 1]
+  function attackOf(fr: UserFrame[], ni: number, at: number, pitch: number): NoteEval['attack'] {
+    const n = notesAll[ni]
+    const prev = notesAll[ni - 1]
     const fresh = !prev || n.startTime - prev.endTime >= 0.2 || Math.abs(n.midiPitch - prev.midiPitch) >= 1
-    if (!fresh || n.endTime - n.startTime < 0.25) continue
-    const v = framesIn(frames, n.startTime + lag - 0.08, n.startTime + lag + Math.min(0.5, (n.endTime - n.startTime) * 0.7))
+    if (!fresh || n.endTime - n.startTime < 0.25) return null
+    const v = framesIn(fr, n.startTime + at - 0.08, n.startTime + at + Math.min(0.5, (n.endTime - n.startTime) * 0.7))
       .filter((f) => f.midi !== null)
-    if (v.length < 6) continue
+    if (v.length < 6) return null
     const dev = (m: number) => {
-      const d = (m - (target(n) + keyOff)) * 100
+      const d = (m - pitch) * 100
       return d - 1200 * Math.round(d / 1200)
     }
     let settleMs: number | null = null
@@ -351,8 +386,10 @@ export function evaluate(
       }
     }
     const early = v.filter((f) => f.t - v[0].t < 0.12).map((f) => dev(f.midi!))
-    e.attack = { settleMs, scoop: early.length >= 3 && median(early) < -Math.max(s.toleranceCents, 70) }
+    return { settleMs, scoop: early.length >= 3 && median(early) < -Math.max(s.toleranceCents, 70) }
   }
+  for (const e of sung) e.attack = attackOf(frames, e.noteIndex, lag, target(notesAll[e.noteIndex]) + keyOff)
+  if (ref) for (const e of evals) refAttack.set(e.noteIndex, attackOf(ref, e.noteIndex, 0, notesAll[e.noteIndex].midiPitch))
 
   // Harmony: does each sung note fit the accompaniment's chord? (when chords are known)
   let checked = 0, clashes = 0
@@ -493,9 +530,20 @@ export function evaluate(
   function rhythmMetric(): MetricResult {
     const why = enoughSinging()
     if (why) return { score: null, note: why, details: {} }
-    const onsets = sung.map((e) => e.onsetMs).filter((v): v is number => v !== null)
+    // with the original's line: how far each start is from where they started it
+    const onsets: number[] = []
+    let lost = 0 // the original clearly starts a note here, and you never do
+    for (const e of sung) {
+      const r = ref ? refOnset.get(e.noteIndex) : 0
+      if (r === null || r === undefined) continue
+      if (e.onsetMs === null) {
+        if (ref) lost++
+        continue
+      }
+      onsets.push(e.onsetMs - r)
+    }
     if (onsets.length < 3) return { score: null, note: 'could not find note starts', details: {} }
-    const onsetScore = mean(onsets.map((ms) => ramp(Math.abs(ms), 60, 220)))
+    const onsetScore = (onsets.reduce((a, ms) => a + ramp(Math.abs(ms), 70, 260), 0) + 0.2 * lost) / (onsets.length + lost)
 
     // Phrase endings (note followed by a ≥0.25 s rest) and the rests themselves.
     const releases: number[] = []
@@ -505,13 +553,21 @@ export function evaluate(
       const next = notesAll[idx[k] + 1]
       const gap = next ? next.startTime - n.endTime : Infinity
       if (gap < 0.25) continue
+      const lastVoiced = (fr: UserFrame[]) => {
+        const tail = framesIn(fr, n.startTime, n.endTime + Math.min(0.5, gap - 0.05)).filter((f) => f.midi !== null)
+        return tail.length ? tail[tail.length - 1].t : null
+      }
       if (evals[k].sung) {
-        const tail = framesIn(frames, n.startTime, n.endTime + Math.min(0.5, gap - 0.05)).filter((f) => f.midi !== null)
-        if (tail.length) releases.push(ramp(Math.abs(tail[tail.length - 1].t - n.endTime) * 1000, 100, 320))
+        const u = lastVoiced(frames)
+        const r = ref ? lastVoiced(ref) : n.endTime
+        if (u !== null && r !== null) releases.push(ramp(Math.abs(u - r) * 1000, 100, 320))
       }
       if (next && next.startTime <= to && gap >= 0.3) {
         const mid = framesIn(frames, n.endTime + gap * 0.25, next.startTime - gap * 0.25)
-        if (mid.length >= 5) {
+        // only a rest the original singer actually leaves (not one they sing through)
+        const refMid = ref ? framesIn(ref, n.endTime + gap * 0.25, next.startTime - gap * 0.25) : []
+        const refRests = !ref || !refMid.length || refMid.filter((f) => f.midi !== null).length / refMid.length <= 0.3
+        if (mid.length >= 5 && refRests) {
           pauses++
           if (mid.filter((f) => f.midi !== null).length / mid.length <= 0.3) respected++
         }
@@ -539,10 +595,20 @@ export function evaluate(
     const why = enoughSinging(2)
     if (why) return { score: null, note: why, details: {} }
     const st = sung.map((e) => e.stability).filter((x): x is NonNullable<typeof x> => x !== null)
-    if (!st.length) return { score: null, note: 'no long notes sung in this range', details: {} }
+    // as steady as the original was on each note: where they ornament a long note, moving
+    // around isn't a fault (and a note they ornament heavily isn't judged at all)
+    const per: number[] = []
+    for (const e of sung) {
+      if (!e.stability) continue
+      if (!ref) { per.push(e.stability.score); continue }
+      const r = refStab.get(e.noteIndex)
+      if (!r || r.score < 0.35) continue
+      per.push(clamp(e.stability.score / r.score, 0, 1))
+    }
+    if (!st.length || !per.length) return { score: null, note: 'no long notes sung in this range', details: {} }
     const vib = st.filter((x) => x.kind === 'vibrato' || x.kind === 'wobble')
     return {
-      score: mean(st.map((x) => x.score)),
+      score: mean(per),
       note: 'steadiness on long notes — healthy vibrato is not penalised',
       details: {
         longNotes: st.length,
@@ -609,8 +675,17 @@ export function evaluate(
     const why = enoughSinging()
     if (why) return { score: null, note: why, details: {} }
     const a = sung.map((e) => e.attack).filter((x): x is NonNullable<typeof x> => x !== null)
-    if (a.length < 3) return { score: null, note: 'not enough fresh note starts to judge', details: {} }
-    const per = a.map((x) => (x.settleMs === null ? 0 : ramp(x.settleMs, 60, 260)) * (x.scoop ? 0.7 : 1))
+    // against the original: a slide into a note they slide into too is style, not a fault
+    const per: number[] = []
+    for (const e of sung) {
+      const x = e.attack
+      if (!x) continue
+      const r = ref ? refAttack.get(e.noteIndex) : { settleMs: 0, scoop: false }
+      if (!r || r.settleMs === null) continue
+      const settle = x.settleMs === null ? 0 : ramp(x.settleMs - r.settleMs, 60, 260)
+      per.push(settle * (x.scoop && !r.scoop ? 0.7 : 1))
+    }
+    if (per.length < 3) return { score: null, note: 'not enough fresh note starts to judge', details: {} }
     const settled = a.map((x) => x.settleMs).filter((v): v is number => v !== null)
     return {
       score: mean(per),

@@ -170,8 +170,27 @@ class TopTests(unittest.TestCase):
         self.assertEqual(self.c.get("/api/top").status_code, 200)  # a guest can look
         self.assertEqual(self.c.get("/api/stats").status_code, 200)  # the numbers are public
         self.assertEqual(self.c.post("/api/top/check", json={"score": 0.9}).status_code, 200)  # …and learn their rank
-        self.assertEqual(self.c.post("/api/top/submit", data={"meta": "{}"}).status_code, 401)  # but listing needs a sign-in
+        self.assertEqual(self.c.post("/api/top/1234abcd/voice", files={"voice": ("v.wav", _wav(), "audio/wav")}).status_code, 401)
         self.assertEqual(self.c.get("/api/me").status_code, 401)
+
+    def guest(self, score, ip, voice=False):
+        meta = {"songId": SONG, "title": "Song", "score": score, "seconds": 75.0, "from": 10.0, "to": 85.0, "start": 9.5, "keyOffset": 0}
+        files = {"frames": ("frames.json", FRAMES, "application/json")}
+        if voice:
+            files["voice"] = ("voice.wav", _wav(), "audio/wav")
+        return self.c.post("/api/top/submit", headers={"x-real-ip": ip}, data={"meta": json.dumps(meta)}, files=files)
+
+    def test_a_guest_goes_on_the_top_as_a_guest_singer_one_place_per_address(self):
+        self.submit(0.8)
+        r = self.guest(0.9, "1.2.3.4")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["rank"], 1)
+        self.assertEqual(self.guest(0.85, "1.2.3.4").json()["rank"], None)  # the same guest: their best stays
+        self.assertEqual(self.guest(0.7, "5.6.7.8").json()["rank"], 3)  # someone else
+        self.assertEqual(self.guest(0.95, "9.9.9.9", voice=True).status_code, 401)  # a voice needs a sign-in
+        board = self.c.get("/api/top", headers={"x-real-ip": "1.2.3.4"}).json()["entries"]
+        self.assertEqual([(e["name"], e["mine"]) for e in board], [("a guest singer", True), ("Alice", False), ("a guest singer", False)])
+        self.assertEqual(self.get("/api/stats").json()["singers"], 1)  # guests aren't counted as singers
 
 
 if __name__ == "__main__":

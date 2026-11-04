@@ -49,7 +49,8 @@ GUEST_READS = re.compile(
     r"/api/(catalog|featured|search/lyrics|songs/match|lyrics|top(/[\w-]+(/voice)?)?|requests/all"
     r"|songs/[\w-]+/(preview|status|reference|render-status|audio/\w+))"
 )
-GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|top/check|stats/test)")  # counted; nothing is kept for them
+# counted; and a guest's take can go on today's top (as "a guest singer", without their voice)
+GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|top/(check|submit)|stats/test)")
 
 
 @app.middleware("http")
@@ -419,9 +420,7 @@ def song_played(song_id: str, request: Request) -> dict:
     """A singer got a result on this song: counts towards Explore's "most played"."""
     _song(song_id)
     user = getattr(request.state, "user", None) or {}
-    # a guest: by address (behind nginx, the one it passes on)
-    ip = request.headers.get("x-real-ip") or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
-    who = str(user.get("uid") or user.get("user_id") or user.get("sub") or ip or (request.client.host if request.client else "?"))
+    who = str(user.get("uid") or user.get("user_id") or user.get("sub") or _ip(request) or "?")  # a guest: by address
     n = catalog.played(song_id, who)
     return {"counted": n is not None, "plays": n}
 
@@ -571,10 +570,18 @@ def activity() -> dict:
 PREF_KEY = re.compile(r"^[\w.\-: ]{1,200}$")
 
 
+def _ip(request: Request) -> str:
+    """The singer's address (behind nginx, the one it passes on)."""
+    return request.headers.get("x-real-ip") or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() \
+        or (request.client.host if request.client else "")
+
+
 def _uid(request: Request) -> str:
     c = request.state.user
-    if c is None:  # a guest (only on GUEST_READS / GUEST_POSTS): matches no one's takes
-        return "guest"
+    if c is None:
+        # a guest (only on GUEST_READS / GUEST_POSTS), known by their address: one place on
+        # today's top per connection, so one person can't fill it
+        return userdata.GUEST + hashlib.sha256(f"lemo-guest:{_ip(request)}".encode()).hexdigest()[:16]
     return c.get("uid") or c["user_id"]
 
 
@@ -1012,7 +1019,7 @@ def top_check(request: Request, body: dict = Body(...)) -> dict:
     score = body.get("score")
     if not isinstance(score, (int, float)) or not 0 <= score <= 1:
         raise HTTPException(400, "send {score: 0..1}")
-    return _data(lambda: top.check(_uid(request), float(score)))  # a guest is told the rank too, to sign in and claim it
+    return _data(lambda: top.check(_uid(request), float(score)))
 
 
 async def _wav_upload(voice: UploadFile, tmp: str) -> Path:
@@ -1039,6 +1046,8 @@ async def top_submit(request: Request, frames: UploadFile, voice: UploadFile | N
     sid = m.get("songId")
     if not isinstance(sid, str) or not SONG_ID.match(sid) or not catalog.is_public(sid):
         raise HTTPException(400, "only songs in Lemody's library count")
+    if request.state.user is None and voice is not None:
+        raise HTTPException(401, "sign in to share your voice")
     fr = await frames.read(8 * 1024 * 1024 + 1)
     if len(fr) > 8 * 1024 * 1024:
         raise HTTPException(413, "pitch line too large")
@@ -1046,7 +1055,8 @@ async def top_submit(request: Request, frames: UploadFile, voice: UploadFile | N
         wav = await _wav_upload(voice, tmp) if voice is not None else None
         try:
             def run():
-                userdata.touch_user(request.state.user)  # the name and photo shown with the take
+                if request.state.user is not None:
+                    userdata.touch_user(request.state.user)  # the name and photo shown with the take
                 return top.add(_uid(request), m, fr, wav)
 
             return await run_in_threadpool(lambda: _data(run))

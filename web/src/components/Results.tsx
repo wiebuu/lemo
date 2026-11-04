@@ -205,9 +205,9 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
         </Tip>
       )}
       {s.topRank && (
-        <Tip tip={s.topRank.guest ? 'Your take would make today’s top: sign in to put it there.' : s.topRank.saving ? 'Saving your take to today’s top…' : s.topRank.voice === 'shared' ? 'Your take is on today’s top — others can open it and hear you.' : 'Your take is on today’s top — others can see your result and pitch line (your voice stays private).'}>
-          <button type="button" onClick={() => (s.topRank?.guest ? void studio.claimTop() : navigate('/top'))} className={cx('flex items-center gap-1 px-2 py-0.5 rounded-full bg-main text-bg', s.topRank.saving && 'opacity-60')}>
-            <Crown size={12} /> #{s.topRank.rank} in today’s top{s.topRank.guest ? ' · sign in to claim' : s.topRank.saving ? '…' : ''}
+        <Tip tip={s.topRank.saving ? 'Saving your take to today’s top…' : s.topRank.guest ? 'Your take is on today’s top as a guest singer — sign in to show your name next time.' : s.topRank.saving ? 'Saving your take to today’s top…' : s.topRank.voice === 'shared' ? 'Your take is on today’s top — others can open it and hear you.' : 'Your take is on today’s top — others can see your result and pitch line (your voice stays private).'}>
+          <button type="button" onClick={() => navigate('/top')} className={cx('flex items-center gap-1 px-2 py-0.5 rounded-full bg-main text-bg', s.topRank.saving && 'opacity-60')}>
+            <Crown size={12} /> #{s.topRank.rank} in today’s top{s.topRank.saving ? '…' : ''}
           </button>
         </Tip>
       )}

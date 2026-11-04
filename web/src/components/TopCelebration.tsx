@@ -55,22 +55,22 @@ export function TopCelebration() {
   return (
     <>
       <div ref={layer} className="fixed inset-0 z-[60] pointer-events-none overflow-hidden" aria-hidden />
-      {top?.guest && (
-        <div role="dialog" aria-label="Your take would make today's top"
+      {top?.guest && top.id && !top.seen && (
+        <div role="dialog" aria-label="You made today's top"
           className="toast-in fixed z-50 left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 w-[min(22rem,calc(100vw-2rem))] rounded-2xl bg-sub-alt shadow-xl px-4 py-3.5 text-center">
           <div className="flex items-center justify-center gap-1.5 text-main font-semibold text-sm sm:text-base">
-            <Crown size={16} /> That’s #{top.rank} in today’s top!
+            <Crown size={16} /> #{top.rank} in today’s top!
           </div>
           <p className="text-[12px] sm:text-xs text-sub mt-1 leading-snug">
-            Sign in to claim your spot, and keep your scores and songs on any device.
+            You’re on it as a guest singer. Sign in to show your name next time, and keep your scores on any device.
           </p>
           <div className="flex gap-2 mt-3">
             <button type="button" onClick={() => studio.skipTop()} className="flex-1 rounded-full surface text-text text-xs py-2">
-              not now
+              nice
             </button>
-            <button type="button" onClick={() => void studio.claimTop()}
+            <button type="button" onClick={() => void studio.signInFromTop()}
               className="flex-1 rounded-full bg-main text-bg text-xs font-medium py-2 flex items-center justify-center gap-1.5">
-              <LogIn size={13} /> sign in &amp; claim
+              <LogIn size={13} /> sign in
             </button>
           </div>
         </div>

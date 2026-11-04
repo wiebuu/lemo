@@ -167,8 +167,11 @@ class TopTests(unittest.TestCase):
         self.assertIn("songs", s)
 
     def test_needs_sign_in(self):
-        self.assertEqual(self.c.get("/api/top").status_code, 401)
+        self.assertEqual(self.c.get("/api/top").status_code, 200)  # a guest can look
         self.assertEqual(self.c.get("/api/stats").status_code, 200)  # the numbers are public
+        self.assertEqual(self.c.post("/api/top/check", json={"score": 0.9}).status_code, 200)  # …and learn their rank
+        self.assertEqual(self.c.post("/api/top/submit", data={"meta": "{}"}).status_code, 401)  # but listing needs a sign-in
+        self.assertEqual(self.c.get("/api/me").status_code, 401)
 
 
 if __name__ == "__main__":

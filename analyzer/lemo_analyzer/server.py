@@ -40,18 +40,32 @@ def _to_store(request: Request, url: str):
     return RedirectResponse(url, status_code=307)
 
 
-# Only the health check and the stats page's numbers are open; everything else needs a
-# Google sign-in (see auth.py).
+# Only the health check and the stats page's numbers are open to everyone. Someone not
+# signed in may also find, open and sing the songs Lemody has (GUEST_READS); everything
+# that's theirs — settings, song list, scores, requests, uploads — needs a Google
+# sign-in (see auth.py).
 OPEN_PATHS = {"/api/health", "/api/stats"}
+GUEST_READS = re.compile(
+    r"/api/(catalog|featured|search/lyrics|songs/match|lyrics|top(/[\w-]+(/voice)?)?|requests/all"
+    r"|songs/[\w-]+/(preview|status|reference|render-status|audio/\w+))"
+)
+GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|top/check|stats/test)")  # counted; nothing is kept for them
 
 
 @app.middleware("http")
 async def require_google_sign_in(request: Request, call_next):
-    if request.url.path.startswith("/api/") and request.url.path not in OPEN_PATHS and request.method != "OPTIONS":
-        try:
-            request.state.user = auth.verify(request.headers.get("authorization"))
-        except auth.AuthError as e:
-            return JSONResponse({"detail": str(e)}, status_code=401)
+    path = request.url.path
+    if path.startswith("/api/") and path not in OPEN_PATHS and request.method != "OPTIONS":
+        guest = not request.headers.get("authorization") and (
+            (request.method == "GET" and GUEST_READS.fullmatch(path)) or (request.method == "POST" and GUEST_POSTS.fullmatch(path))
+        )
+        if guest:
+            request.state.user = None
+        else:
+            try:
+                request.state.user = auth.verify(request.headers.get("authorization"))
+            except auth.AuthError as e:
+                return JSONResponse({"detail": str(e)}, status_code=401)
     return await call_next(request)
 
 
@@ -405,7 +419,9 @@ def song_played(song_id: str, request: Request) -> dict:
     """A singer got a result on this song: counts towards Explore's "most played"."""
     _song(song_id)
     user = getattr(request.state, "user", None) or {}
-    who = str(user.get("uid") or user.get("user_id") or user.get("sub") or request.client.host if request.client else "?")
+    # a guest: by address (behind nginx, the one it passes on)
+    ip = request.headers.get("x-real-ip") or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    who = str(user.get("uid") or user.get("user_id") or user.get("sub") or ip or (request.client.host if request.client else "?"))
     n = catalog.played(song_id, who)
     return {"counted": n is not None, "plays": n}
 
@@ -557,6 +573,8 @@ PREF_KEY = re.compile(r"^[\w.\-: ]{1,200}$")
 
 def _uid(request: Request) -> str:
     c = request.state.user
+    if c is None:  # a guest (only on GUEST_READS / GUEST_POSTS): matches no one's takes
+        return "guest"
     return c.get("uid") or c["user_id"]
 
 
@@ -994,7 +1012,7 @@ def top_check(request: Request, body: dict = Body(...)) -> dict:
     score = body.get("score")
     if not isinstance(score, (int, float)) or not 0 <= score <= 1:
         raise HTTPException(400, "send {score: 0..1}")
-    return _data(lambda: top.check(_uid(request), float(score)))
+    return _data(lambda: top.check(_uid(request), float(score)))  # a guest is told the rank too, to sign in and claim it
 
 
 async def _wav_upload(voice: UploadFile, tmp: str) -> Path:

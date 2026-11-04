@@ -1,5 +1,5 @@
 import { ChartColumn, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
-import { signOut, useAuth } from '../auth/firebase'
+import { signInWithGoogle, signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
 import { navigate } from '../pages/router'
 import { studio } from '../state/studio'
@@ -65,10 +65,19 @@ export function Header({ open }: { open: (p: Panel) => void }) {
   )
 }
 
-/** Who's signed in, and signing out. */
+/** Who's signed in, and signing out — or, for a guest, signing in (to keep scores and songs). */
 function Account() {
   const a = useAuth()
   const cloud = useCloud()
+  if (a.status === 'signed-out')
+    return (
+      <Tip tip={a.error ?? "Keep your scores, songs and settings, on any device"}>
+        <button type="button" onClick={() => void signInWithGoogle()}
+          className="shrink-0 rounded-full bg-main text-bg text-xs font-medium px-3.5 py-1.5 hover:opacity-90 active:scale-[.98]">
+          sign in
+        </button>
+      </Tip>
+    )
   if (a.status !== 'signed-in') return null
   const u = a.user
   const sync =

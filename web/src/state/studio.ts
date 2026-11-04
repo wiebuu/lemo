@@ -3,6 +3,7 @@
 // snapshot that only changes on user-visible state changes (not per frame).
 
 import { analyzer } from '../api/analyzer'
+import { signedIn, signInWithGoogle } from '../auth/firebase'
 import { levelTake } from '../lib/level'
 import { demoSource, demoTrack } from '../audio/demo'
 import { analyzerSource, fileSource, PlaybackEngine, type AudioSource } from '../audio/engine'
@@ -93,7 +94,8 @@ export interface Snapshot {
    * Your result made today's top: its place (saving: being sent) and whether everyone
    * can hear your voice — you're asked first ('ask').
    */
-  topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'no' } | null
+  /** guest: the take would make it, but a guest's can't be listed until they sign in */
+  topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'no'; guest?: boolean } | null
   /** The result shown is someone's take from today's top, not yours. */
   viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean } | null
 }
@@ -990,6 +992,10 @@ export class Studio {
     try {
       const { rank } = await analyzer.topCheck(score)
       if (!rank || this.lastTake !== take) return
+      if (!signedIn()) {
+        this.unclaimed = { songId, ev, mode }
+        return this.set({ topRank: { rank, id: null, saving: false, voice: 'no', guest: true } })
+      }
       this.set({ topRank: { rank, id: null, saving: true, voice: 'ask' } })
       const meta = {
         songId, title: track.title, artist: track.artist ?? null, score, seconds: take.to - take.from,
@@ -1003,6 +1009,24 @@ export class Studio {
     } catch {
       if (this.lastTake === take) this.set({ topRank: null }) // offline etc.: it just doesn't count
     }
+  }
+
+  private unclaimed: { songId: string; ev: Evaluation; mode: { toleranceCents: number; scoringMode: 'shape' | 'exact' } } | null = null
+
+  /** A guest's take would make today's top: sign in, and it's sent. */
+  async claimTop() {
+    const u = this.unclaimed
+    const take = this.lastTake
+    await signInWithGoogle()
+    if (!signedIn() || !u || this.lastTake !== take) return
+    this.unclaimed = null
+    await this.offerToTop(u.songId, u.ev, u.mode)
+  }
+
+  /** "not now": the guest leaves the spot unclaimed. */
+  skipTop() {
+    this.unclaimed = null
+    this.set({ topRank: null })
   }
 
   /** On today's top: let everyone hear your take. */

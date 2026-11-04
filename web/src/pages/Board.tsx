@@ -10,11 +10,11 @@ import { go, navigate } from './router'
 
 const pct = (v: number) => `${Math.round(v * 100)}%`
 
-/** Loads something for a page once; signed out, or offline, it says so instead. */
-function useLoad<T>(load: () => Promise<T>, open = false): { data: T | null; error: string | null } {
+/** Loads something for a page once (signed in or a guest); offline, it says so instead. */
+function useLoad<T>(load: () => Promise<T>): { data: T | null; error: string | null } {
   const auth = useAuth()
   const [state, setState] = useState<{ data: T | null; error: string | null }>({ data: null, error: null })
-  const ready = open ? auth.status !== 'loading' : auth.status === 'signed-in'
+  const ready = auth.status !== 'loading' // a signed-in reader's own takes are marked as theirs
   useEffect(() => {
     if (!ready) return
     let live = true
@@ -23,7 +23,6 @@ function useLoad<T>(load: () => Promise<T>, open = false): { data: T | null; err
       live = false
     }
   }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (auth.status === 'signed-out' && !open) return { data: null, error: 'Sign in on the home page to see this.' }
   return state
 }
 
@@ -125,7 +124,7 @@ function hours(s: number): string {
 
 /** Lemody in numbers. */
 export function StatsPage() {
-  const { data, error } = useLoad<SiteStats>(analyzer.stats, true)
+  const { data, error } = useLoad<SiteStats>(analyzer.stats)
   return (
     <>
       <p className="lead">Lemody in numbers, live.</p>

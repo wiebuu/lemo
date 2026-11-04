@@ -50,10 +50,10 @@ export function ComingPage() {
   const picking = useRef<string | null>(null)
 
   const load = useCallback(() => analyzer.allRequests().then(setBoard, (e: Error) => setErr(e.message)), [])
-  const signedIn = auth.status === 'signed-in'
+  const known = auth.status !== 'loading' // signed in or a guest: anyone can see what's coming
   useEffect(() => {
-    if (signedIn) void load()
-  }, [signedIn, load])
+    if (known) void load()
+  }, [known, load])
   useEffect(() => void import('../analysis/onDevice').then((m) => m.deviceSupport()).then(setDevice, () => {}), [])
 
   const done = async (songId: string, title: string, target: string) => {
@@ -66,8 +66,6 @@ export function ComingPage() {
     }
     void load()
   }
-
-  if (auth.status === 'signed-out') return <p className="card">Sign in on the home page to see this.</p>
 
   return (
     <>

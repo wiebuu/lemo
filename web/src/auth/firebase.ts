@@ -77,6 +77,9 @@ export async function idToken(): Promise<string | null> {
   return auth?.currentUser ? auth.currentUser.getIdToken() : null
 }
 
+/** Signed in (not a guest), right now. */
+export const signedIn = () => !!auth?.currentUser
+
 export async function signOut() {
   if (auth) await fbSignOut(auth)
 }

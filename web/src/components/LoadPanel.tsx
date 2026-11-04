@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
 import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
+import { signedIn } from '../auth/firebase'
 import { tidyTitle } from '../lib/titles'
 import { searchSongs } from '../lib/songSearch'
 import { songLink } from '../lib/songLinks'
@@ -59,6 +60,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
   const requestsAt = useRef(0)
   const loadRequests = useCallback(async () => {
     requestsAt.current = Date.now()
+    if (!signedIn()) return // a guest hasn't asked for any
     const r = await analyzer.requests().catch(() => null)
     if (!r) return
     setRequests((before) => {

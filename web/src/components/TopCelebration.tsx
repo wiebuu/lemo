@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Crown, MicVocal } from 'lucide-react'
+import { Crown, LogIn, MicVocal } from 'lucide-react'
 import { studio } from '../state/studio'
 import { useStudio } from './ui'
 
@@ -55,6 +55,26 @@ export function TopCelebration() {
   return (
     <>
       <div ref={layer} className="fixed inset-0 z-[60] pointer-events-none overflow-hidden" aria-hidden />
+      {top?.guest && (
+        <div role="dialog" aria-label="Your take would make today's top"
+          className="toast-in fixed z-50 left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 w-[min(22rem,calc(100vw-2rem))] rounded-2xl bg-sub-alt shadow-xl px-4 py-3.5 text-center">
+          <div className="flex items-center justify-center gap-1.5 text-main font-semibold text-sm sm:text-base">
+            <Crown size={16} /> That’s #{top.rank} in today’s top!
+          </div>
+          <p className="text-[12px] sm:text-xs text-sub mt-1 leading-snug">
+            Sign in to claim your spot, and keep your scores and songs on any device.
+          </p>
+          <div className="flex gap-2 mt-3">
+            <button type="button" onClick={() => studio.skipTop()} className="flex-1 rounded-full surface text-text text-xs py-2">
+              not now
+            </button>
+            <button type="button" onClick={() => void studio.claimTop()}
+              className="flex-1 rounded-full bg-main text-bg text-xs font-medium py-2 flex items-center justify-center gap-1.5">
+              <LogIn size={13} /> sign in &amp; claim
+            </button>
+          </div>
+        </div>
+      )}
       {top?.id && (top.voice === 'ask' || top.voice === 'sending') && (
         <div role="dialog" aria-label="You made today's top"
           className="toast-in fixed z-50 left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 w-[min(22rem,calc(100vw-2rem))] rounded-2xl bg-sub-alt shadow-xl px-4 py-3.5 text-center">

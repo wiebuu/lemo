@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.requests import Request
 
 from starlette.concurrency import run_in_threadpool
-from . import audio, auth, catalog, device, jobs, lyrics, remote, storage, top, userdata, worker, youtube
+from . import audio, auth, catalog, device, jobs, lyrics, lyricsearch, remote, storage, top, userdata, worker, youtube
 from .config import CONFIG, FFMPEG, RUBBERBAND, device_name
 
 app = FastAPI(title="Lemody analyzer", version="0.1.0")
@@ -69,6 +69,7 @@ def _startup() -> None:
         # every 5 minutes after, so a dropped connection sorts itself out
         remote.keep_in_sync(storage.songs_root())
         catalog.backfill()  # previews + search entries for songs from before search existed
+        lyricsearch.search("warm up the index")  # the first search shouldn't wait for it
         # songs another machine added to the VPS since: listed within 10 minutes
         def relist() -> None:
             while True:
@@ -391,6 +392,12 @@ def song_catalog() -> list[dict]:
     """Every stored YouTube song, for search. Opening one never re-analyses it."""
     return [{**{k: e.get(k) for k in ("id", "title", "artist", "duration", "lang", "featured", "preview", "addedAt")}, "plays": int(e.get("plays") or 0)}
             for e in catalog.all_songs() if catalog.is_public(e["id"])]
+
+
+@app.get("/api/search/lyrics")
+def search_lyrics(q: str = "") -> list[dict]:
+    """Songs by a bit of their lyrics, typed any way ({id, line}: the line it's on)."""
+    return lyricsearch.search(q[:120])
 
 
 @app.post("/api/songs/{song_id}/played")

@@ -3,6 +3,7 @@ import { ArrowRight, Link2, Loader2, Pause, Play, Search, X } from 'lucide-react
 import { analyzer, type CatalogItem } from '../api/analyzer'
 import { formatTime } from '../lib/music'
 import { searchSongs } from '../lib/songSearch'
+import { tidyTitle } from '../lib/titles'
 import { songLink } from '../lib/songLinks'
 import { cx, Tip, usePhone } from './ui'
 
@@ -10,7 +11,8 @@ import { cx, Tip, usePhone } from './ui'
  * The start box: type a song or a singer to find it among the songs Lemody already
  * has (they open straight away, ▶ plays 10 seconds first) — or paste a link: a song
  * file (Drive, Dropbox, …) is analysed on this device; a YouTube link to a song that's
- * already here opens it; any other site's link can be sent to Lemody to add.
+ * already here opens it; any other site's link can be sent to Lemody to add. A few
+ * words from the lyrics find the song too, spelled any way ("From the lyrics").
  */
 export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, onLink, onAsk, onTyping, actions, autoFocus }: {
   catalog: CatalogItem[]
@@ -57,7 +59,31 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
   const known = byId ?? (checked?.song ? { id: checked.song.id, title: checked.song.title } : undefined)
   const checking = askable && !checked
   const locked = askable && checked && !checked.song ? (link?.kind === 'locked' ? link.site : 'YouTube') : null
-  const found = useMemo(() => (link ? [] : searchSongs(catalog, q)), [catalog, q, link])
+  const named = useMemo(() => (link ? [] : searchSongs(catalog, q)), [catalog, q, link])
+  // a bit of the lyrics (two words or more): asked of the server once typing pauses
+  const [sung, setSung] = useState<{ q: string; hits: { id: string; line: string }[] } | null>(null)
+  const lyricQ = !link && q.trim().split(/\s+/).length >= 2 ? q.trim() : ''
+  useEffect(() => {
+    if (!lyricQ) return
+    let gone = false
+    const t = setTimeout(() => {
+      analyzer.searchLyrics(lyricQ).then((hits) => !gone && setSung({ q: lyricQ, hits }), () => !gone && setSung({ q: lyricQ, hits: [] }))
+    }, 300)
+    return () => { gone = true; clearTimeout(t) }
+  }, [lyricQ])
+  const lyricsPending = !!lyricQ && sung?.q !== lyricQ
+  const found = useMemo(() => {
+    const ids = new Set(named.map((s) => s.id))
+    const fromLyrics = lyricQ && sung?.q === lyricQ
+      ? sung.hits.flatMap((h) => {
+          const it = catalog.find((c) => c.id === h.id)
+          if (!it || ids.has(it.id)) return []
+          const t = tidyTitle(it.title, it.artist)
+          return [{ ...it, shownTitle: t.title, shownArtist: t.artist, line: h.line }]
+        }).slice(0, 5)
+      : []
+    return [...named, ...fromLyrics] as (typeof named[number] & { line?: string })[]
+  }, [named, sung, lyricQ, catalog])
   useEffect(() => setSel(0), [q])
   useEffect(() => () => preview.stop(), [])
 
@@ -154,8 +180,9 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
             <ResultSkeleton />
           ) : found.length ? (
             found.map((s, i) => (
+              <div key={s.id}>
+              {s.line && !found[i - 1]?.line && <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-sub">From the lyrics</div>}
               <div
-                key={s.id}
                 role="option"
                 aria-selected={i === sel}
                 onPointerEnter={(e) => e.pointerType === 'mouse' && setSel(i)}
@@ -167,6 +194,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
                   <span className="text-[14px] font-medium text-text group-hover:text-main">{s.shownTitle}</span>
                   {s.shownArtist && <span className="text-[11px] text-sub ml-2">{s.shownArtist}</span>}
                   <Plays n={s.plays} />
+                  {s.line && <span className="block text-[12px] text-sub italic truncate">“{s.line}”</span>}
                 </button>
                 <span className="flex items-center gap-2 text-[11px] text-sub tabular-nums pr-1">
                   {opening === s.id ? (
@@ -179,7 +207,10 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
                   )}
                 </span>
               </div>
+              </div>
             ))
+          ) : lyricsPending ? (
+            <ResultSkeleton />
           ) : (
             <div className="px-3 py-3 text-[13px] text-sub leading-relaxed">
               <span className="text-text">No “{q.trim()}” in Lemody yet.</span> Upload the song, or paste a link to it here —

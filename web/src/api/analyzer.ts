@@ -247,6 +247,9 @@ export const analyzer = {
     fetch('/api/stats/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ finished, seconds }) }).catch(() => undefined),
   /** every stored song, for search */
   catalog: () => fetch('/api/catalog').then((r) => json<CatalogItem[]>(r)),
+  /** songs by a bit of their lyrics, typed any way: the line each one is on */
+  searchLyrics: (q: string) =>
+    fetch(`/api/search/lyrics?${new URLSearchParams({ q })}`).then((r) => json<{ id: string; line: string }[]>(r)),
   /** 10 seconds of a song (the most-sung part), to check it's the right one */
   preview: (id: string) =>
     fetch(`/api/songs/${id}/preview`).then((r) => {

@@ -16,14 +16,15 @@ const { persist, DEFAULT_SETTINGS } = await import('./persist')
 describe('graph layers by default', () => {
   beforeEach(() => store.clear())
 
-  it('new singers: timing off, real pitch on', () => {
+  it('new singers: timing off, real pitch and loudness on', () => {
     const s = persist.settings()
     expect(s.layers.timing).toBe(false)
     expect(s.layers.exact).toBe(true)
+    expect(s.layers.loudness).toBe(true)
   })
 
   it('settings saved before the change are switched over once', () => {
-    store.set('lemo.settings', JSON.stringify({ layers: { shape: true, loudness: true, exact: false, timing: true } }))
+    store.set('lemo.settings', JSON.stringify({ layers: { shape: true, loudness: false, exact: false, timing: true }, layersVersion: 2 }))
     const s = persist.settings()
     expect(s.layers).toEqual({ shape: true, loudness: true, exact: true, timing: false })
   })

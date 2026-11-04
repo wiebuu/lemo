@@ -1,6 +1,6 @@
 // What makes singing along feel good while it happens: the melody lights up where you're
-// on it, your dot moves like it has weight and sparks while you hold the note, a note
-// you nailed pops, and a streak counts the notes you hit in a row. Drawing only — the
+// on it, your dot moves like it has weight and glows while you hold the note, a note
+// you nailed sends out a soft ring, and a streak counts the notes you hit in a row. Drawing only — the
 // scores never depend on any of this.
 
 import type { NoteResult, ReferenceNote } from '../lib/types'
@@ -35,30 +35,24 @@ export function streakOf(results: Map<number, NoteResult>): number {
   return n
 }
 
-interface Particle {
-  /** song time the particle is pinned to (it scrolls with the music) */
+/** A note you nailed: a soft ring that opens out where it ended, pinned to the music. */
+interface Ring {
   t: number
   y: number
-  ox: number
-  oy: number
-  vx: number
-  vy: number
-  life: number
-  max: number
-  size: number
+  age: number
   color: string
 }
+
+const RING_LIFE = 0.75
 
 const reduceMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export class Juice {
   spans: Span[] = []
-  private parts: Particle[] = []
+  private rings: Ring[] = []
   private popped = new Set<number>()
   private lastTime = 0
   private lastTick = 0
-  private emit = 0
-  private seed = 1
   /** the dot, on a spring */
   private dot: { y: number; v: number } | null = null
   /** 1 right after a note pops, then decays */
@@ -67,15 +61,10 @@ export class Juice {
   private streakBump = 0
   private lastResults = -1
 
-  private rnd() {
-    this.seed = (this.seed * 16807) % 2147483647
-    return this.seed / 2147483647
-  }
-
   /** Start over: a new take, a seek back, another song. */
   reset() {
     this.spans = []
-    this.parts = []
+    this.rings = []
     this.popped.clear()
     this.dot = null
     this.pulse = 0
@@ -98,14 +87,8 @@ export class Juice {
     while (this.spans.length && this.spans[0].end < time - 12) this.spans.shift()
     this.pulse = Math.max(0, this.pulse - dt * 2.2)
     this.streakBump = Math.max(0, this.streakBump - dt * 3)
-    for (const p of this.parts) {
-      p.ox += p.vx * dt
-      p.oy += p.vy * dt
-      p.vy += 140 * dt // a little gravity
-      p.vx *= 1 - 1.6 * dt
-      p.life -= dt
-    }
-    this.parts = this.parts.filter((p) => p.life > 0)
+    for (const r of this.rings) r.age += dt
+    this.rings = this.rings.filter((r) => r.age < RING_LIFE)
     return dt
   }
 
@@ -120,19 +103,12 @@ export class Juice {
     return d.y
   }
 
-  /** Sparks off the dot while you hold the note. */
-  spark(time: number, y: number, dt: number, color: string, strength: number) {
-    if (reduceMotion()) return
-    this.emit += dt * (18 + 30 * strength)
-    while (this.emit >= 1) {
-      this.emit--
-      const a = Math.PI * (0.75 + 0.5 * this.rnd()) // mostly backwards, along the line
-      const sp = 40 + 70 * this.rnd()
-      this.parts.push({ t: time, y, ox: 0, oy: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.8 - 20, life: 0.5, max: 0.5, size: 1.2 + 1.6 * this.rnd(), color })
-    }
+  /** Something is still moving (a ring opening, the pop fading): draw the next frame too. */
+  get busy(): boolean {
+    return this.rings.length > 0 || this.pulse > 0 || this.streakBump > 0
   }
 
-  /** New notes you hit: a pop where each one ends. Returns true when one popped. */
+  /** New notes you hit: a ring where each one ends. Returns true when one popped. */
   scoreNotes(results: Map<number, NoteResult>, notes: ReferenceNote[], time: number, y: (n: ReferenceNote) => number, color: string): boolean {
     if (results.size === this.lastResults) return false
     this.lastResults = results.size
@@ -147,41 +123,35 @@ export class Juice {
       if (!n || n.endTime < time - 2.5) continue // scored late, long scrolled past: no fireworks
       popped = true
       if (reduceMotion()) continue
-      const yy = y(n)
-      for (let k = 0; k < 14; k++) {
-        const a = this.rnd() * Math.PI * 2
-        const sp = 60 + 110 * this.rnd()
-        this.parts.push({ t: n.endTime, y: yy, ox: 0, oy: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30, life: 0.7, max: 0.7, size: 1.5 + 2 * this.rnd(), color })
-      }
-      // the ring
-      this.parts.push({ t: n.endTime, y: yy, ox: 0, oy: 0, vx: 0, vy: 0, life: 0.45, max: 0.45, size: -1, color })
+      this.rings.push({ t: n.endTime, y: y(n), age: 0, color })
     }
     if (popped) this.pulse = 1
     return popped
   }
 
-  /** Particles and rings, pinned to the music as it scrolls. */
+  /**
+   * The rings: each opens out fast and slows down (ease-out), thinning and fading as it
+   * goes, with a soft glow where the note ended. Pinned to the music as it scrolls.
+   */
   draw(ctx: CanvasRenderingContext2D, X: (t: number) => number) {
-    if (!this.parts.length) return
+    if (!this.rings.length) return
     ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
-    for (const p of this.parts) {
-      const k = p.life / p.max
-      const x = X(p.t) + p.ox
-      const y = p.y + p.oy
-      if (p.size < 0) {
-        // ring: grows and fades
-        ctx.strokeStyle = withA(p.color, 0.55 * k)
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.arc(x, y, 6 + 22 * (1 - k * k), 0, Math.PI * 2)
-        ctx.stroke()
-        continue
-      }
-      ctx.fillStyle = withA(p.color, 0.85 * k)
+    for (const r of this.rings) {
+      const k = r.age / RING_LIFE // 0 → 1
+      const e = 1 - (1 - k) ** 3
+      const fade = (1 - k) ** 2
+      const x = X(r.t)
+      const glow = 4 + 18 * e
+      const g = ctx.createRadialGradient(x, r.y, 0, x, r.y, glow)
+      g.addColorStop(0, withA(r.color, 0.28 * fade))
+      g.addColorStop(1, withA(r.color, 0))
+      ctx.fillStyle = g
+      ctx.fillRect(x - glow, r.y - glow, glow * 2, glow * 2)
+      ctx.strokeStyle = withA(r.color, 0.7 * fade)
+      ctx.lineWidth = 0.6 + 1.6 * (1 - k)
       ctx.beginPath()
-      ctx.arc(x, y, p.size * (0.6 + 0.4 * k), 0, Math.PI * 2)
-      ctx.fill()
+      ctx.arc(x, r.y, 5 + 20 * e, 0, Math.PI * 2)
+      ctx.stroke()
     }
     ctx.restore()
   }
@@ -189,7 +159,7 @@ export class Juice {
   /** "12 in a row", top right — only once there's a streak worth showing. */
   drawStreak(ctx: CanvasRenderingContext2D, w: number, color: string, sub: string, font: string) {
     if (this.streak < 3) return
-    const s = 1 + 0.18 * this.streakBump
+    const s = 1 + 0.14 * this.streakBump ** 2 // eases back down
     ctx.save()
     ctx.translate(w - 14, 16)
     ctx.scale(s, s)

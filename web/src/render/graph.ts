@@ -70,12 +70,21 @@ export class GraphRenderer {
   /** lit melody, the dot's spring, sparks, pops and the streak (see juice.ts) */
   private juice = new Juice()
   private live = { on: false, onPitch: false, dt: 1 / 60 }
+  /** how strongly the dot's halo shows (eases towards on / off) */
+  private halo = 0
   /**
    * The key offset each stretch of your line was placed with, keyed by its first frame:
    * the estimate keeps changing as you sing, and a stretch already drawn moving with it
    * made the line jump up and down.
    */
   private runKey = new WeakMap<UserFrame, number>()
+  /**
+   * A new song's melody draws itself in, left to right, with a glowing dot at the tip,
+   * and the dot settles with a soft pulse where you'll start singing.
+   */
+  private intro = { key: '', at: 0, dur: 1 }
+  /** the melody's points as last drawn (for the intro dot to ride along it) */
+  private refRuns: Pt[][] = []
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -279,26 +288,33 @@ export class GraphRenderer {
     if (head && v.time - head.t < 0.15 && v.time - head.t > -0.05) {
       // the dot has a little weight (a spring), and glows gold while you're on the note
       const y = live ? this.juice.dotAt(head.y, dt) : head.y
-      if (onPitch) {
-        const close = v.live.cents === null ? 0.6 : Math.max(0, 1 - Math.abs(v.live.cents) / 50)
-        const r = 15 + 7 * this.juice.pulse + 5 * close
-        const g = ctx.createRadialGradient(px, y, 0, px, y, r)
-        g.addColorStop(0, withAlpha(p.main, 0.42 + 0.3 * this.juice.pulse))
-        g.addColorStop(1, withAlpha(p.main, 0))
-        ctx.fillStyle = g
-        ctx.fillRect(px - r, y - r, r * 2, r * 2)
-        this.juice.spark(v.time, y, dt, p.main, close)
+      // on the note: a soft halo that grows the closer you are, eases in and out
+      // (never pops), and breathes slowly while you hold it
+      const close = onPitch ? (v.live.cents === null ? 0.6 : Math.max(0, 1 - Math.abs(v.live.cents) / 50)) : 0
+      this.halo += ((onPitch ? 0.55 + 0.45 * close : 0) - this.halo) * Math.min(1, dt * 7)
+      if (this.halo > 0.01) {
+        const pulse = this.juice.pulse ** 2
+        const breathe = 0.5 + 0.5 * Math.sin(performance.now() / 420)
+        const r = 12 + 8 * this.halo + 3 * breathe * this.halo + 8 * pulse
+        glowDot(ctx, px, y, 0, r, p.main, (0.3 + 0.08 * breathe) * this.halo + 0.25 * pulse)
       }
+      ctx.fillStyle = withAlpha(p.bg, 0.85)
+      ctx.beginPath()
+      ctx.arc(px, y, 7.5 + 1.5 * this.juice.pulse ** 2, 0, Math.PI * 2)
+      ctx.fill()
       ctx.fillStyle = p.voice
       ctx.beginPath()
-      ctx.arc(px, y, 6 + 1.5 * this.juice.pulse, 0, Math.PI * 2)
+      ctx.arc(px, y, 5.5 + 1.5 * this.juice.pulse ** 2, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = onPitch ? p.main : withAlpha(p.bg, 0.9)
-      ctx.lineWidth = 2
-      ctx.stroke()
+      if (this.halo > 0.01) {
+        ctx.strokeStyle = withAlpha(p.main, Math.min(1, this.halo * 1.2))
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
     }
     if (live) this.juice.draw(ctx, X)
 
+    this.drawIntro(px, plotH)
     if (laneH) this.drawLoudness(v, X, t0, t1, plotH + 8, laneH)
     this.fadeSides(plotH)
     if (v.focus) this.fadeOutside(X(v.focus.start), X(v.focus.end), h)
@@ -317,6 +333,49 @@ export class GraphRenderer {
         ctx.fillText(midiToNoteName(m), 6, y)
       }
     }
+    // still moving: draw the next frame even if nothing else changed (paused, results)
+    if (this.juice.busy || this.halo > 0.01 || performance.now() - this.intro.at < (this.intro.dur + INTRO_PULSE) * 1000) this.stale = true
+  }
+
+  /** How far the intro has drawn the melody: 0 → 1 (eased), or 1 once it's done. */
+  private introK(v: GraphView): number {
+    const key = v.notes.length && v.duration > 0 ? `${Math.round(v.duration * 10)}:${v.notes.length > 0 ? v.notes[0].startTime : 0}` : ''
+    if (key && key !== this.intro.key) {
+      this.intro.key = key
+      if (reduceMotion()) return 1
+      // more melody on screen → a little longer to draw, never sluggish
+      const shown = v.notes.filter((n) => Math.abs(n.startTime - v.time) * v.pxPerSec < this.w).length
+      this.intro = { key, at: performance.now(), dur: Math.min(1.5, 0.75 + shown * 0.015) }
+    }
+    const k = (performance.now() - this.intro.at) / 1000 / this.intro.dur
+    return k >= 1 ? 1 : easeInOut(Math.max(0, k))
+  }
+
+  /** The intro's glowing tip while it draws, then a soft pulse on the line under the playhead. */
+  private drawIntro(px: number, plotH: number) {
+    const s = (performance.now() - this.intro.at) / 1000
+    if (!this.intro.at || s > this.intro.dur + INTRO_PULSE) return
+    const { ctx, p } = this
+    const color = discoLive.on ? `hsl(${(discoLive.hue + 45) % 360},92%,72%)` : p.text
+    ctx.save()
+    if (s < this.intro.dur) {
+      const x = easeInOut(s / this.intro.dur) * this.w
+      const y = yAtX(this.refRuns, x)
+      if (y !== null && y > 0 && y < plotH) glowDot(ctx, x, y, 3, 16, color, 0.5)
+    } else {
+      const y = yAtX(this.refRuns, px)
+      if (y !== null) {
+        const k = (s - this.intro.dur) / INTRO_PULSE
+        const e = 1 - (1 - k) ** 3
+        ctx.strokeStyle = withAlpha(hexOr(color, p.text), 0.5 * (1 - k) ** 2)
+        ctx.lineWidth = 1.5 * (1 - k) + 0.5
+        ctx.beginPath()
+        ctx.arc(px, y, 4 + 16 * e, 0, Math.PI * 2)
+        ctx.stroke()
+        glowDot(ctx, px, y, 3 * (1 - k), 12, color, 0.45 * (1 - k))
+      }
+    }
+    ctx.restore()
   }
 
   /**
@@ -415,21 +474,47 @@ export class GraphRenderer {
   }
 
   /**
-   * Where you were on pitch, the melody stays lit: gold, glowing — a trail of what you
-   * nailed (like the letters you got right in a typing test).
+   * Where you were on pitch, the melody stays lit: a trail of what you nailed (like the
+   * letters you got right in a typing test). A soft glow in the theme colour that eases
+   * in and out at the ends of each stretch, and fades as it scrolls away.
    */
   private paintLit(path: Path2D, X: (t: number) => number, t0: number, plotH: number, width: number) {
     const spans = this.juice.spans.filter((s) => s.end > t0)
     if (!spans.length) return
     const { ctx, p } = this
+    const px = this.w * PLAYHEAD
     ctx.save()
-    ctx.beginPath()
-    for (const s of spans) ctx.rect(X(s.start), 0, Math.max(1, X(s.end) - X(s.start)), plotH)
-    ctx.clip()
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    ctx.lineWidth = width
-    this.neon(() => ctx.stroke(path), p.main, 10)
+    for (const s of spans) {
+      const x0 = X(s.start), x1 = Math.max(x0 + 1, X(s.end))
+      const feather = Math.min(14, (x1 - x0) / 2)
+      // older stretches dim as they drift left: the light stays near where you are
+      const age = clampN((px - x1) / (px || 1), 0, 1)
+      const a = 1 - 0.55 * age
+      const g = ctx.createLinearGradient(x0 - 2, 0, x1 + 2, 0)
+      const f = feather / (x1 - x0 + 4)
+      g.addColorStop(0, withAlpha(p.main, 0))
+      g.addColorStop(f, withAlpha(p.main, a))
+      g.addColorStop(1 - f, withAlpha(p.main, a))
+      g.addColorStop(1, withAlpha(p.main, 0))
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(x0 - 2, 0, x1 - x0 + 4, plotH)
+      ctx.clip()
+      // the glow: a wide, faint stroke under the line, then the line itself
+      ctx.globalAlpha = 0.16
+      ctx.lineWidth = width + 9
+      ctx.strokeStyle = g
+      ctx.stroke(path)
+      ctx.globalAlpha = 0.3
+      ctx.lineWidth = width + 4
+      ctx.stroke(path)
+      ctx.globalAlpha = 1
+      ctx.lineWidth = width
+      ctx.stroke(path)
+      ctx.restore()
+    }
     ctx.restore()
   }
 
@@ -480,25 +565,6 @@ export class GraphRenderer {
     ctx.restore()
   }
 
-  /**
-   * A line drawn like a neon tube: its colour glowing around it, and a bright,
-   * almost white core. One colour, from the theme.
-   */
-  private neon(stroke: () => void, color: string, glow: number) {
-    const { ctx } = this
-    const width = ctx.lineWidth
-    ctx.save()
-    ctx.shadowColor = withAlpha(color, 0.9)
-    ctx.shadowBlur = glow
-    ctx.strokeStyle = withAlpha(color, 0.95)
-    stroke()
-    ctx.shadowBlur = 0
-    ctx.lineWidth = Math.max(1, width * 0.42)
-    ctx.strokeStyle = mix(color, '#ffffff', 0.65)
-    stroke()
-    ctx.restore()
-  }
-
   private drawRefLine(v: GraphView, X: (t: number) => number, Y: (m: number) => number, t0: number, t1: number, sp: number, plotH: number) {
     const { ctx, p } = this
     const notes = v.notes
@@ -531,35 +597,36 @@ export class GraphRenderer {
       const jn = !!next && joined(n, next)
       if (!jp && !jn && dur < 0.1) continue // a stray scrap, not a sung note
       if (!jp) end()
-      const g = Math.min(0.08, dur * 0.3) // the glide into / out of the note
+      const g = Math.min(0.1, dur * 0.32) // the glide into / out of the note
       if (jp && jn && dur < 0.13) pts.push({ x: X((n.startTime + n.endTime) / 2), y: y(n) })
       else pts.push({ x: X(n.startTime + (jp ? g : 0)), y: y(n) }, { x: X(n.endTime - (jn ? g : 0)), y: y(n) })
       if (!jn) end()
     }
     end()
-    const R = 7
-    for (const r of runs) {
-      path.moveTo(r[0].x, r[0].y)
-      for (let k = 1; k < r.length - 1; k++) {
-        const a = r[k - 1], b = r[k], c = r[k + 1]
-        const rad = Math.min(R, Math.hypot(b.x - a.x, b.y - a.y) / 2, Math.hypot(c.x - b.x, c.y - b.y) / 2)
-        if (rad < 0.5 || (a.y === b.y && b.y === c.y)) path.lineTo(b.x, b.y)
-        else path.arcTo(b.x, b.y, c.x, c.y, rad)
-      }
-      path.lineTo(r[r.length - 1].x, r[r.length - 1].y)
+    // one smooth curve through them: eases out of each held note and into the next,
+    // never overshooting a pitch the singer didn't sing
+    for (const r of runs) curveThrough(path, r)
+    this.refRuns = runs
+    ctx.save()
+    const k = this.introK(v)
+    if (k < 1) {
+      ctx.beginPath()
+      ctx.rect(0, 0, k * this.w, plotH)
+      ctx.clip()
     }
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    ctx.lineWidth = 4
+    ctx.lineWidth = 3.5
     this.strokeSinger(path, 0.5)
 
     // The sung part lights up just behind the playhead and fades out —
     // it glides forward with the music instead of jumping note to note.
-    if (v.review) this.paintReview(path, v, X, t0, t1, plotH, 4.5)
+    if (v.review) this.paintReview(path, v, X, t0, t1, plotH, 4)
     else {
-      this.paintTrail(path, X(v.time), v.pxPerSec, plotH, 4.5)
-      if (this.live.on) this.paintLit(path, X, t0, plotH, 4.5)
+      this.paintTrail(path, X(v.time), v.pxPerSec, plotH, 4)
+      if (this.live.on) this.paintLit(path, X, t0, plotH, 4)
     }
+    ctx.restore()
 
     ctx.font = `11px ${this.font}`
     ctx.textBaseline = 'bottom'
@@ -586,11 +653,18 @@ export class GraphRenderer {
     const i0 = Math.max(0, Math.floor((t0 - c.t0) / c.hop) - 4)
     const i1 = Math.min(c.midi.length, Math.ceil((t1 - c.t0) / c.hop) + 4)
     let run: { x: number; m: number }[] = []
+    this.refRuns = []
     const flush = () => {
       if (run.length > 1) {
         const ms = v.lineDetail === 'detailed' ? run.map((r) => r.m) : smooth(run.map((r) => r.m), 'natural')
-        path.moveTo(run[0].x, Y(ms[0]))
-        for (let k = 1; k < run.length; k++) path.lineTo(run[k].x, Y(ms[k]))
+        const pts = run.map((r, k) => ({ x: r.x, y: Y(ms[k]) }))
+        if (v.lineDetail === 'detailed') {
+          path.moveTo(pts[0].x, pts[0].y)
+          for (const q of pts) path.lineTo(q.x, q.y)
+        } else {
+          curveThrough(path, thin(pts, 2))
+          this.refRuns.push(pts)
+        }
       }
       run = []
     }
@@ -610,6 +684,13 @@ export class GraphRenderer {
       run.push({ x: X(c.t0 + i * c.hop), m: m + v.transpose })
     }
     flush()
+    ctx.save()
+    const k = this.introK(v)
+    if (k < 1) {
+      ctx.beginPath()
+      ctx.rect(0, 0, k * this.w, plotH)
+      ctx.clip()
+    }
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
     ctx.lineWidth = 3
@@ -617,6 +698,7 @@ export class GraphRenderer {
     const ni = noteAt(v.notes, v.time)
     if (v.review) this.paintReview(path, v, X, t0, t1, plotH, 3.5)
     else if (ni >= 0 || v.notes.length) this.paintTrail(path, X(v.time), v.pxPerSec, plotH, 3.5)
+    ctx.restore()
   }
 
   private drawBars(v: GraphView, X: (t: number) => number, Y: (m: number) => number, t0: number, t1: number, sp: number) {
@@ -685,12 +767,9 @@ export class GraphRenderer {
     const { ctx, p } = this
     // 'faded' (your exact pitch under the shape line) is a faint thin guide: two strong
     // lines nearly on top of each other read as one messy line
-    ctx.lineWidth = style === 'main' ? 3.5 : style === 'faded' ? 1.5 : 2.5
+    const width = style === 'main' ? 3 : style === 'faded' ? 1.5 : 2.5
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    // your voice has its own colour, never the original singer's
-    if (style === 'main') ctx.strokeStyle = p.voice
-    else ctx.strokeStyle = withAlpha(p.sub, style === 'faded' ? 0.28 : 0.35)
     let last: { t: number; y: number } | null = null
 
     const runs: UserFrame[][] = []
@@ -765,37 +844,54 @@ export class GraphRenderer {
       // each filtered point belongs a few readings earlier (the filter only looks back)
       const lag = v.lineDetail === 'smooth' ? 4 : v.lineDetail === 'natural' ? 2 : 0
       const at = (k: number) => r[Math.max(0, k - lag)].t
-      ctx.beginPath()
-      let px0 = 0, py0 = 0, pen = false, drawn = false
+      // each unbroken piece: a light centred smoothing (±6 readings ≈ 65 ms in smooth,
+      // ±3 in natural, so only the newest few points settle as you sing), every ~3 px, then one curve through them that never
+      // overshoots — a calm, fluid line instead of one that shivers frame to frame
+      // A few readings left out on a quick jump (see cleanVoice) don't break the line
+      // either: the curve carries straight across them, so a leap reads as one smooth
+      // move instead of a string of beads.
+      const path = new Path2D()
+      let tip = null as Pt | null
+      const flush = (ks: number[]) => {
+        if (!ks.length) return
+        let ms = ks.map((k) => sm[k]!)
+        if (v.lineDetail !== 'detailed') ms = settle(ms, v.lineDetail === 'smooth' ? 6 : 3)
+        const pts = ms.map((m, j) => ({ x: X(at(ks[j])), y: Y(m) }))
+        curveThrough(path, v.lineDetail === 'detailed' ? pts : thin(pts, 3))
+        tip = pts[pts.length - 1]
+      }
+      let piece: number[] = []
       for (let k = 0; k < sm.length; k++) {
-        const m = sm[k]
-        if (m === null) {
-          if (pen) ctx.lineTo(px0, py0)
-          pen = false
-          continue
+        if (sm[k] === null) continue
+        if (piece.length && k - piece[piece.length - 1] > 18) {
+          flush(piece)
+          piece = []
         }
-        const x = X(at(k)), yy = Y(m)
-        if (!pen) ctx.moveTo(x, yy)
-        else ctx.quadraticCurveTo(px0, py0, (px0 + x) / 2, (py0 + yy) / 2)
-        px0 = x
-        py0 = yy
-        pen = drawn = true
+        piece.push(k)
       }
-      if (!drawn) continue
-      if (pen) ctx.lineTo(px0, py0)
+      flush(piece)
+      const end = tip as Pt | null
+      if (!end) continue
       if (style === 'main') {
-        // a thin dark edge first, so your line stands apart from whatever is under it —
-        // the lit melody especially (white on white in mono)
-        const w = ctx.lineWidth
+        // a soft glow of your colour around it, then a thin dark edge so your line stands
+        // apart from whatever is under it (the lit melody especially: white on white in mono)
         ctx.save()
-        ctx.strokeStyle = withAlpha(p.bg, 0.9)
-        ctx.lineWidth = w + 3
-        ctx.stroke()
+        ctx.strokeStyle = withAlpha(hexOr(p.voice, '#7ccbc2'), discoLive.on ? 0.16 : 0.07)
+        ctx.lineWidth = width + 9
+        ctx.stroke(path)
+        ctx.strokeStyle = withAlpha(p.bg, 0.8)
+        ctx.lineWidth = width + 2
+        ctx.stroke(path)
+        ctx.strokeStyle = p.voice
+        ctx.lineWidth = width
+        ctx.stroke(path)
         ctx.restore()
+      } else {
+        ctx.strokeStyle = withAlpha(p.sub, style === 'faded' ? 0.28 : 0.35)
+        ctx.lineWidth = width
+        ctx.stroke(path)
       }
-      if (discoLive.on && style === 'main') this.neon(() => ctx.stroke(), p.voice, 12)
-      else ctx.stroke()
-      last = { t: r[r.length - 1].t, y: py0 }
+      last = { t: r[r.length - 1].t, y: end.y }
     }
     return last
   }
@@ -855,6 +951,111 @@ export class GraphRenderer {
     }
 
   }
+}
+
+type Pt = { x: number; y: number }
+
+const INTRO_PULSE = 0.7
+
+const reduceMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+function easeInOut(k: number): number {
+  return k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2
+}
+
+/**
+ * One smooth curve through points in left-to-right order (monotone cubic: Fritsch–
+ * Carlson). It passes through every point, flat stays flat, and it never bulges above
+ * or below its neighbours, so the data isn't distorted — only the corners go.
+ */
+function curveThrough(path: Path2D, pts: Pt[]) {
+  const n = pts.length
+  if (!n) return
+  path.moveTo(pts[0].x, pts[0].y)
+  if (n === 1) return path.lineTo(pts[0].x + 0.01, pts[0].y)
+  const m = tangents(pts)
+  for (let k = 0; k < n - 1; k++) {
+    const a = pts[k], b = pts[k + 1]
+    const h = (b.x - a.x) / 3
+    path.bezierCurveTo(a.x + h, a.y + m[k] * h, b.x - h, b.y - m[k + 1] * h, b.x, b.y)
+  }
+}
+
+function tangents(pts: Pt[]): number[] {
+  const n = pts.length
+  const d: number[] = []
+  for (let k = 0; k < n - 1; k++) d.push((pts[k + 1].y - pts[k].y) / Math.max(1e-6, pts[k + 1].x - pts[k].x))
+  const m = [d[0]]
+  for (let k = 1; k < n - 1; k++) {
+    if (d[k - 1] * d[k] <= 0) { m.push(0); continue }
+    const h0 = pts[k].x - pts[k - 1].x, h1 = pts[k + 1].x - pts[k].x
+    m.push((3 * (h0 + h1)) / ((2 * h1 + h0) / d[k - 1] + (h1 + 2 * h0) / d[k]))
+  }
+  m.push(d[n - 2])
+  return m
+}
+
+/** Where a curve drawn by curveThrough is at x (the same curve: x moves evenly along each piece). */
+function yAtX(runs: Pt[][], x: number): number | null {
+  for (const pts of runs) {
+    if (pts.length < 2 || x < pts[0].x || x > pts[pts.length - 1].x) continue
+    let k = 0
+    while (k < pts.length - 2 && pts[k + 1].x < x) k++
+    const a = pts[k], b = pts[k + 1]
+    const m = tangents(pts.slice(Math.max(0, k - 1), k + 3))
+    const off = k > 0 ? 1 : 0
+    const hx = b.x - a.x || 1e-6
+    const u = (x - a.x) / hx
+    const u2 = u * u, u3 = u2 * u
+    return (2 * u3 - 3 * u2 + 1) * a.y + (u3 - 2 * u2 + u) * hx * m[off] + (-2 * u3 + 3 * u2) * b.y + (u3 - u2) * hx * m[off + 1]
+  }
+  return null
+}
+
+/** Points at least `px` apart (always keeping the last): fewer, calmer curve pieces. */
+function thin(pts: Pt[], px: number): Pt[] {
+  if (pts.length < 3) return pts
+  const out = [pts[0]]
+  for (let k = 1; k < pts.length - 1; k++) if (pts[k].x - out[out.length - 1].x >= px) out.push(pts[k])
+  out.push(pts[pts.length - 1])
+  return out
+}
+
+/** A light centred average over ±r readings, weighted towards the middle (a triangle). */
+function settle(v: number[], r: number): number[] {
+  return v.map((_, i) => {
+    let s = 0, t = 0
+    for (let j = -r; j <= r; j++) {
+      const x = v[i + j]
+      if (x === undefined) continue
+      const w = r + 1 - Math.abs(j)
+      s += x * w
+      t += w
+    }
+    return s / t
+  })
+}
+
+/** A soft round glow (and a solid core when r > 0). */
+function glowDot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, glow: number, color: string, a: number) {
+  const c = hexOr(color, '#ffffff')
+  const g = ctx.createRadialGradient(x, y, 0, x, y, glow)
+  g.addColorStop(0, withAlpha(c, a))
+  g.addColorStop(0.45, withAlpha(c, a * 0.35))
+  g.addColorStop(1, withAlpha(c, 0))
+  ctx.fillStyle = g
+  ctx.fillRect(x - glow, y - glow, glow * 2, glow * 2)
+  if (r > 0) {
+    ctx.fillStyle = c
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+/** The colour if it's a hex one (withAlpha needs hex), else the fallback. */
+function hexOr(color: string, fallback: string): string {
+  return color.startsWith('#') ? color : fallback
 }
 
 function lowerBoundT(frames: UserFrame[], t: number): number {
@@ -950,17 +1151,4 @@ function edgeFade(x: number, size: number): number {
   if (e >= 1) return 1
   if (e <= 0) return 0
   return e * e * (3 - 2 * e)
-}
-
-/** Blend two hex colours (k = 0 → a, 1 → b). */
-function mix(a: string, b: string, k: number): string {
-  const rgb = (h: string) => {
-    const x = h.replace('#', '')
-    const f = x.length === 3 ? x.split('').map((c) => c + c).join('') : x
-    const n = parseInt(f.slice(0, 6), 16)
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-  }
-  const [r1, g1, b1] = rgb(a)
-  const [r2, g2, b2] = rgb(b)
-  return `rgb(${Math.round(r1 + (r2 - r1) * k)},${Math.round(g1 + (g2 - g1) * k)},${Math.round(b1 + (b2 - b1) * k)})`
 }

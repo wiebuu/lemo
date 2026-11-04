@@ -8,6 +8,7 @@ import { installGuards } from './guards'
 import { installStaleBuildReload } from './lib/staleBuild'
 import { startAuth } from './auth/firebase'
 import { AuthGate } from './components/AuthGate'
+import { rememberLinkedSong } from './lib/linkedSong'
 import { usePath } from './pages/router'
 
 // Apply the saved theme before first paint (the canvas reads its colours on creation).
@@ -27,6 +28,8 @@ function Pages() {
     </Suspense>
   )
 }
+
+rememberLinkedSong()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

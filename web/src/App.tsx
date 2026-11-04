@@ -6,6 +6,7 @@ import { Graph } from './components/Graph'
 import { Header, type Panel } from './components/Header'
 import { LiveStats } from './components/LiveStats'
 import { LoadPanel } from './components/LoadPanel'
+import { takeLinkedSong } from './lib/linkedSong'
 import { Lyrics } from './components/Lyrics'
 import { PlayerBar } from './components/PlayerBar'
 import { ResultsPanel, VoiceSwitch } from './components/Results'
@@ -37,6 +38,12 @@ export default function App() {
   }, [s.settings.theme])
 
   useEffect(() => () => studio.dispose(), [])
+
+  // came from a song page (/sing/…): open that song
+  useEffect(() => {
+    const id = takeLinkedSong()
+    if (id) studio.loadAnalyzed(id).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (s.track && !s.settings.tutorialDone) {

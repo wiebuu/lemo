@@ -59,8 +59,8 @@ export function TopPage() {
     <>
       <p className="lead">The best takes sung today. Tap one to open the full result — and hear how they sang it, where the singer shared their voice (🎤).</p>
       <p>
-        Each singer’s best take of the day counts — at least {Math.round((data?.minSeconds ?? 60) / 60)} minute of a song from the library,
-        at normal speed and in the original key, on normal or strict difficulty. The score is the one on the singer’s own result.
+        Each singer’s best take of the day counts — at least {data?.minSeconds ?? 45} seconds of a song from the library,
+        at normal speed and in the original key (on easy difficulty, with a score of 50 or more). The score is the one on the singer’s own result.
         {data && <> Starts again in {until(data.resetsAt)} (midnight, India time).</>}
       </p>
       {error && <p className="card">{error}</p>}
@@ -68,7 +68,7 @@ export function TopPage() {
       {data && data.entries.length === 0 && (
         <div className="card">
           <div className="card-title">No takes yet today</div>
-          <p>Sing a song for a minute or more and yours could be the first. <a href="/" onClick={go}>Start singing</a></p>
+          <p>Sing a song for 45 seconds or more and yours could be the first. <a href="/" onClick={go}>Start singing</a></p>
         </div>
       )}
       {data && data.entries.length > 0 && (

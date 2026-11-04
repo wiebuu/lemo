@@ -27,7 +27,7 @@ import { events } from './events'
 import { NO_FX, shiftCurve, STEP, type VoiceFx } from '../lib/voiceFx'
 import type { FxIn, FxOut } from '../audio/voiceFx.worker'
 import { persist, type Settings, type SongPrefs } from './persist'
-import { packFrames, TOP_MIN_SECONDS, unpackFrames, wavOf } from '../lib/topTake'
+import { packFrames, TOP_EASY_MIN_SCORE, TOP_MIN_SECONDS, unpackFrames, wavOf } from '../lib/topTake'
 
 export type MicState = 'off' | 'starting' | 'on' | 'error'
 
@@ -977,7 +977,7 @@ export class Studio {
   }
 
   /**
-   * A finished test that could make today's top: a library song, at least a minute of
+   * A finished test that could make today's top: a library song, at least 45 seconds of
    * it, normal speed, the original key, normal or strict difficulty. It goes in with the
    * exact score on the singer's result; if that makes the 100, its result and pitch line
    * are sent so others can open it; the voice only if the singer then shares it.
@@ -987,9 +987,9 @@ export class Studio {
     const track = this.snap.track
     if (!take || !track || !this.snap.settings.shareTop || this.snap.viewing) return
     if (take.speed !== 1 || take.transpose !== 0 || take.to - take.from < TOP_MIN_SECONDS) return
-    if (mode.toleranceCents >= 100) return // easy doesn't count
     const score = ev.overall.score
     if (score === null) return
+    if (mode.toleranceCents >= 100 && score < TOP_EASY_MIN_SCORE) return // on easy, only 50 and up
     try {
       const { rank } = await analyzer.topCheck(score)
       if (!rank || this.lastTake !== take) return

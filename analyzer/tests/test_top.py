@@ -111,20 +111,24 @@ class TopTests(unittest.TestCase):
         self.assertTrue(self.get("/api/top", who="b").json()["entries"][0]["hasVoice"])
         self.assertEqual(self.get(f"/api/top/{take}/voice", who="b").status_code, 200)
 
-    def test_easy_difficulty_does_not_count_and_the_level_is_shown(self):
-        meta = {"songId": SONG, "score": 0.9, "seconds": 70.0, "from": 0, "to": 70, "start": 0, "toleranceCents": 100}
-        r = self.c.post("/api/top/submit", headers={"Authorization": "Bearer a"}, data={"meta": json.dumps(meta)},
-                        files={"frames": ("frames.json", FRAMES, "application/json")})
-        self.assertEqual(r.status_code, 422)
-        meta["toleranceCents"] = 25
-        r = self.c.post("/api/top/submit", headers={"Authorization": "Bearer a"}, data={"meta": json.dumps(meta)},
-                        files={"frames": ("frames.json", FRAMES, "application/json")})
+    def test_easy_needs_at_least_50_and_the_level_is_shown(self):
+        meta = {"songId": SONG, "score": 0.49, "seconds": 70.0, "from": 0, "to": 70, "start": 0, "toleranceCents": 100}
+        post = lambda: self.c.post("/api/top/submit", headers={"Authorization": "Bearer a"}, data={"meta": json.dumps(meta)},
+                                   files={"frames": ("frames.json", FRAMES, "application/json")})
+        self.assertEqual(post().status_code, 422)
+        meta["score"] = 0.5
+        self.assertEqual(post().json()["rank"], 1)
+        self.assertEqual(self.get("/api/top").json()["entries"][0]["toleranceCents"], 100)
+        meta["score"], meta["toleranceCents"] = 0.9, 25
+        r = post()
         self.assertEqual(r.json()["rank"], 1)
         self.assertEqual(self.get("/api/top").json()["entries"][0]["toleranceCents"], 25)
 
-    def test_less_than_a_minute_does_not_count(self):
-        self.assertEqual(self.submit(0.9, seconds=40).status_code, 422)
+    def test_less_than_45_seconds_does_not_count(self):
+        self.assertEqual(self.submit(0.9, seconds=44).status_code, 422)
         self.assertEqual(self.get("/api/top").json()["entries"], [])
+        self.assertEqual(self.submit(0.9, seconds=45).status_code, 200)
+        self.assertEqual(len(self.get("/api/top").json()["entries"]), 1)
 
     def test_one_place_per_singer_their_best(self):
         self.submit(0.6)

@@ -3,8 +3,10 @@
 
 import type { UserFrame } from './types'
 
-/** What a take needs to count: a song from the library, a minute of it, normal speed and the original key. */
-export const TOP_MIN_SECONDS = 60
+/** What a take needs to count: a song from the library, 45 seconds of it, normal speed and the original key. */
+export const TOP_MIN_SECONDS = 45
+/** On easy, a take also needs at least this score. */
+export const TOP_EASY_MIN_SCORE = 0.5
 export const TOP_RATE = 22050
 
 const r = (v: number, d: number) => Math.round(v * d) / d

@@ -270,6 +270,8 @@ NOV = [
     ("Same Beef", "Sidhu Moose Wala, Bohemia", "pa"),
     ("So High", "Sidhu Moose Wala", "pa"),
     ("Unko Bhi Humse Mohabbat Ho", "Sadhana Sargam", "hi"),
+    ("Jeena Jeena", "Atif Aslam", "hi"),
+    ("Nahin Milta", "Bayaan", "hi"),
 ]
 
 

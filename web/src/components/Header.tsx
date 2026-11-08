@@ -1,7 +1,11 @@
 import { ChartColumn, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
 import { signInWithGoogle, signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
+import { useSong } from '../state/library'
+import { SongCounts } from './SongCounts'
+import { LikeButton } from './Like'
 import { navigate } from '../pages/router'
+import { countsLine } from '../lib/library'
 import { studio } from '../state/studio'
 import { Wordmark } from './Brand'
 import { DjIcon } from './DjIcon'
@@ -14,6 +18,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
   const s = useStudio()
   const phone = usePhone()
   const t = s.track
+  const counts = useSong(t?.id)
   return (
     // below the notch / status bar when Lemody runs full screen (added to the home screen)
     <header className="flex items-center gap-2 sm:gap-4 pt-[max(0.75rem,calc(env(safe-area-inset-top)-0.5rem))] pb-1.5 sm:pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] sm:pb-3 shrink-0">
@@ -44,12 +49,17 @@ export function Header({ open }: { open: (p: Panel) => void }) {
       </nav>
       <div className="flex-1" />
       {t && (
-        <Tip tip={`Melody from: ${t.melodySource}`}>
-          <div className="min-w-0 text-right leading-tight hidden sm:block">
-            <div className="text-sm font-medium text-text truncate">{t.title}</div>
-            {t.artist && <div className="text-[11px] text-sub truncate tracking-wide">{t.artist}</div>}
-          </div>
-        </Tip>
+        <div className="min-w-0 hidden sm:flex items-center gap-3">
+          <Tip tip={<><SongCounts song={counts} />{`Melody from: ${t.melodySource}`}</>}>
+            <div className="min-w-0 text-right leading-tight">
+              <div className="text-sm font-medium text-text truncate">{t.title}</div>
+              <div className="text-[11px] text-sub truncate tracking-wide">
+                {[t.artist, counts && countsLine(counts)].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+          </Tip>
+          {counts && <LikeButton id={t.id} size={15} />}
+        </div>
       )}
       {!phone && (
         <Tip tip={s.settings.disco ? 'Disco lights · on' : 'Disco lights'}>

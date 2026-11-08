@@ -8,6 +8,7 @@ import { events, type SongMeta } from './events'
 import { persist, type Settings, type SongPrefs } from './persist'
 import { moveOldCopiesToServer } from '../lib/localSongs'
 import { studio } from './studio'
+import { clearLikes, loadLikes } from './library'
 
 export type CloudStatus = { state: 'off' | 'syncing' | 'synced' | 'unavailable'; message?: string }
 
@@ -100,6 +101,7 @@ export async function startCloud(uid: string) {
   persist.setOwner(uid)
 
   setStatus({ state: 'syncing' })
+  void loadLikes()
   off = [
     events.on('settingsSaved', pushSettings),
     events.on('songSaved', pushPrefs),
@@ -144,5 +146,6 @@ export function stopCloud() {
   timers.forEach((t) => clearTimeout(t))
   timers.clear()
   accountSongs = []
+  clearLikes()
   setStatus({ state: 'off' })
 }

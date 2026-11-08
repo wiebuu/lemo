@@ -1,7 +1,9 @@
 import { useRef } from 'react'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
-import type { FeaturedItem } from '../api/analyzer'
+import type { CatalogItem, FeaturedItem } from '../api/analyzer'
+import { countsLine } from '../lib/library'
 import { formatTime } from '../lib/music'
+import { LikeButton } from './Like'
 import { PreviewButton, type Preview } from './SongSearch'
 import { cx } from './ui'
 
@@ -9,10 +11,11 @@ import { cx } from './ui'
  * One featured group as a row of compact cards that scrolls sideways — far less
  * room than a long list. Tap a card to sing it; ▶ plays 10 seconds first.
  */
-export function FeaturedShelf({ label, items, plays, opening, preview, onOpen }: {
+export function FeaturedShelf({ label, items, counts, opening, preview, onOpen }: {
   label: string
   items: FeaturedItem[]
-  plays: Map<string, number>
+  /** every song's views and times sung, by id */
+  counts: Map<string, CatalogItem>
   opening: string | null
   preview: Preview
   onOpen: (id: string) => void
@@ -34,7 +37,7 @@ export function FeaturedShelf({ label, items, plays, opening, preview, onOpen }:
         {items.map((f) => {
           const busy = !f.ready && f.stage && !['failed', 'cancelled'].includes(f.stage)
           const status = f.ready ? null : busy ? (f.stage === 'queued' || f.stage === 'waiting' ? 'queued' : `${Math.round(f.progress * 100)}%`) : 'not ready'
-          const n = f.id ? plays.get(f.id) : undefined
+          const c = f.id ? counts.get(f.id) : undefined
           return (
             <div key={f.title} className={cx('group relative snap-start shrink-0 w-[9.5rem] sm:w-[10.5rem] rounded-lg surface transition-colors', f.ready && 'hover:border-main/40')}>
               <button type="button" disabled={!f.ready || !f.id || !!opening} onClick={() => f.id && onOpen(f.id)}
@@ -48,13 +51,18 @@ export function FeaturedShelf({ label, items, plays, opening, preview, onOpen }:
                   ) : status ? (
                     <span className="flex items-center gap-1">{busy && status !== 'queued' && <Loader2 size={10} className="animate-spin" />}{status}</span>
                   ) : (
-                    [n ? `${n} play${n > 1 ? 's' : ''}` : null, f.duration ? formatTime(f.duration) : null].filter(Boolean).join(' · ')
+                    <span className="truncate min-w-0">{[c ? countsLine(c) : null, f.duration ? formatTime(f.duration) : null].filter(Boolean).join(' · ')}</span>
                   )}
                 </div>
               </button>
               {f.ready && f.id && (
                 <span className="absolute top-2 right-2 scale-90">
                   <PreviewButton id={f.id} has preview={preview} />
+                </span>
+              )}
+              {f.id && (
+                <span className="absolute bottom-2 right-2.5">
+                  <LikeButton id={f.id} size={13} />
                 </span>
               )}
             </div>

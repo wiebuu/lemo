@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.requests import Request
 
 from starlette.concurrency import run_in_threadpool
-from . import audio, auth, catalog, device, jobs, lyrics, lyricsearch, remote, storage, top, userdata, worker, youtube
+from . import audio, auth, catalog, device, jobs, lyrics, lyricsearch, popularity, remote, storage, top, userdata, worker, youtube
 from .config import CONFIG, FFMPEG, RUBBERBAND, device_name
 
 app = FastAPI(title="Lemody analyzer", version="0.1.0")
@@ -101,6 +101,9 @@ def _startup() -> None:
 
         lyrics_prep.catch_up_forever()  # stored songs still without lyrics, while idle
         remote.push_models(CONFIG.data_dir / "models")  # for browsers that analyse songs themselves
+        if CONFIG.enable_youtube:
+            # every song's YouTube views, once a week (between songs being analysed)
+            popularity.keep_fresh(lambda: not jobs.MANAGER.busy() and time.time() - _activity["at"] > 600)
         if CONFIG.enable_youtube and CONFIG.server_analysis:
             # resume featured songs that weren't finished, and look again every 10 minutes
             # (newly added ones, or one that failed earlier)
@@ -109,6 +112,8 @@ def _startup() -> None:
                 time.sleep(600)
 
     worker.log("analyzer started")
+    if not CONFIG.background:
+        return
     threading.Thread(target=tidy, daemon=True, name="lemo-tidy").start()
 
 
@@ -404,9 +409,21 @@ async def device_result(song_id: str, vocals: UploadFile, backing: UploadFile, f
 
 @app.get("/api/catalog")
 def song_catalog() -> list[dict]:
-    """Every stored YouTube song, for search. Opening one never re-analyses it."""
-    return [{**{k: e.get(k) for k in ("id", "title", "artist", "duration", "lang", "featured", "preview", "addedAt")}, "plays": int(e.get("plays") or 0)}
-            for e in catalog.all_songs() if catalog.is_public(e["id"])]
+    """Every stored YouTube song, for search. Opening one never re-analyses it.
+    views: YouTube views (last weekly snapshot); sung: tests started on it here."""
+    try:
+        started = userdata.tests_started()
+    except userdata.Unavailable:
+        started = {}
+    out = []
+    for e in catalog.all_songs():
+        if not catalog.is_public(e["id"]):
+            continue
+        plays = int(e.get("plays") or 0)
+        out.append({**{k: e.get(k) for k in ("id", "title", "artist", "duration", "lang", "featured", "preview", "addedAt")},
+                    # a result is always on a started test (plays from before tests were counted per song)
+                    "plays": plays, "sung": max(plays, started.get(e["id"], 0)), "views": popularity.views(e["id"])})
+    return out
 
 
 @app.get("/api/search/lyrics")
@@ -748,6 +765,26 @@ def deliver_requests() -> None:
         e = catalog.load().get(sid, {})
         n = userdata.deliver(r["songId"], sid, {"title": e.get("title") or r["title"], "artist": e.get("artist") or r["artist"], "duration": e.get("duration")})
         worker.log(f"request {r['songId']}: ready as {sid}, added to {n} singer(s)' songs")
+
+
+@app.get("/api/me/likes")
+def me_likes(request: Request) -> list[str]:
+    """Songs you liked, the newest first."""
+    return _data(lambda: userdata.list_likes(_uid(request)))
+
+
+@app.put("/api/me/likes/{song_id}")
+def me_like(request: Request, song_id: str) -> dict:
+    _song(song_id)
+    _data(lambda: userdata.like(_uid(request), song_id))
+    return {"ok": True, "liked": True}
+
+
+@app.delete("/api/me/likes/{song_id}")
+def me_unlike(request: Request, song_id: str) -> dict:
+    _song(song_id)
+    _data(lambda: userdata.unlike(_uid(request), song_id))
+    return {"ok": True, "liked": False}
 
 
 @app.put("/api/me/songs/{song_id}")
@@ -1106,7 +1143,9 @@ def stats_test(body: dict = Body(...)) -> dict:
     seconds = body.get("seconds") if finished else 0
     if not isinstance(seconds, (int, float)):
         seconds = 0
-    _data(lambda: userdata.count_test(top.today(), finished, float(seconds)))
+    sid = body.get("songId")
+    sid = sid if isinstance(sid, str) and SONG_ID.match(sid) else None  # the song it's on (most sung)
+    _data(lambda: userdata.count_test(top.today(), finished, float(seconds), sid))
     return {"ok": True}
 
 

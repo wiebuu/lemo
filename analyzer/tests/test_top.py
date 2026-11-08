@@ -36,7 +36,7 @@ class TopTests(unittest.TestCase):
     def setUp(self):
         userdata.use(TEST_DSN)
         userdata.status()
-        userdata._q("TRUNCATE lemo_top, lemo_daily, lemo_requests, lemo_prefs, lemo_songs, lemo_users")
+        userdata._q("TRUNCATE lemo_likes, lemo_song_stats, lemo_top, lemo_daily, lemo_requests, lemo_prefs, lemo_songs, lemo_users")
         tokens = {"Bearer a": ALICE, "Bearer b": BOB}
 
         def verify(header):

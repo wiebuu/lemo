@@ -79,6 +79,19 @@ CREATE TABLE IF NOT EXISTS lemo_daily (
   finished integer NOT NULL DEFAULT 0,
   seconds  double precision NOT NULL DEFAULT 0
 );
+-- songs a singer liked (the "liked" tab)
+CREATE TABLE IF NOT EXISTS lemo_likes (
+  uid      text NOT NULL REFERENCES lemo_users(uid) ON DELETE CASCADE,
+  song_id  text NOT NULL,
+  liked_at double precision NOT NULL,
+  PRIMARY KEY (uid, song_id)
+);
+-- tests started / finished on each song (the library's "most sung on Lemody")
+CREATE TABLE IF NOT EXISTS lemo_song_stats (
+  song_id  text PRIMARY KEY,
+  started  integer NOT NULL DEFAULT 0,
+  finished integer NOT NULL DEFAULT 0
+);
 """
 
 _lock = threading.Lock()
@@ -406,11 +419,44 @@ def _today_for(take_id: str) -> str:
     return row["day"] if row else ""
 
 
-def count_test(day: str, finished: bool, seconds: float = 0.0) -> None:
+def count_test(day: str, finished: bool, seconds: float = 0.0, song_id: str | None = None) -> None:
     col = "finished" if finished else "started"
     _q(f"""INSERT INTO lemo_daily (day, {col}, seconds) VALUES (%s, 1, %s)
            ON CONFLICT (day) DO UPDATE SET {col} = lemo_daily.{col} + 1, seconds = lemo_daily.seconds + EXCLUDED.seconds""",
        (day, max(0.0, min(seconds, 3600.0))))
+    if song_id:
+        _q(f"""INSERT INTO lemo_song_stats (song_id, {col}) VALUES (%s, 1)
+               ON CONFLICT (song_id) DO UPDATE SET {col} = lemo_song_stats.{col} + 1""", (song_id,))
+
+
+_sung: dict = {"at": 0.0, "by": {}}
+
+
+def tests_started(max_age: float = 60) -> dict[str, int]:
+    """Tests started on each song, {song_id: n}: one query, kept for a minute (the library
+    asks for every song at once)."""
+    if time.time() - _sung["at"] > max_age:
+        _sung["by"] = {r["song_id"]: int(r["started"]) for r in _q("SELECT song_id, started FROM lemo_song_stats WHERE started > 0")}
+        _sung["at"] = time.time()
+    return _sung["by"]
+
+
+# ---- liked songs ---------------------------------------------------------------------------------
+
+
+def list_likes(uid: str) -> list[str]:
+    """Song ids you liked, the newest first."""
+    return [r["song_id"] for r in _q("SELECT song_id FROM lemo_likes WHERE uid = %s ORDER BY liked_at DESC", (uid,))]
+
+
+def like(uid: str, song_id: str) -> None:
+    _ensure_user(uid)
+    _q("INSERT INTO lemo_likes (uid, song_id, liked_at) VALUES (%s, %s, %s) ON CONFLICT (uid, song_id) DO NOTHING",
+       (uid, song_id, time.time()))
+
+
+def unlike(uid: str, song_id: str) -> None:
+    _q("DELETE FROM lemo_likes WHERE uid = %s AND song_id = %s", (uid, song_id))
 
 
 def stats(day: str) -> dict:

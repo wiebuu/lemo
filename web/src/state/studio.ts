@@ -880,7 +880,7 @@ export class Studio {
     if (restartAt !== null) e.seek(restartAt)
     this.sessionEval = null
     this.set({ session: true, lastResult: null, resultsView: 'results', topRank: null, viewing: null })
-    void analyzer.countTest(false)
+    void analyzer.countTest(false, 0, this.analyzerId) // most sung on Lemody
     await e.play()
   }
 
@@ -915,7 +915,7 @@ export class Studio {
     const st = this.snap.settings
     this.set({ session: false, lastResult: ev, resultsView: 'results', resultMode: { toleranceCents: st.toleranceCents, scoringMode: st.scoringMode } })
     if (ev) void this.enterReview()
-    if (ev) void analyzer.countTest(true, Math.max(0, ev.to - ev.from))
+    if (ev) void analyzer.countTest(true, Math.max(0, ev.to - ev.from), this.analyzerId)
     if (ev && this.analyzerId) {
       void analyzer.played(this.analyzerId) // counts towards Explore's most played
       void this.offerToTop(this.analyzerId, ev, { toleranceCents: st.toleranceCents, scoringMode: st.scoringMode })

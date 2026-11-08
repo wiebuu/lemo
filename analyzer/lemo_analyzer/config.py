@@ -64,6 +64,9 @@ class Config:
     remote_min_free_gb: float = float(os.environ.get("LEMO_REMOTE_MIN_FREE_GB", "1.5"))
     # With a VPS, this machine is only a cache: songs safe on the VPS beyond this are dropped here.
     local_cache_mb: int = int(os.environ.get("LEMO_LOCAL_CACHE_MB", "2048"))
+    # Background work at startup (VPS sync, featured songs, weekly play counts). Off for a
+    # second, test-only API next to the real one.
+    background: bool = _bool("LEMO_BACKGROUND", True)
 
 
 CONFIG = Config()

@@ -5,6 +5,7 @@ import { formatTime } from '../lib/music'
 import { searchSongs } from '../lib/songSearch'
 import { tidyTitle } from '../lib/titles'
 import { songLink } from '../lib/songLinks'
+import { youtubeSearch } from '../lib/library'
 import { cx, Tip, usePhone } from './ui'
 
 /**
@@ -214,7 +215,8 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
           ) : (
             <div className="px-3 py-3 text-[13px] text-sub leading-relaxed">
               <span className="text-text">No “{q.trim()}” in Lemody yet.</span> Upload the song, or paste a link to it here —
-              from any site.
+              from any site.{' '}
+              <a href={youtubeSearch(q)} target="_blank" rel="noreferrer" className="text-main underline underline-offset-2 whitespace-nowrap">search on YouTube ↗</a>
             </div>
           )}
           {preview.error && <div className="px-3 pb-2 text-[11px] text-error">{preview.error}</div>}

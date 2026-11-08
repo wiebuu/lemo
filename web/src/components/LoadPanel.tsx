@@ -1,10 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowDownWideNarrow, Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
 import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
-import { signedIn } from '../auth/firebase'
+import { signedIn, signInWithGoogle } from '../auth/firebase'
 import { tidyTitle } from '../lib/titles'
 import { searchSongs } from '../lib/songSearch'
 import { songLink } from '../lib/songLinks'
+import { countsLine, inLanguage, languageName, languagesIn, shortCount, SORTS, sortSongs, youtubeSearch, type SortOrder } from '../lib/library'
+import { setCatalog as shareCatalog, useLikes } from '../state/library'
 import { cloudSongs, refreshCloudSongs } from '../state/cloud'
 import { events } from '../state/events'
 import { formatTime } from '../lib/music'
@@ -14,9 +16,10 @@ const AnalyseChoice = lazy(() => import('./DeviceAnalysis').then((m) => ({ defau
 const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
 const TooWeak = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak })))
 import { FeaturedShelf } from './FeaturedShelf'
+import { LikeButton } from './Like'
 import { Plays, PreviewButton, usePreview } from './SongSearch'
 import { SongSearch } from './SongSearch'
-import { cx, Eq, Tip } from './ui'
+import { cx, Eq, Menu, MenuItem, Tip } from './ui'
 
 const STAGES: { id: JobStage; label: string }[] = [
   { id: 'fetching', label: 'get audio' },
@@ -81,7 +84,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       if (Date.now() - requestsAt.current > 30_000) void loadRequests()
       if (Date.now() - catalogAt.current > 30_000) { // every stored song: rarely changes
         catalogAt.current = Date.now()
-        analyzer.catalog().then(setCatalog).catch(() => {}).finally(() => setCatalogLoading(false))
+        analyzer.catalog().then((c) => { setCatalog(c); shareCatalog(c) }).catch(() => {}).finally(() => setCatalogLoading(false))
       }
     } else setCatalogLoading(false)
     await Promise.allSettled(lists)
@@ -453,11 +456,33 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
 }) {
   const own = cloudSongs().map((it) => ({ ...it, full: it.title, ...tidyTitle(it.title, it.artist) }))
   const plays = new Map(catalog.map((c) => [c.id, c.plays ?? 0]))
+  const byId = useMemo(() => new Map(catalog.map((c) => [c.id, c])), [catalog])
   const preview = usePreview()
   useEffect(() => () => preview.stop(), [])
-  const [tab, setTab] = useState<'featured' | 'explore' | 'mine'>('featured')
+  const [tab, setTab] = useState<'featured' | 'explore' | 'liked' | 'mine'>('featured')
   const [find, setFind] = useState('')
   useEffect(() => setFind(''), [tab])
+  // the language chips and the sort apply to featured, explore and liked (the sort is remembered on this device)
+  const [{ lang, sort }, setView] = useState(savedView)
+  const pick = (v: Partial<LibraryView>) => setView((was) => { const now = { ...was, ...v }; saveView(now); return now })
+  const langs = useMemo(() => languagesIn(catalog), [catalog])
+  const shownLang = lang && langs.some((l) => l.code === lang) ? lang : null // one with no songs (any more) isn't offered
+  const { ids: likedIds } = useLikes()
+  // Lemody's own order for explore: most results first, then the newest (as it always was)
+  const exploreBase = useMemo(() => [...catalog].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0)), [catalog])
+  const exploreSongs = useMemo(() => sortSongs(inLanguage(exploreBase, shownLang), sort), [exploreBase, shownLang, sort])
+  const likedSongs = useMemo(
+    () => sortSongs(inLanguage(likedIds.flatMap((id) => byId.get(id) ?? []), shownLang), sort),
+    [likedIds, byId, shownLang, sort],
+  )
+  // featured cards carry their counts from the catalog, so they sort the same way
+  const featuredShown = useMemo(
+    () => sortSongs(inLanguage(featured, shownLang).map((f) => {
+      const c = f.id ? byId.get(f.id) : undefined
+      return c ? { ...f, views: c.views, sung: c.sung, addedAt: c.addedAt } : f
+    }), sort),
+    [featured, byId, shownLang, sort],
+  )
   const ownShown = find.trim() ? searchSongs(own, find, 500) : own
   // Featured stays the first tab while it loads (placeholder rows), instead of showing
   // "your songs" and then jumping to featured when it arrives.
@@ -471,10 +496,11 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   return (
     <div className={cx('mt-6 sm:mt-8', fill && 'flex-1 min-h-0 flex flex-col')}>
       {(featured.length > 0 || featuredLoading) && (
-        <div className="flex items-center gap-5 mb-3 shrink-0 text-xs">
-          {([['featured', 'featured'], ['explore', 'explore'], ['mine', `your songs${own.length + requests.length ? ` · ${own.length + requests.length}` : ''}`]] as const).map(([v, label]) => (
+        <div className="flex items-center gap-4 sm:gap-5 mb-3 shrink-0 text-xs">
+          {([['featured', 'featured'], ['explore', 'explore'], ['liked', `liked${likedIds.length ? ` · ${likedIds.length}` : ''}`],
+            ['mine', `your songs${own.length + requests.length ? ` · ${own.length + requests.length}` : ''}`]] as const).map(([v, label]) => (
             <button key={v} type="button" onClick={() => setTab(v)}
-              className={cx('relative pb-1.5 tracking-wide', show === v ? 'text-text' : 'text-sub hover:text-text')}>
+              className={cx('relative pb-1.5 tracking-wide whitespace-nowrap', show === v ? 'text-text' : 'text-sub hover:text-text')}>
               {label}
               <span className={cx('absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-grad transition-opacity', show === v ? 'opacity-100' : 'opacity-0')} />
             </button>
@@ -482,22 +508,46 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
           <span className="flex-1 h-px bg-line" />
         </div>
       )}
-      {(show === 'explore' || (show === 'mine' && own.length > 0)) && (
-        <ListSearch value={find} onChange={setFind} label={show === 'explore' ? 'search every song' : 'search your songs'} />
+      {show !== 'mine' && langs.length > 0 && (
+        <LibraryBar langs={langs} lang={shownLang} sort={sort} onLang={(l) => pick({ lang: l })} onSort={(o) => pick({ sort: o })} />
+      )}
+      {(show === 'explore' || (show === 'liked' && likedIds.length > 0) || (show === 'mine' && own.length > 0)) && (
+        <ListSearch value={find} onChange={setFind}
+          label={show === 'mine' ? 'search your songs' : `search ${show === 'liked' ? 'liked' : 'every'}${shownLang ? ` ${languageName(shownLang)}` : ''} song${show === 'liked' ? 's' : ''}`} />
       )}
       <div className={cx('overflow-y-auto -mx-2 px-2', fill ? 'flex-1 min-h-0' : 'max-h-[42vh]')}>
         {show === 'explore' ? (
-          <Explore catalog={catalog} find={find} opening={opening} online={online} onOpen={onOpen} />
+          <Explore songs={exploreSongs} loading={!catalog.length} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
+        ) : show === 'liked' ? (
+          likedSongs.length || find ? (
+            <Explore songs={likedSongs} loading={false} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
+          ) : (
+            <div className="text-xs text-sub py-2 px-2 leading-relaxed">
+              {!signedIn() ? (
+                <><button type="button" onClick={() => void signInWithGoogle()} className="text-main underline underline-offset-2">sign in</button>, then tap ♥ on a song to keep it here.</>
+              ) : likedIds.length && shownLang ? (
+                <>no {languageName(shownLang)} songs among the ones you liked. <button type="button" onClick={() => pick({ lang: null })} className="text-main underline underline-offset-2">show all</button></>
+              ) : (
+                'tap ♥ on any song to keep it here — on every device you sign in on.'
+              )}
+            </div>
+          )
         ) : show === 'featured' && featuredLoading ? (
           <SkeletonRows />
         ) : show === 'featured' ? (
           <>
             {GROUPS.map((g) => {
-              const items = featured.filter((f) => groupOf(f) === g.id)
+              const items = featuredShown.filter((f) => groupOf(f) === g.id)
               return items.length ? (
-                <FeaturedShelf key={g.id} label={g.label} items={items} plays={plays} opening={opening} preview={preview} onOpen={(id) => { preview.stop(); onOpen(id) }} />
+                <FeaturedShelf key={g.id} label={g.label} items={items} counts={byId} opening={opening} preview={preview} onOpen={(id) => { preview.stop(); onOpen(id) }} />
               ) : null
             })}
+            {!featuredShown.length && shownLang && (
+              <div className="text-xs text-sub py-2 px-2">
+                no featured {languageName(shownLang)} songs —{' '}
+                <button type="button" onClick={() => setTab('explore')} className="text-main underline underline-offset-2">see them all in explore</button>
+              </div>
+            )}
             {online && canPrepare && idle && (
               <Tip tip="Prepares them one at a time in the background.">
                 <button type="button" onClick={() => onPrepare(true)} className="mt-3 px-2 text-xs text-sub hover:text-main">
@@ -574,17 +624,35 @@ function pageList(at: number, pages: number): (number | '…')[] {
   return out
 }
 
-/** Every song, most played first (then the newest), 20 to a page. */
-function Explore({ catalog, find, opening, online, onOpen }: { catalog: CatalogItem[]; find: string; opening: string | null; online: boolean; onOpen: (id: string) => void }) {
+/** Songs (already filtered and sorted), 20 to a page; a search ranks by how well they match. */
+function Explore({ songs: list, loading, find, lang, sort, opening, online, onOpen }: {
+  songs: CatalogItem[]
+  loading: boolean
+  find: string
+  /** the language chip that's on (for the messages) */
+  lang: string | null
+  sort: SortOrder
+  opening: string | null
+  online: boolean
+  onOpen: (id: string) => void
+}) {
   const preview = usePreview()
   const [page, setPage] = useState(0)
   const top = useRef<HTMLDivElement>(null)
   useEffect(() => () => preview.stop(), [])
-  useEffect(() => setPage(0), [find])
-  if (!catalog.length) return <SkeletonRows />
+  useEffect(() => setPage(0), [find, lang, sort])
+  if (loading) return <SkeletonRows />
   const q = find.trim()
-  const ranked = q ? searchSongs(catalog, q, catalog.length) : [...catalog].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0))
-  if (q && !ranked.length) return <div className="text-xs text-sub py-2 px-2">no song matches “{q}” — tap “search or add a song” above to add it</div>
+  const ranked = q ? searchSongs(list, q, list.length) : list
+  if (!ranked.length) return (
+    <div className="text-xs text-sub py-2 px-2 leading-relaxed">
+      {q ? <>no {lang ? `${languageName(lang)} ` : ''}song matches “{q}”. </> : <>no {lang ? `${languageName(lang)} ` : ''}songs here yet. </>}
+      {q && (
+        <><a href={youtubeSearch(q)} target="_blank" rel="noreferrer" className="text-main underline underline-offset-2">search on YouTube ↗</a>
+          {' '}— then paste the song’s link in “search or add a song” to add it.</>
+      )}
+    </div>
+  )
   const pages = Math.max(1, Math.ceil(ranked.length / EXPLORE_PAGE))
   const at = Math.min(page, pages - 1)
   const songs = ranked.slice(at * EXPLORE_PAGE, (at + 1) * EXPLORE_PAGE).map((c) => ({ ...c, ...tidyTitle(c.title, c.artist) }))
@@ -599,14 +667,19 @@ function Explore({ catalog, find, opening, online, onOpen }: { catalog: CatalogI
         {songs.map((it, i) => {
           const n = at * EXPLORE_PAGE + i
           return (
-            <li key={it.id} className="track group grid grid-cols-[1.75rem_2rem_1fr_auto_auto] items-center gap-2 px-2 py-1 rounded-lg">
-              <span className={cx('text-[11px] tabular-nums', n < 3 && (it.plays ?? 0) > 0 ? 'text-main font-medium' : 'text-sub')}>{String(n + 1).padStart(2, '0')}</span>
+            <li key={it.id} className="track group grid grid-cols-[1.75rem_2rem_1fr_auto_auto_auto] items-center gap-2 px-2 py-1 rounded-lg">
+              <span className={cx('text-[11px] tabular-nums', n < 3 && !q && sort !== 'lemody' && (it.views || it.sung) ? 'text-main font-medium' : 'text-sub')}>{String(n + 1).padStart(2, '0')}</span>
               <PreviewButton id={it.id} has={it.preview !== false} preview={preview} />
               <button type="button" disabled={!online || !!opening} onClick={() => { preview.stop(); onOpen(it.id) }} className="min-w-0 text-left truncate">
                 <span className="text-[14px] font-medium text-text group-hover:text-main">{it.title}</span>
                 {it.artist && <span className="text-[11px] text-sub ml-2">{it.artist}</span>}
               </button>
-              <span className="text-[11px] text-sub tabular-nums">{it.plays ? `${it.plays} play${it.plays > 1 ? 's' : ''}` : ''}</span>
+              <span className="text-[11px] text-sub tabular-nums whitespace-nowrap">
+                <span className="hidden sm:inline">{countsLine(it)}</span>
+                {/* phones: only the number it's sorted by */}
+                <span className="sm:hidden">{sort === 'sung' ? (it.sung ? `${shortCount(it.sung)} sung` : '') : it.views ? shortCount(it.views) : ''}</span>
+              </span>
+              <LikeButton id={it.id} size={13} />
               <span className="text-[11px] text-sub tabular-nums w-9 text-right">
                 {opening === it.id ? <Loader2 size={11} className="animate-spin inline text-main" /> : it.duration ? formatTime(it.duration) : ''}
               </span>
@@ -632,6 +705,63 @@ function Explore({ catalog, find, opening, online, onOpen }: { catalog: CatalogI
             className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">›</button>
         </nav>
       )}
+    </div>
+  )
+}
+
+type LibraryView = { lang: string | null; sort: SortOrder }
+const VIEW_KEY = 'lemo.library'
+/** Every visit starts on all languages (a filter left on would look like missing songs). */
+function savedView(): LibraryView {
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}')
+    return { lang: null, sort: SORTS.some((s) => s.id === v.sort) ? v.sort : 'popular' }
+  } catch {
+    return { lang: null, sort: 'popular' }
+  }
+}
+function saveView(v: LibraryView) {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify({ sort: v.sort }))
+  } catch {
+    /* blocked */
+  }
+}
+
+/** Language chips (only languages that have songs) and the sort. One row; the chips scroll sideways. */
+function LibraryBar({ langs, lang, sort, onLang, onSort }: {
+  langs: { code: string; name: string; count: number }[]
+  lang: string | null
+  sort: SortOrder
+  onLang: (code: string | null) => void
+  onSort: (o: SortOrder) => void
+}) {
+  const row = useRef<HTMLDivElement>(null)
+  // the chip that's on stays in sight (phones scroll the row sideways)
+  useEffect(() => {
+    const on = row.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (on && row.current) row.current.scrollTo({ left: Math.max(0, on.offsetLeft - row.current.clientWidth / 2 + on.offsetWidth / 2), behavior: 'smooth' })
+  }, [lang])
+  const chip = (on: boolean) => cx('shrink-0 h-7 px-3 rounded-full text-[11px] whitespace-nowrap transition-colors',
+    on ? 'bg-main text-bg font-medium' : 'bg-sub-alt/50 text-sub hover:text-text hover:bg-sub-alt/80')
+  return (
+    <div className="flex items-center gap-2 mb-2.5 shrink-0">
+      <div ref={row} role="group" aria-label="language" className="shelf relative flex-1 min-w-0 flex gap-1.5 overflow-x-auto -ml-0.5 pl-0.5">
+        <button type="button" aria-pressed={!lang} onClick={() => onLang(null)} className={chip(!lang)}>All</button>
+        {langs.map((l) => (
+          <button key={l.code} type="button" aria-pressed={lang === l.code} onClick={() => onLang(lang === l.code ? null : l.code)} className={chip(lang === l.code)}>
+            {l.name}
+          </button>
+        ))}
+      </div>
+      <Menu tip="Sort songs" buttonClassName="shrink-0 flex items-center gap-1 text-[11px] whitespace-nowrap"
+        button={<><ArrowDownWideNarrow size={13} /><span>{SORTS.find((s) => s.id === sort)?.short}</span></>}>
+        {(close) => SORTS.map((o) => (
+          <MenuItem key={o.id} icon={<Check size={13} className={cx(sort !== o.id && 'opacity-0')} />} label={o.label} active={sort === o.id}
+            tip={o.id === 'popular' ? 'Most plays on YouTube (counted once a week)' : o.id === 'sung' ? 'Most tests started on Lemody' : 'As Lemody lists them'}
+            onClick={() => { onSort(o.id); close() }} />
+        ))}
+      </Menu>
     </div>
   )
 }

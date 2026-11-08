@@ -73,8 +73,12 @@ export interface CatalogItem {
   lang?: string | null
   featured?: boolean
   preview?: boolean
-  /** results people got on it (Explore's "most played") */
+  /** results people got on it */
   plays?: number
+  /** tests started on it in Lemody ("most sung") */
+  sung?: number
+  /** its YouTube views, from the weekly snapshot (null: not read yet) */
+  views?: number | null
   /** when it was added (seconds) */
   addedAt?: number | null
 }
@@ -243,8 +247,8 @@ export const analyzer = {
   },
   stats: () => fetch('/api/stats').then((r) => json<SiteStats>(r)),
   /** a test started, or finished after `seconds` of singing (for the stats page) */
-  countTest: (finished: boolean, seconds = 0) =>
-    fetch('/api/stats/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ finished, seconds }) }).catch(() => undefined),
+  countTest: (finished: boolean, seconds = 0, songId?: string | null) =>
+    fetch('/api/stats/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ finished, seconds, songId }) }).catch(() => undefined),
   /** every stored song, for search */
   catalog: () => fetch('/api/catalog').then((r) => json<CatalogItem[]>(r)),
   /** songs by a bit of their lyrics, typed any way: the line each one is on */

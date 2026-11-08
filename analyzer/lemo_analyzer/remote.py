@@ -216,6 +216,26 @@ def push_models(models_dir: Path) -> None:
             print(f"could not copy the models to the VPS: {e}", flush=True)
 
 
+def push_popularity(snap_dir: Path) -> bool:
+    """The weekly play counts (popularity.py) to the VPS. --delete: it keeps only the
+    newest snapshot too."""
+    if not enabled() or not snap_dir.exists():
+        return False
+    if Path(_at("_popularity")).resolve() == snap_dir.resolve():
+        return True  # on the VPS itself
+    with _lock:
+        try:
+            r = subprocess.run(["rsync", "-a", "--delete", "--include", "*-W*.json", "--exclude", "*", "--timeout=60",
+                                "-e", f"ssh {SSH_OPTS}", f"{snap_dir}/", _at("_popularity/")],
+                               capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            print("could not copy the play counts to the VPS: took too long", flush=True)
+            return False
+    if r.returncode != 0:
+        print(f"could not copy the play counts to the VPS: {(r.stderr or r.stdout).strip()[-200:]}", flush=True)
+    return r.returncode == 0
+
+
 # ---- links for browsers -----------------------------------------------------------------------
 
 

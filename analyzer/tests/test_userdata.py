@@ -32,7 +32,8 @@ class UserDataTests(unittest.TestCase):
     def setUp(self):
         userdata.use(TEST_DSN)
         userdata.status()  # connect + create tables
-        userdata._q("TRUNCATE lemo_top, lemo_daily, lemo_requests, lemo_prefs, lemo_songs, lemo_users")
+        userdata._q("TRUNCATE lemo_likes, lemo_song_stats, lemo_top, lemo_daily, lemo_requests, lemo_prefs, lemo_songs, lemo_users")
+        userdata._sung["at"] = 0.0
         tokens = {"Bearer a": ALICE, "Bearer b": BOB}
 
         def verify(header):
@@ -58,6 +59,32 @@ class UserDataTests(unittest.TestCase):
 
     def test_needs_sign_in(self):
         self.assertEqual(self.call("GET", "/api/me", who=None).status_code, 401)
+
+    def test_likes_are_per_user_newest_first_and_need_sign_in(self):
+        a, b = "yt-abcdefghijk", "yt-bbbbbbbbbbb"
+        self.assertEqual(self.call("GET", "/api/me/likes").json(), [])
+        self.assertTrue(self.call("PUT", f"/api/me/likes/{a}").json()["liked"])
+        time.sleep(0.01)
+        self.call("PUT", f"/api/me/likes/{b}")
+        self.call("PUT", f"/api/me/likes/{a}")  # liking twice changes nothing
+        self.assertEqual(self.call("GET", "/api/me/likes").json(), [b, a])
+        self.assertEqual(self.call("GET", "/api/me/likes", who="b").json(), [])  # Bob's are his own
+        self.assertFalse(self.call("DELETE", f"/api/me/likes/{b}").json()["liked"])
+        self.assertEqual(self.call("GET", "/api/me/likes").json(), [a])
+        # a guest is asked to sign in; a made-up id is refused
+        self.assertEqual(self.call("PUT", f"/api/me/likes/{a}", who=None).status_code, 401)
+        self.assertEqual(self.call("GET", "/api/me/likes", who=None).status_code, 401)
+        self.assertEqual(self.call("PUT", "/api/me/likes/../../etc").status_code, 404)
+        self.assertEqual(self.call("PUT", "/api/me/likes/nope").status_code, 400)
+
+    def test_tests_started_are_counted_per_song(self):
+        sid = "yt-abcdefghijk"
+        for _ in range(3):
+            self.call("POST", "/api/stats/test", who=None, json={"finished": False, "songId": sid})
+        self.call("POST", "/api/stats/test", who=None, json={"finished": True, "seconds": 60, "songId": sid})
+        self.call("POST", "/api/stats/test", who=None, json={"finished": False, "songId": "not a song"})  # counted for the day only
+        self.assertEqual(userdata.tests_started(max_age=0), {sid: 3})
+        self.assertEqual(self.c.get("/api/stats").json()["testsStarted"], 4)
 
     def test_settings_round_trip_and_newer_wins(self):
         self.assertEqual(self.call("GET", "/api/me").json()["settings"], None)

@@ -15,6 +15,8 @@ import { Keyboard } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { studio } from './state/studio'
 import { TopCelebration } from './components/TopCelebration'
+import { LikeAsk } from './components/Like'
+import { PhoneSongName } from './components/SongCounts'
 
 // Opened now and then: each loads the first time it's needed, not with the app.
 const HeadphoneNote = lazy(() => import('./components/HeadphoneNote').then((m) => ({ default: m.HeadphoneNote })))
@@ -119,10 +121,7 @@ export default function App() {
             {/* while singing the big note readout needs the room: the name steps aside */}
             <LiveStats big={s.session} center={phone && !s.session ? (results ? (s.canReplay ? <VoiceSwitch /> : undefined) : (
               // phones: the header has no room for the song's name — it sits in this row, above the graph
-              <div className="truncate leading-tight text-[12px]">
-                <span className="text-text font-medium">{s.track.title}</span>
-                {s.track.artist && <span className="text-sub"> · {s.track.artist}</span>}
-              </div>
+              <PhoneSongName track={s.track} />
             )) : undefined} />
           </ErrorBoundary>
           {/* phones: a little air between the song's name and the graph */}
@@ -163,6 +162,8 @@ export default function App() {
       </footer>
 
       <TopCelebration />
+
+      <LikeAsk />
       {s.toast && (
         <div key={s.toast.id} className="toast-in fixed bottom-28 left-1/2 -translate-x-1/2 z-40 bg-sub-alt text-text text-xs rounded-full px-4 py-2 shadow-lg pointer-events-none">
           {s.toast.text}

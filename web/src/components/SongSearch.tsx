@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, Link2, Loader2, Pause, Play, Search, X } from 'lucide-react'
-import { analyzer, type CatalogItem } from '../api/analyzer'
+import { analyzer, type CatalogItem, type LinkSong } from '../api/analyzer'
 import { formatTime } from '../lib/music'
 import { searchSongs } from '../lib/songSearch'
 import { tidyTitle } from '../lib/titles'
@@ -43,16 +43,19 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
   const link = songLink(q)
   const vid = link?.kind === 'youtube' ? link.videoId : null
   const byId = vid ? catalog.find((c) => c.id === `yt-${vid}`) : undefined
-  // a link from a site we can't take songs from: first, is it a song we already have
-  // (maybe another upload of it)? The server checks by the link's name.
+  // a link from a site we can't take songs from: is it exactly a song we already have?
+  // Songs with the same name are only suggested (they may be a cover or another version).
   const askable = !!link && link.kind !== 'file' && !byId
-  const [matched, setMatched] = useState<{ url: string; song: { id: string; title: string; artist?: string | null } | null } | null>(null)
+  const [matched, setMatched] = useState<{ url: string; song: LinkSong | null; similar: LinkSong[] } | null>(null)
   useEffect(() => {
     if (!askable || !link) return
     const url = link.url
     let gone = false
     const t = setTimeout(() => {
-      analyzer.matchLink(url).then((r) => !gone && setMatched({ url, song: r.song }), () => !gone && setMatched({ url, song: null }))
+      analyzer.matchLink(url).then(
+        (r) => !gone && setMatched({ url, song: r.song, similar: r.similar ?? [] }),
+        () => !gone && setMatched({ url, song: null, similar: [] }),
+      )
     }, 250)
     return () => { gone = true; clearTimeout(t) }
   }, [askable, link?.url]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -60,6 +63,7 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
   const known = byId ?? (checked?.song ? { id: checked.song.id, title: checked.song.title } : undefined)
   const checking = askable && !checked
   const locked = askable && checked && !checked.song ? (link?.kind === 'locked' ? link.site : 'YouTube') : null
+  const similar = locked && checked ? checked.similar : []
   const named = useMemo(() => (link ? [] : searchSongs(catalog, q)), [catalog, q, link])
   // a bit of the lyrics (two words or more): asked of the server once typing pauses
   const [sung, setSung] = useState<{ q: string; hits: { id: string; line: string }[] } | null>(null)
@@ -172,6 +176,22 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
             </button>
             <span className="text-[11px] text-sub">about a week · then it’s in your songs</span>
           </div>
+          {similar.length > 0 && (
+            <div className="mt-3 pt-2.5 border-t border-line">
+              <div className="text-[10px] uppercase tracking-wider text-sub mb-1">Same name in Lemody</div>
+              {similar.map((s) => {
+                const t = tidyTitle(s.title, s.artist ?? '')
+                return (
+                  <button key={s.id} type="button" disabled={disabled} onClick={() => { preview.stop(); onOpen(s.id) }}
+                    className="group w-full flex items-center gap-2 py-1 text-left min-w-0">
+                    <Play size={11} className="text-main fill-current shrink-0" />
+                    <span className="truncate text-[13px] text-text group-hover:text-main">{t.title}</span>
+                    {t.artist && <span className="truncate text-[11px] text-sub">{t.artist}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -72,6 +72,18 @@ class CatalogTest(unittest.TestCase):
             self.assertEqual(catalog.all_songs()[0]["plays"], 2)
             self.assertIsNone(catalog.played("yt-unknown000", "ana"))
 
+    def test_same_named_songs_are_all_suggested_best_first(self):
+        songs = [
+            {"id": "yt-cover000000", "title": "Pasoori cover", "artist": "Someone Else"},
+            {"id": "yt-real0000000", "title": "Pasoori", "artist": "Ali Sethi, Shae Gill"},
+            {"id": "yt-other000000", "title": "Tum Hi Ho", "artist": "Arijit Singh"},
+        ]
+        with mock.patch.object(catalog, "all_songs", return_value=songs):
+            hits = [e["id"] for e in catalog.similar("Coke Studio | Season 14 | Pasoori | Ali Sethi x Shae Gill", "Coke Studio")]
+            self.assertEqual(hits, ["yt-real0000000"])  # "cover" isn't in the link's name
+            hits = [e["id"] for e in catalog.similar("Pasoori cover | Someone Else ft. Shae Gill", "")]
+            self.assertEqual(hits, ["yt-cover000000", "yt-real0000000"])  # both named: the fullest first
+
     def test_another_upload_of_a_song_we_have_is_found(self):
         songs = [
             {"id": "yt-aaaaaaaaaaa", "title": "Dhana", "artist": "Priyanka Meher"},

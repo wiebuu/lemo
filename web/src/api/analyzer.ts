@@ -2,6 +2,10 @@
 
 import type { ReferenceTrack } from '../lib/types'
 
+/** A pasted link: exactly this song in Lemody (song), and songs with the same name (similar). */
+export interface LinkSong { id: string; title: string; artist?: string | null }
+export interface LinkMatch { song: LinkSong | null; similar?: LinkSong[] }
+
 export interface AnalyzerHealth {
   ok: boolean
   youtube: boolean
@@ -285,7 +289,7 @@ export const analyzer = {
       .then((r) => json<{ ok: boolean }>(r)),
   /** A link from YouTube, Spotify, …: the song Lemody already has for it (maybe another upload of it), or null. */
   matchLink: (url: string) =>
-    fetch(`/api/songs/match?${new URLSearchParams({ url })}`).then((r) => json<{ song: { id: string; title: string; artist?: string | null } | null }>(r)),
+    fetch(`/api/songs/match?${new URLSearchParams({ url })}`).then((r) => json<LinkMatch>(r)),
   cancelRequest: (id: string) => fetch(`/api/requests/${id}`, { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
   stemUrl: (id: string, stem: 'backing' | 'vocals', speed: number, semis: number) =>
     `/api/songs/${id}/audio/${stem}?speed=${speed}&semitones=${semis}&f=m4a`, // f: new address after the WAV → AAC change (old cache entries)

@@ -683,15 +683,16 @@ def _oembed(url: str) -> tuple[str | None, str | None]:
 
 @app.get("/api/songs/match")
 def match_link(url: str) -> dict:
-    """A link from a site we can't take songs from (YouTube, Spotify, …): is it a song
-    Lemody already has — maybe as another upload of it? Checked by the link's name."""
+    """A link from a site we can't take songs from (YouTube, Spotify, …). "song": Lemody
+    has exactly this link (opens it). "similar": songs with the same name — shown as
+    suggestions only, since a same-named song may be a cover or a different version."""
+    pick = lambda e: {k: e.get(k) for k in ("id", "title", "artist")}  # noqa: E731
     vid = youtube.video_id(url)
     if vid and catalog.is_public(f"yt-{vid}") and (f"yt-{vid}" in catalog.load() or remote.has(f"yt-{vid}")):
-        e = catalog.load().get(f"yt-{vid}", {"id": f"yt-{vid}"})
-        return {"song": {k: e.get(k) for k in ("id", "title", "artist")}}
+        return {"song": pick(catalog.load().get(f"yt-{vid}", {"id": f"yt-{vid}"})), "similar": []}
     title, artist = _oembed(url)
-    hit = catalog.match(title or "", artist or "") if title else None
-    return {"song": {k: hit.get(k) for k in ("id", "title", "artist")} if hit else None, "title": title}
+    hits = catalog.similar(title or "", artist or "") if title else []
+    return {"song": None, "similar": [pick(e) for e in hits], "title": title}
 
 
 @app.post("/api/requests")

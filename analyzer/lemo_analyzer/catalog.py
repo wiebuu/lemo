@@ -218,13 +218,20 @@ def _words(text: str | None) -> list[str]:
 
 
 def match(title: str, author: str = "") -> dict | None:
-    """The song in Lemody that a video / track with this name is (another upload of the
-    same song). Every word of the song's name must be there; a one-word name also needs
-    the singer. The fullest match wins."""
+    """The song in Lemody that a video / track with this name most likely is (another
+    upload of the same song — or a cover with the same name). The fullest match."""
+    hits = similar(title, author, 1)
+    return hits[0] if hits else None
+
+
+def similar(title: str, author: str = "", limit: int = 3) -> list[dict]:
+    """Songs in Lemody with the same name as this video / track, the fullest match first.
+    Every word of the song's name must be there; a one-word name also needs the singer.
+    Only a suggestion: a same-named song may be a cover, a remix or another song."""
     seen = set(_words(title)) | set(_words(author))
     named = set(_words(title))
     songs = [e for e in all_songs() if is_public(e["id"])]
-    best, best_score = None, 0
+    scored: list[tuple[int, dict]] = []
     for e in songs:
         name = _words(e.get("title"))
         if not name or not set(name) <= seen:
@@ -234,7 +241,6 @@ def match(title: str, author: str = "") -> dict | None:
         exact_only = set(name) == named and sum(set(_words(x.get("title"))) == named for x in songs) == 1
         if len(name) == 1 and not singer and not exact_only:
             continue
-        score = 2 * len(name) + (2 if singer else 0)
-        if score > best_score:
-            best, best_score = e, score
-    return best
+        scored.append((2 * len(name) + (2 if singer else 0), e))
+    scored.sort(key=lambda x: -x[0])  # stable: equal scores keep the catalog's order
+    return [e for _, e in scored[:limit]]

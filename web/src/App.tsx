@@ -6,7 +6,7 @@ import { Graph } from './components/Graph'
 import { Header, type Panel } from './components/Header'
 import { LiveStats } from './components/LiveStats'
 import { LoadPanel } from './components/LoadPanel'
-import { takeLinkedSong } from './lib/linkedSong'
+import { takeChallenge, takeLinkedSong } from './lib/linkedSong'
 import { Lyrics } from './components/Lyrics'
 import { PlayerBar } from './components/PlayerBar'
 import { ResultsPanel, VoiceSwitch } from './components/Results'
@@ -44,7 +44,8 @@ export default function App() {
   // came from a song page (/sing/…): open that song
   useEffect(() => {
     const id = takeLinkedSong()
-    if (id) studio.loadAnalyzed(id).catch(() => {})
+    const beat = takeChallenge()
+    if (id) studio.loadAnalyzed(id).then(() => beat && studio.setChallenge(Number(beat)), () => {})
   }, [])
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function App() {
           </div>
           {/* fixed-height slot under the graph: lyrics, or the results panel after a test */}
           <div className={cx('shrink-0 flex flex-col justify-center transition-[height] duration-500',
-            phone ? (results ? 'h-[8.5rem] py-1' : 'h-[6rem] py-0.5') : results ? 'h-[10rem] py-4' : 'h-[8rem] py-4')}>
+            phone ? (results ? 'h-[12rem] py-1' : 'h-[6rem] py-0.5') : results ? 'h-[10rem] py-4' : 'h-[8rem] py-4')}>
             <ErrorBoundary label="results">
               {results ? <ResultsPanel big={false} /> : <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />}
             </ErrorBoundary>

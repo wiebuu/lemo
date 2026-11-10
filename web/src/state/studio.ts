@@ -27,6 +27,7 @@ import { events } from './events'
 import { NO_FX, shiftCurve, STEP, type VoiceFx } from '../lib/voiceFx'
 import type { FxIn, FxOut } from '../audio/voiceFx.worker'
 import { persist, type Settings, type SongPrefs } from './persist'
+import type { ShareInfo } from '../lib/shareCard'
 import { packFrames, TOP_EASY_MIN_SCORE, TOP_MIN_SECONDS, unpackFrames, wavOf } from '../lib/topTake'
 
 export type MicState = 'off' | 'starting' | 'on' | 'error'
@@ -96,6 +97,8 @@ export interface Snapshot {
    */
   /** guest: the take would make it, but a guest's can't be listed until they sign in */
   /** guest: on it as "a guest singer"; seen: the guest closed the note about it */
+  /** a friend's link: the score to beat on this song (0–100), until another song opens */
+  challenge: number | null
   topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'no'; guest?: boolean; seen?: boolean } | null
   /** The result shown is someone's take from today's top, not yours. */
   viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean } | null
@@ -194,7 +197,7 @@ export class Studio {
   snap: Snapshot = {
     track: null, caps: null, busy: null, busyProgress: null, busyDetail: null, playing: false, speed: 1, transpose: 0, loop: null, metronome: false,
     phrases: [], phrase: -1, breaths: [], lyrics: [], lyricPos: { line: -1, word: -1 }, mic: 'off', micError: null,
-    muted: false, voiceIssue: null, settings: persist.settings(), attempts: [], lastResult: null, offsetMs: 0, error: null,
+    muted: false, voiceIssue: null, settings: persist.settings(), attempts: [], lastResult: null, challenge: null, offsetMs: 0, error: null,
     canReplay: false, replay: false, listenSource: 'me', voiceFx: NO_FX, voiceFxBusy: false, session: false, lyricsShown: [], lyricsStatus: null, lyricsNote: null, toast: null, reviewAspect: 'pitch', resultsView: 'results', focus: null, resultMode: null,
     topRank: null, viewing: null,
   }
@@ -343,7 +346,7 @@ export class Studio {
     this.fxId++ // a voice-effects render still running for the old take is ignored
     this.lyricsJob++
     this.set({
-      lastResult: null, focus: null, replay: false, canReplay: false, resultsView: 'results', resultMode: null, topRank: null, viewing: null,
+      lastResult: null, focus: null, replay: false, canReplay: false, resultsView: 'results', resultMode: null, topRank: null, viewing: null, challenge: null,
       voiceFxBusy: false, lyricsStatus: null, lyricPos: { line: -1, word: -1 }, loop: null,
     })
     return seq
@@ -832,6 +835,29 @@ export class Studio {
   }
 
   /** A short message near the bottom that fades away — feedback for actions with no other visible effect. */
+  setChallenge(score: number | null) {
+    this.set({ challenge: score })
+  }
+
+  /** What the "share my score" card shows: the last take, its scores, the melody and the voice. */
+  shareInfo(parts: [string, number | null][]): ShareInfo | null {
+    const r = this.snap.lastResult
+    const track = this.snap.track
+    const take = this.lastTake
+    if (!r || !track || r.overall.score === null) return null
+    return {
+      title: track.title,
+      artist: track.artist ?? null,
+      score: r.overall.score,
+      parts: parts.filter((p): p is [string, number] => p[1] !== null),
+      notes: track.notes,
+      frames: take?.frames ?? [],
+      from: take?.from ?? 0,
+      to: take?.to ?? track.duration,
+      songId: this.analyzerId,
+    }
+  }
+
   toast(text: string, ms = 1800) {
     const id = Date.now()
     this.set({ toast: { id, text } })

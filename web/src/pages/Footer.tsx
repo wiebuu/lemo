@@ -1,3 +1,4 @@
+import { CookieNote } from '../components/CookieNote'
 import { cx } from '../components/ui'
 import { go } from './router'
 
@@ -19,6 +20,7 @@ export function SiteFooter({ className }: { className?: string }) {
   return (
     // phones: one thin line (links, then the credit); bigger screens: two lines
     <nav aria-label="site" className={cx('flex flex-wrap sm:flex-col items-center justify-center gap-x-3 gap-y-1 sm:gap-2 text-[10.5px] sm:text-[11px] text-sub', className)}>
+      <CookieNote />
       <div className="contents sm:flex sm:flex-wrap sm:justify-center sm:gap-x-4 sm:gap-y-1">
         {FOOTER_LINKS.map(([href, label]) => (
           <a key={href} href={href} onClick={href === '/songs' ? undefined : go /* a page of its own, not in the app */} className="hover:text-text transition-colors">{label}</a>

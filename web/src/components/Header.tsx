@@ -1,3 +1,4 @@
+import { ChallengeBadge } from './Challenge'
 import { ChartColumn, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
 import { signInWithGoogle, signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
@@ -50,6 +51,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
       <div className="flex-1" />
       {t && (
         <div className="min-w-0 hidden sm:flex items-center gap-3">
+          <ChallengeBadge />
           <Tip tip={<><SongCounts song={counts} />{`Melody from: ${t.melodySource}`}</>}>
             <div className="min-w-0 text-right leading-tight">
               <div className="text-sm font-medium text-text truncate">{t.title}</div>

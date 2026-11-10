@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { lazy, Suspense, useState } from 'react'
-import { Crown, MicVocal, Music2, SlidersHorizontal, X } from 'lucide-react'
+import { Crown, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, X } from 'lucide-react'
 const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel })))
+import { ChallengeBadge } from './Challenge'
 import { LyricTicker } from './LyricTicker'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
 import { formatTime } from '../lib/music'
@@ -11,7 +12,10 @@ import { studio } from '../state/studio'
 import { centsInWords, cx, Tabs, Tip, usePhone, useStudio } from './ui'
 import { navigate } from '../pages/router'
 
-const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(2)}%`)
+// Every score keeps its full precision (rankings compare the exact numbers); only the main,
+// overall score is shown with two decimals — the others as whole percents.
+const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`)
+const pct2 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(2)}%`)
 const ORDER: MetricKey[] = ['shape', 'harmony', 'rhythm', 'tone', 'attack', 'stability', 'dynamics', 'exact']
 const SHORT: Record<MetricKey, string> = { shape: 'shape', harmony: 'in key', rhythm: 'rhythm', tone: 'tone', attack: 'attack', stability: 'steadiness', dynamics: 'dynamics', exact: 'exact notes' }
 const ABOUT: Record<MetricKey, string> = {
@@ -130,20 +134,29 @@ function ResultsBody({ tabs, compact }: { tabs: React.ReactNode; /** phones: all
   const weights = Object.keys(r.overall.weights).map((k) => SHORT[k as MetricKey])
   const phrase = s.loop ? s.attempts[s.attempts.length - 1]?.phrase ?? null : null
   const history = s.attempts.filter((a) => a.phrase === phrase).slice(-12)
+  const overall = s.settings.showOverall && (
+    <Tip wide tip={weights.length ? <>The average of your {weights.length} scores ({weights.join(', ')}), each counting the same. Today's top shows this same number.</> : 'Not enough singing for an overall score.'}>
+      <div className="cursor-default">
+        <div className={cx('text-main font-medium tabular-nums leading-none', compact ? 'text-3xl' : 'text-4xl')}>{pct2(r.overall.score)}</div>
+        <div className="text-sub text-[11px] mt-1">overall</div>
+      </div>
+    </Tip>
+  )
+  const share = r.overall.score !== null && !s.viewing && <ShareButton compact={compact} />
   return (
     <div className="w-full flex flex-col gap-2">
+      {/* phones: the overall score on its own row, with the friend's score to beat and ↗ share */}
+      {compact && (overall || share || s.challenge !== null) && (
+        <div className="flex items-end justify-between gap-3">
+          {overall || <span />}
+          <div className="flex items-center gap-2 pb-0.5"><ChallengeBadge />{share}</div>
+        </div>
+      )}
       {/* one row; on narrow screens it scrolls sideways instead of wrapping out of its space */}
       <div className="flex items-center gap-3">
       <div className={compact ? 'flex-1 min-w-0 grid grid-cols-4 items-end gap-x-2 gap-y-2'
         : 'edge-fade flex-1 min-w-0 flex flex-nowrap items-end gap-x-5 overflow-x-auto [&>*]:shrink-0 -mx-1 px-1 py-0.5'}>
-        {s.settings.showOverall && (
-          <Tip wide tip={weights.length ? <>The average of your {weights.length} scores ({weights.join(', ')}), each counting the same. Today's top shows this same number.</> : 'Not enough singing for an overall score.'}>
-            <div className="cursor-default">
-              <div className={cx('text-main font-medium tabular-nums leading-none', compact ? 'text-3xl' : 'text-4xl')}>{pct(r.overall.score)}</div>
-              <div className="text-sub text-[11px] mt-1">overall</div>
-            </div>
-          </Tip>
-        )}
+        {!compact && overall}
         {keys.map((k) => (
           <MetricTile key={k} k={k} m={r.metrics[k]} selected={ASPECT_OF[k] === aspect && (k !== 'exact' || !keys.includes('shape'))}
             selectable={aspects.includes(ASPECT_OF[k])} compact={compact} />
@@ -159,10 +172,59 @@ function ResultsBody({ tabs, compact }: { tabs: React.ReactNode; /** phones: all
           </Tip>
         )}
       </div>
+      {!compact && share}
       {tabs}
       </div>
       <DetailLine aspect={aspect} />
     </div>
+  )
+}
+
+/** "Can you beat me?": a picture of the score and a link to the same song, to send to friends. */
+function ShareButton({ compact }: { compact?: boolean }) {
+  const s = useStudio()
+  const [busy, setBusy] = useState(false)
+  const share = async () => {
+    const m = s.lastResult?.metrics
+    const info = studio.shareInfo([['pitch', m?.shape.score ?? null], ['in key', m?.harmony.score ?? null], ['rhythm', m?.rhythm.score ?? null]])
+    if (!info) return
+    setBusy(true)
+    try {
+      const { challengeLink, drawCard, shareText } = await import('../lib/shareCard')
+      const link = challengeLink(info.songId, info.score)
+      const text = `${shareText(info)} ${link}`
+      const file = new File([await drawCard(info)], 'lemody-score.png', { type: 'image/png' })
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], text })
+        } catch (e) {
+          if ((e as Error).name !== 'AbortError') throw e // closed the share sheet: fine
+        }
+        return
+      }
+      // computers without a share sheet: save the picture, copy the link
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(file)
+      a.download = file.name
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
+      await navigator.clipboard?.writeText(text).catch(() => {})
+      studio.toast('picture saved · link copied', 2600)
+    } catch (e) {
+      studio.toast(`couldn’t share: ${(e as Error).message}`, 3000)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Tip tip="Send your score to friends: can they beat it?">
+      <button type="button" onClick={() => void share()} disabled={busy} aria-label="share your score"
+        className={cx('shrink-0 flex items-center gap-1.5 rounded-full bg-main/15 text-main hover:bg-main/25 font-medium disabled:opacity-60',
+          compact ? 'p-2' : 'text-xs px-3 py-1.5')}>
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />}
+        {!compact && 'share'}
+      </button>
+    </Tip>
   )
 }
 

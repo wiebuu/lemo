@@ -1,3 +1,4 @@
+import { ChallengeBadge } from './Challenge'
 import type { CatalogItem } from '../api/analyzer'
 import { useSong } from '../state/library'
 import type { ReferenceTrack } from '../lib/types'
@@ -17,13 +18,17 @@ export function SongCounts({ song }: { song: CatalogItem | undefined }) {
 /** Phones: the open song's name above the graph, with ♥ (the header has no room). */
 export function PhoneSongName({ track }: { track: ReferenceTrack }) {
   const song = useSong(track.id)
+  // a friend's score to beat goes on its own line: the name keeps its room
   return (
-    <div className="flex items-center justify-center gap-2 min-w-0">
-      <div className="truncate leading-tight text-[12px]">
-        <span className="text-text font-medium">{track.title}</span>
-        {track.artist && <span className="text-sub"> · {track.artist}</span>}
+    <div className="flex flex-col items-center gap-0.5 min-w-0">
+      <div className="flex items-center justify-center gap-2 min-w-0 max-w-full">
+        <div className="truncate leading-tight text-[12px]">
+          <span className="text-text font-medium">{track.title}</span>
+          {track.artist && <span className="text-sub"> · {track.artist}</span>}
+        </div>
+        {song && <LikeButton id={track.id} size={13} />}
       </div>
-      {song && <LikeButton id={track.id} size={13} />}
+      <ChallengeBadge />
     </div>
   )
 }

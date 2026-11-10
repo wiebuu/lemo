@@ -91,8 +91,9 @@ def _startup() -> None:
                 time.sleep(600)
                 try:
                     catalog.backfill()
-                    deliver_requests()
-                    tell_owner()
+                    if mailer.can_send():  # where singers (and the owner) can be emailed: this Mac
+                        deliver_requests()
+                        tell_owner()
                     storage.trim()
                 except Exception as e:
                     print(f"could not refresh the song list: {e}", flush=True)

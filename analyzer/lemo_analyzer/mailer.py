@@ -25,6 +25,12 @@ def _creds() -> tuple[str, str] | None:
     return (user, pw) if user and pw else None
 
 
+def can_send() -> bool:
+    """A mail account is set (the Mac). The VPS has none, as its host blocks mail ports: it
+    leaves requested songs for the Mac to deliver, so nobody misses their email."""
+    return _creds() is not None
+
+
 def song_added_message(sender: str, to: str, name: str | None, title: str | None, artist: str | None, song_id: str) -> EmailMessage:
     song = " · ".join(x for x in (title, artist) if x) or "The song you asked for"
     link = SITE  # it's already in their song list there

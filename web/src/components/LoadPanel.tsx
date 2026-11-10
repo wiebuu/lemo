@@ -259,8 +259,10 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
 
       {!typing && !running && !choosing && (
         <ul className="mt-3 px-1 flex flex-col gap-1 text-[10px] sm:text-[11px] text-sub leading-snug">
-          <li><span className="text-text/80">Your song:</span> upload it, or paste a Drive / Dropbox link</li>
-          <li><span className="text-text/80">YouTube, Spotify & more:</span> paste the link, we add it in about a week</li>
+          {device && (cantAnalyse
+            ? <li><span className="text-text/80">Adding songs</span> needs Chrome on a computer. Paste a link and we’ll add it for you.</li>
+            : <li><span className="text-text/80">Want it now?</span> Download the song as MP3 and upload it. Lyrics come automatically.</li>)}
+          <li><span className="text-text/80">YouTube, Spotify & more:</span> paste the link, we add it within a week</li>
         </ul>
       )}
     </>

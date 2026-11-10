@@ -11,7 +11,7 @@ import { studio } from '../state/studio'
 import { centsInWords, cx, Tabs, Tip, usePhone, useStudio } from './ui'
 import { navigate } from '../pages/router'
 
-const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`)
+const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(2)}%`)
 const ORDER: MetricKey[] = ['shape', 'harmony', 'rhythm', 'tone', 'attack', 'stability', 'dynamics', 'exact']
 const SHORT: Record<MetricKey, string> = { shape: 'shape', harmony: 'in key', rhythm: 'rhythm', tone: 'tone', attack: 'attack', stability: 'steadiness', dynamics: 'dynamics', exact: 'exact notes' }
 const ABOUT: Record<MetricKey, string> = {

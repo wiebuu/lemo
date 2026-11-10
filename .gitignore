@@ -9,3 +9,6 @@ __pycache__
 web/.claude
 web/.env.local
 web/.env.*.local
+
+# local admin site (only on this computer)
+admin/

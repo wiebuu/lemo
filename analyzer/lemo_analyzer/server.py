@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.requests import Request
 
 from starlette.concurrency import run_in_threadpool
-from . import audio, auth, catalog, device, jobs, lyrics, lyricsearch, popularity, remote, storage, top, userdata, worker, youtube
+from . import audio, auth, catalog, device, jobs, lyrics, lyricsearch, mailer, popularity, remote, storage, top, userdata, worker, youtube
 from .config import CONFIG, FFMPEG, RUBBERBAND, device_name
 
 app = FastAPI(title="Lemody analyzer", version="0.1.0")
@@ -763,8 +763,10 @@ def deliver_requests() -> None:
         if not sid or not ((jobs.song_dir(sid) / "reference.json").exists() or remote.has(sid)):
             continue
         e = catalog.load().get(sid, {})
-        n = userdata.deliver(r["songId"], sid, {"title": e.get("title") or r["title"], "artist": e.get("artist") or r["artist"], "duration": e.get("duration")})
-        worker.log(f"request {r['songId']}: ready as {sid}, added to {n} singer(s)' songs")
+        title, artist = e.get("title") or r["title"], e.get("artist") or r["artist"]
+        people = userdata.deliver(r["songId"], sid, {"title": title, "artist": artist, "duration": e.get("duration")})
+        mailed = mailer.notify_song_added(people, title, artist, sid)
+        worker.log(f"request {r['songId']}: ready as {sid}, added to {len(people)} singer(s)' songs, {mailed} emailed")
 
 
 @app.get("/api/me/likes")

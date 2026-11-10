@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, Cpu, Loader2, Music2, Server, Smartphone } from 'lucide-react'
-import { analyseOnDevice, deviceRate, deviceSupport, modelsReady, noteRunning, reportProblem, type DeviceProgress, type DeviceStage, type DeviceSupport } from '../analysis/onDevice'
+import { analyseOnDevice, deviceRate, HEARTBEAT_MS, deviceSupport, modelsReady, noteRunning, reportProblem, type DeviceProgress, type DeviceStage, type DeviceSupport } from '../analysis/onDevice'
 import { ApiError, type AnalyzerHealth } from '../api/analyzer'
 import { cx } from './ui'
 
@@ -44,7 +44,7 @@ export function AnalyseChoice({ name, health, onDevice, onServer, onRequest, onC
           icon={<Server size={15} />}
           title="Lemody's server"
           time={serverOk ? mins(serverSec) : '—'}
-          note={!serverOk ? 'cheap servers, sorry 🥲 use your device' : ahead ? `${ahead} song${ahead > 1 ? 's' : ''} ahead` : 'no queue'}
+          note={!serverOk ? 'not available' : ahead ? `${ahead} song${ahead > 1 ? 's' : ''} ahead` : 'no queue'}
           recommended={serverOk && !pickDevice}
           disabled={!serverOk}
           onClick={onServer}
@@ -69,13 +69,12 @@ export function TooWeak({ name, phone, onRequest, onClose }: { name?: string; ph
   return (
     <div className="fade-in mt-4 surface rounded-2xl p-3 sm:p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[13px] sm:text-sm font-semibold text-text">Best added from another device</span>
+        <span className="text-[13px] sm:text-sm font-semibold text-text">Add it from a computer</span>
         <button type="button" onClick={onClose} className="text-xs text-sub hover:text-text">close</button>
       </div>
       {name && <SongName name={name} />}
       <p className="mt-1.5 text-[12px] sm:text-[13px] text-sub leading-snug">
-        This {phone ? 'phone' : 'device'} isn’t compatible: analysing a song needs more processing power and memory.
-        Add it from a more powerful device — then sing it anywhere.
+        This {phone ? 'phone' : 'browser'} can’t add songs. Use Chrome on a computer — then sing it anywhere.
       </p>
       {onRequest && <AskLemody onRequest={onRequest} />}
     </div>
@@ -179,29 +178,40 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onRequest, onCa
       setP(p)
     }
     noteRunning('starting', song)
+    const beat = setInterval(() => noteRunning(stage || 'starting', song), HEARTBEAT_MS) // "still running", for other tabs
     // closed on purpose (not killed for memory, which gives no warning): not a crash
     const closed = () => noteRunning(null)
     window.addEventListener('pagehide', closed)
+    // the moment it's over: nothing keeps running (screen lock, close warning, the note)
+    let ended = false
+    const end = () => {
+      if (ended) return
+      ended = true
+      clearInterval(beat)
+      noteRunning(null)
+      window.removeEventListener('pagehide', closed)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('beforeunload', onLeave)
+      void lock?.release().catch(() => {})
+      lock = null
+    }
     analyseOnDevice(url, progress, ac.signal).then(
       (r) => {
-        noteRunning(null)
+        end()
         if (r.kind !== 'server') onDone(r.id)
         else if (onUseServer) onUseServer()
         else setErr('This browser can\u2019t analyse songs. Try Chrome or Edge on a computer.')
       },
       (e) => {
-        noteRunning(null)
+        end()
         if ((e as Error).name === 'AbortError') return
         if (!(e instanceof ApiError)) reportProblem('error', stage, (e as Error).message, song) // the device's own failure
         setErr(e instanceof ApiError && e.code === 'rejected' ? `The result didn't pass Lemody's checks: ${e.message}` : (e as Error).message)
       },
     )
     return () => {
-      window.removeEventListener('pagehide', closed)
       ac.abort()
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('beforeunload', onLeave)
-      void lock?.release().catch(() => {})
+      end()
     }
     // runs once per song
   }, [url]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -248,7 +258,7 @@ export function DeviceRun({ url, serverSec, onDone, onUseServer, onRequest, onCa
           {onRequest && <AskLemody onRequest={onRequest} />}
         </div>
       ) : (
-        <div className="mt-3 text-[12px] text-main">Keep Lemody open until it's done.</div>
+        <div className="mt-3 text-[12px] text-sub">Keep this tab open until it's done.</div>
       )}
       {slow && onUseServer && (
         <div className="mt-2.5 text-[12px] text-sub leading-relaxed fade-in">

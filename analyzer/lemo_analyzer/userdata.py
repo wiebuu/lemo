@@ -336,14 +336,16 @@ def set_target(song_id: str, target_id: str) -> int:
     return _q("UPDATE lemo_requests SET target_id = %s WHERE song_id = %s AND done_at IS NULL", (target_id, song_id))
 
 
-def deliver(song_id: str, target: str, meta: dict[str, Any]) -> int:
-    """The song is ready: it goes into the song list of everyone who asked. Returns how many."""
-    rows = _q("SELECT uid FROM lemo_requests WHERE song_id = %s AND done_at IS NULL", (song_id,))
+def deliver(song_id: str, target: str, meta: dict[str, Any]) -> list[dict]:
+    """The song is ready: it goes into the song list of everyone who asked. Returns who
+    ({uid, email, name}), so they can be told."""
+    rows = _q("""SELECT r.uid, u.email, u.name FROM lemo_requests r LEFT JOIN lemo_users u ON u.uid = r.uid
+                 WHERE r.song_id = %s AND r.done_at IS NULL""", (song_id,))
     now = time.time()
     for r in rows:
         save_song(r["uid"], target, {**meta, "addedAt": now * 1000})
     _q("UPDATE lemo_requests SET done_at = %s WHERE song_id = %s AND done_at IS NULL", (now, song_id))
-    return len(rows)
+    return [{"uid": r["uid"], "email": r["email"], "name": r["name"]} for r in rows]
 
 
 # ---- today's top (see top.py) and the stats page --------------------------------------------

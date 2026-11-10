@@ -23,9 +23,15 @@ ort.env.logLevel = 'error'
 let stop = false
 const post = (m: WorkerOut, transfer: Transferable[] = []) => postMessage(m, transfer)
 
+// the open model, so it's freed even when the analysis stops half-way
+let open: ort.InferenceSession | null = null
+
 addEventListener('message', (e: MessageEvent<WorkerIn>) => {
   if (e.data.type === 'stop') stop = true
-  else void run(e.data).catch((err) => post({ type: 'error', message: friendly(err) }))
+  else
+    void run(e.data)
+      .catch((err) => post({ type: 'error', message: friendly(err) }))
+      .finally(() => void open?.release().catch(() => {}))
 })
 
 function friendly(err: unknown): string {
@@ -41,15 +47,16 @@ async function run({ channels, demucs, crepe }: Extract<WorkerIn, { type: 'start
   const opts: ort.InferenceSession.SessionOptions = { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' }
 
   // 1. vocals and music
-  let session = await ort.InferenceSession.create(new Uint8Array(demucs), opts)
+  let session = (open = await ort.InferenceSession.create(new Uint8Array(demucs), opts))
   const { vocals, music } = await separate(ort, session, channels, (done, total) => post({ type: 'progress', stage: 'separating', done, total }), () => stop)
   await session.release()
+  open = null
   channels.length = 0 // the mix isn't needed any more
   for (const ch of [...vocals, ...music]) if (!ch.every(Number.isFinite)) throw new Error('The separation went wrong on this device (invalid audio).')
 
   // 2. the vocals' pitch, in the server's 30-second chunks
   const voice = toCrepeRate(vocals, SAMPLE_RATE)
-  session = await ort.InferenceSession.create(new Uint8Array(crepe), opts)
+  session = open = await ort.InferenceSession.create(new Uint8Array(crepe), opts)
   const parts = chunks(voice.length)
   const totalFrames = parts.reduce((n, [s, e]) => n + Math.floor((e - s) / HOP) + 1, 0)
   const f0: Float32Array[] = []
@@ -74,6 +81,7 @@ async function run({ channels, demucs, crepe }: Extract<WorkerIn, { type: 'start
     per.push(dec.periodicity.subarray(0, keep))
   }
   await session.release()
+  open = null
   const join = (xs: Float32Array[]) => {
     const out = new Float32Array(xs.reduce((n, x) => n + x.length, 0))
     let o = 0

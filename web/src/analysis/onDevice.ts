@@ -51,7 +51,9 @@ let support: Promise<DeviceSupport> | null = null
 // offered analysis again for a week, and the server hears about it.
 const RUNNING_KEY = 'lemo:analysing'
 const CRASHED_KEY = 'lemo:analysisCrashed'
-const CRASH_MEMORY_MS = 7 * 24 * 3600 * 1000
+const CRASH_MEMORY_MS = 3 * 24 * 3600 * 1000
+/** while an analysis runs its note is refreshed this often (see noteRunning) */
+export const HEARTBEAT_MS = 10_000
 
 function store(key: string, value: string | null) {
   try {
@@ -87,35 +89,38 @@ export function deviceSupport(): Promise<DeviceSupport> {
   support ??= (async () => {
     const phone = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820
     const left = read(RUNNING_KEY)
-    if (left) {
+    let was: { stage?: string; song?: string; at?: number } = {}
+    try {
+      was = left ? JSON.parse(left) : {}
+    } catch {
+      /* old note */
+    }
+    // a fresh note is an analysis still running in another tab, not a crash
+    if (left && !(was.at && Date.now() - was.at < HEARTBEAT_MS * 3)) {
       // the page was killed during an analysis last time
-      let was: { stage?: string; song?: string } = {}
-      try {
-        was = JSON.parse(left)
-      } catch {
-        /* old note */
-      }
       store(RUNNING_KEY, null)
       store(CRASHED_KEY, String(Date.now()))
       reportProblem('crashed', was.stage ?? '?', 'the page stopped during the analysis', was.song ?? '')
     }
-    if (Date.now() - Number(read(CRASHED_KEY) || 0) < CRASH_MEMORY_MS)
-      return { ok: false, phone, why: 'Analysing a song stopped this device last time.' }
     // iPhones: Safari gives one page far too little memory for this (and won't say how much
     // the phone has), so it fails or the page is killed — don't even start
-    if (/iPhone|iPod/.test(navigator.userAgent)) return { ok: false, phone: true, why: 'iPhones can’t analyse songs in the browser.' }
-    const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<{ limits: { maxBufferSize: number } } | null> } }).gpu
-    if (!gpu) return { ok: false, phone, why: 'This browser can’t use the graphics chip (WebGPU).' }
+    if (/iPhone|iPod/.test(navigator.userAgent)) return { ok: false, phone: true, why: 'iPhone' }
+    const gpu = (navigator as Navigator & { gpu?: { requestAdapter(o?: object): Promise<{ limits: { maxBufferSize: number } } | null> } }).gpu
+    if (!gpu) return { ok: false, phone, why: 'browser' } // no WebGPU in this browser
     try {
-      const adapter = await gpu.requestAdapter()
-      if (!adapter) return { ok: false, phone, why: 'No graphics chip available to the browser.' }
-      if (adapter.limits.maxBufferSize < 256 * 2 ** 20) return { ok: false, phone, why: 'The graphics chip is too small for the analysis.' }
+      const adapter = (await gpu.requestAdapter({ powerPreference: 'high-performance' })) ?? (await gpu.requestAdapter())
+      if (!adapter || adapter.limits.maxBufferSize < 256 * 2 ** 20) return { ok: false, phone, why: 'gpu' }
     } catch {
-      return { ok: false, phone, why: 'The graphics chip isn’t available.' }
+      return { ok: false, phone, why: 'gpu' }
     }
     const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
     // a whole song's separation needs room: phones (which share memory with everything else) need more
-    if (mem !== undefined && mem < (phone ? 6 : 4)) return { ok: false, phone, why: 'This device has too little memory.' }
+    if (mem !== undefined && mem < (phone ? 6 : 4)) return { ok: false, phone, why: 'memory' }
+    // A phone whose page was killed mid-analysis (out of memory) isn't offered it again for a
+    // while. A computer that passed the checks above is: one interrupted run (a closed lid,
+    // a crashed tab) says nothing about whether it can do it.
+    if (phone && Date.now() - Number(read(CRASHED_KEY) || 0) < CRASH_MEMORY_MS) return { ok: false, phone, why: 'crashed' }
+    if (!phone) store(CRASHED_KEY, null)
     return { ok: true, phone }
   })()
   return support

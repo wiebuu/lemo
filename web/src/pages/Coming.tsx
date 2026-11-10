@@ -146,9 +146,6 @@ export function ComingPage() {
               )
             })}
           </ul>
-          {device && !device.ok && board.pending.length > 0 && (
-            <p className="mt-3 text-xs">This device can’t analyse songs{device.why ? ` (${device.why})` : ''} — open this page on a computer to help.</p>
-          )}
 
           {board.added.length > 0 && (
             <>

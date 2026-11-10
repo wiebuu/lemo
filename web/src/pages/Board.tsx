@@ -8,7 +8,7 @@ import { studio } from '../state/studio'
 import { cx } from '../components/ui'
 import { go, navigate } from './router'
 
-const pct = (v: number) => `${Math.round(v * 100)}%`
+const pct = (v: number) => `${(v * 100).toFixed(2)}%`
 
 /** Loads something for a page once (signed in or a guest); offline, it says so instead. */
 function useLoad<T>(load: () => Promise<T>): { data: T | null; error: string | null } {

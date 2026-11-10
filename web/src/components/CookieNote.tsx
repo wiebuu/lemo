@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { go } from '../pages/router'
 
 const KEY = 'lemo.cookieNote'
 
 /** A one-time, one-line note about cookies (sign-in and ads), in the footer — in the page's
- * own flow, so it never covers anything. Gone for good once closed.
+ * own flow, so it never covers anything. Shown on the first visit only: gone for good once
+ * closed, and from the next page on even if it never was.
  * Consent for personalised ads in the EEA/UK is asked by Google's own consent message. */
 export function CookieNote() {
   const [open, setOpen] = useState(() => {
@@ -14,6 +15,13 @@ export function CookieNote() {
       return false
     }
   })
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, 'seen') // seen once is enough: it doesn't come back
+    } catch {
+      /* private mode */
+    }
+  }, [])
   if (!open) return null
   const close = () => {
     try {

@@ -1,10 +1,10 @@
 import { cx } from './ui'
 
-/** "Lemody · Wiecodes", linking to wiecodes.com. */
+/** "Lemody · Wiecodes", linking to Wiecodes' about page. */
 export function WiecodesCredit({ withName = true, className }: { withName?: boolean; className?: string }) {
   return (
     <a
-      href="https://wiecodes.com"
+      href="https://wiecodes.com/about"
       target="_blank"
       rel="noopener noreferrer"
       className={cx('group inline-flex items-center gap-1 text-[11px] text-sub hover:text-text transition-colors', className)}

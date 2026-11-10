@@ -123,7 +123,7 @@ footer a{color:var(--sub);margin-right:14px;text-decoration:none}
 <h1>${h1}</h1>
 ${body}
 </main>
-<footer>${FOOTER.map(([href, label]) => `<a href="${href}">${esc(label)}</a>`).join('')}<br>© ${new Date().getFullYear()} Lemody · made by <a href="https://wiecodes.com">Wiecodes</a></footer>
+<footer>${FOOTER.map(([href, label]) => `<a href="${href}">${esc(label)}</a>`).join('')}<br>© ${new Date().getFullYear()} Lemody · made by <a href="https://wiecodes.com/about">Wiecodes</a></footer>
 </div>
 <div id="ck" hidden><span>Lemody uses cookies for sign-in and ads. <a href="/privacy">Privacy</a></span><button type="button">OK</button></div>
 <script>try{var k='lemo.cookieNote',c=document.getElementById('ck');if(!localStorage.getItem(k)){c.hidden=false;c.querySelector('button').onclick=function(){localStorage.setItem(k,'1');c.hidden=true}}}catch(e){}</script>

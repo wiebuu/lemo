@@ -67,7 +67,7 @@ export const ARTICLES = [
 <h2>Learn as you go</h2>
 <p>Short <a href="/guides">guides</a> explain how to read the pitch graph, build a daily practice routine and improve your singing voice.</p>
 <h2>Who makes it</h2>
-<p>Lemody is made by <a href="https://wiecodes.com">Wiecodes</a>, a small independent studio. Write to us any time at ${mail}.</p>`,
+<p>Lemody is made by <a href="https://wiecodes.com/about">Wiecodes</a>, a small independent studio. Write to us any time at ${mail}.</p>`,
   },
   {
     path: '/help',
@@ -179,7 +179,7 @@ ${faqHtml(HELP_FAQ)}
 <h2>Changes</h2>
 <p>We may update these terms; the date at the top shows when. Using Lemody after a change means you accept the new terms.</p>
 <h2>Contact</h2>
-<p>Lemody is made by <a href="https://wiecodes.com">Wiecodes</a>. Questions: ${mail}.</p>`,
+<p>Lemody is made by <a href="https://wiecodes.com/about">Wiecodes</a>. Questions? <a href="https://wiecodes.com/contact">Contact Wiecodes</a> or write to ${mail}.</p>`,
   },
   {
     path: '/contact',
@@ -202,7 +202,7 @@ ${faqHtml(HELP_FAQ)}
 </ul>
 <h2>Rights holders</h2>
 <p>If you own a song or lyrics and want them removed, email us with the song’s link and we’ll take it down.</p>
-<p>Many common questions are answered on the <a href="/help">help page</a>. More about us: <a href="https://wiecodes.com">wiecodes.com</a>.</p>`,
+<p>Many common questions are answered on the <a href="/help">help page</a>. More about us: <a href="https://wiecodes.com/about">about Wiecodes</a>.</p>`,
   },
 
   // ---------------------------------------------------------------- landing pages

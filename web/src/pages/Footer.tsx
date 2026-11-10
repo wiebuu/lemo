@@ -26,7 +26,7 @@ export function SiteFooter({ className }: { className?: string }) {
           <a key={href} href={href} onClick={href === '/songs' ? undefined : go /* a page of its own, not in the app */} className="hover:text-text transition-colors">{label}</a>
         ))}
       </div>
-      <a href="https://wiecodes.com" target="_blank" rel="noopener noreferrer" className="group hover:text-text transition-colors">
+      <a href="https://wiecodes.com/about" target="_blank" rel="noopener noreferrer" className="group hover:text-text transition-colors">
         <span className="hidden sm:inline">© {new Date().getFullYear()} Lemody · </span>
         <span className="font-semibold tracking-wide text-text/90 group-hover:text-main">Wiecodes</span>
       </a>

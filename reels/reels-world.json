@@ -1,0 +1,16 @@
+[
+  { "song": "songs/yt-m9SMT5ipbxk", "start": 54.0, "end": 67.6, "hook": "YOASOBI「アイドル」 音程どおりに歌える？", "out": "out/18-idol-yoasobi-jp.mp4",
+    "card": { "link": "プロフィールのリンクから · 無料で歌える", "title": "自分で歌ってみよう", "sub": "本物の曲で、自分の音程がリアルタイムに見える", "langs": "無料 · ブラウザで · 日本語・英語・ほか多数", "tap": "チャンネル名をタップしてリンクへ" } },
+  { "song": "songs/yt-TuzfXgUpboA", "line": "up, up, up", "hook": "Can you hit the Golden high notes?", "out": "out/19-golden-us.mp4",
+    "card": { "langs": "free · in your browser · English, K-pop, Spanish & more" } },
+  { "song": "songs/yt-ZIjv7CVLFxA", "line": "atemlos durch die nacht", "hook": "Triffst du bei „Atemlos“ jeden Ton?", "out": "out/20-atemlos-de.mp4",
+    "card": { "link": "Link im Profil · selbst singen, kostenlos", "title": "Sing es selbst", "sub": "sieh deine Tonhöhe live zum echten Song", "langs": "kostenlos · im Browser · Deutsch, Englisch & mehr", "tap": "tippe auf den Kanalnamen für den Link" } },
+  { "song": "songs/yt-7eKxtMtIhDA", "line": "volare oh", "hook": "Sai cantare «Volare» senza stonare?", "out": "out/21-volare-it.mp4",
+    "card": { "link": "link nel profilo · canta anche tu, gratis", "title": "Cantala tu", "sub": "guarda la tua intonazione dal vivo sulla canzone vera", "langs": "gratis · nel browser · italiano, inglese e altro", "tap": "tocca il nome del canale per il link" } },
+  { "song": "songs/yt-M2QKS9tte9g", "start": 42.4, "end": 58.4, "hook": "Bisa nyanyi Komang tanpa fals?", "out": "out/22-komang-id.mp4",
+    "card": { "link": "link di profil · coba nyanyi sendiri, gratis", "title": "Coba nyanyi sendiri", "sub": "lihat nada suaramu langsung di lagu aslinya", "langs": "gratis · di browser · Indonesia, Inggris & lainnya", "tap": "ketuk nama channel untuk link-nya" } },
+  { "song": "songs/yt-cKE4wJMcAkc", "start": 48.6, "end": 66.6, "hook": "Tu chantes « Dernière danse » juste ?", "out": "out/23-derniere-danse-fr.mp4",
+    "card": { "link": "lien dans le profil · chante toi aussi, gratuit", "title": "Chante-la toi-même", "sub": "vois ta justesse en direct sur la vraie chanson", "langs": "gratuit · dans le navigateur · français, anglais et plus", "tap": "touche le nom de la chaîne pour le lien" } },
+  { "song": "songs/yt-XqoanTj5pNY", "line": "never mind", "hook": "Can you sing Adele without going flat?", "out": "out/24-someone-like-you-uk.mp4",
+    "card": { "langs": "free · in your browser · English, Spanish, Hindi & more" } }
+]

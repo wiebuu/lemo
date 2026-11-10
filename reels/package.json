@@ -1,0 +1,14 @@
+{
+  "name": "lemody-reels",
+  "private": true,
+  "type": "module",
+  "description": "Makes vertical promo reels from Lemody song data (pitch line, lyrics, audio).",
+  "scripts": {
+    "reel": "node make-reel.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter-tight": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
+    "@napi-rs/canvas": "^0.1.65"
+  }
+}

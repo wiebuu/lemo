@@ -1,0 +1,7 @@
+[
+  { "song": "songs/yt-NJAv_7lHUIU", "line": "kesariya tera", "hook": "Can you sing the Kesariya hook in tune?", "out": "out/01-kesariya-hook.mp4" },
+  { "song": "songs/yt-fsiPzT50ZiM", "line": "kyun ki tum hi ho", "hook": "This is what Arijit's voice looks like", "out": "out/02-tum-hi-ho-voice.mp4" },
+  { "song": "songs/yt-FO9rBogdRRQ", "line": "channa mereya mereya, channa", "hook": "Try singing this without going flat", "out": "out/03-channa-mereya-flat.mp4" },
+  { "song": "songs/yt-1nrKhy0z6JI", "line": "har pal yahaan", "hook": "Sonu Nigam makes this look easy", "out": "out/04-kal-ho-naa-ho-easy.mp4" },
+  { "song": "songs/yt-NJAv_7lHUIU", "hook": "The hardest line in Kesariya. Try it.", "out": "out/05-kesariya-hardest.mp4" }
+]

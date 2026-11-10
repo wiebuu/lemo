@@ -3,6 +3,7 @@ import { go } from './router'
 
 export const FOOTER_LINKS: [string, string][] = [
   ['/songs', 'Songs'],
+  ['/guides', 'Guides'],
   ['/top', 'Today’s top'],
   ['/stats', 'Stats'],
   ['/coming', 'Coming soon'],
@@ -13,7 +14,7 @@ export const FOOTER_LINKS: [string, string][] = [
   ['/contact', 'Contact'],
 ]
 
-/** About · Help · Privacy · Terms · Contact — and who makes Lemody. */
+/** Songs · Guides · … · Contact — and who makes Lemody. (The guides page links the guides and landing pages.) */
 export function SiteFooter({ className }: { className?: string }) {
   return (
     // phones: one thin line (links, then the credit); bigger screens: two lines

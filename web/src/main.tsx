@@ -10,6 +10,7 @@ import { startAuth } from './auth/firebase'
 import { AuthGate } from './components/AuthGate'
 import { rememberLinkedSong } from './lib/linkedSong'
 import { usePath } from './pages/router'
+import { CookieNote } from './components/CookieNote'
 
 // Apply the saved theme before first paint (the canvas reads its colours on creation).
 document.documentElement.dataset.theme = persist.settings().theme
@@ -38,6 +39,7 @@ createRoot(document.getElementById('root')!).render(
         <App />
       </AuthGate>
       <Pages />
+      <CookieNote />
     </ErrorBoundary>
   </StrictMode>,
 )

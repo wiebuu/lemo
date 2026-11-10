@@ -9,10 +9,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#111111" />
 
-    <title>Lemody · Sing along to any song and see your pitch live</title>
-    <meta name="description" content="Lemody is a free singing practice app: sing along to your favourite songs, see your pitch live on the melody, follow the lyrics and get honest scores. Hindi, Garhwali, English and more." />
-    <meta name="keywords" content="singing practice, sing along, singing app, learn to sing, pitch detector, pitch checker, vocal training, voice training, karaoke online, sing in tune, singing test, online singing, singing score, lyrics, Hindi songs karaoke, Bollywood karaoke, Garhwali songs, Lemody, Wiecodes" />
-    <meta name="author" content="Wiecodes" />
+    <title>Lemody · Free online karaoke with lyrics and live pitch</title>
+    <meta name="description" content="Sing karaoke online for free: Hindi, Punjabi and English songs with synced lyrics, your pitch drawn live on the original melody, and a score after every song. No download." />
+        <meta name="author" content="Wiecodes" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="application-name" content="Lemody" />
     <meta name="apple-mobile-web-app-title" content="Lemody" />
@@ -26,8 +25,8 @@
     <meta property="og:site_name" content="Lemody" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.lemodysounds.online/" />
-    <meta property="og:title" content="Lemody · Sing along. See your pitch. Get better." />
-    <meta property="og:description" content="Sing along to your favourite songs, see your pitch live on the melody and get honest scores. Free, in your browser." />
+    <meta property="og:title" content="Lemody · Free online karaoke with lyrics and live pitch" />
+    <meta property="og:description" content="Sing along to Hindi, Punjabi and English songs with lyrics, see your pitch live on the melody and get honest scores. Free, in your browser." />
     <meta property="og:image" content="https://www.lemodysounds.online/og-image.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
@@ -35,27 +34,47 @@
     <meta property="og:image:alt" content="Lemody: sing along, see your pitch, get better" />
     <meta property="og:locale" content="en_IN" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Lemody · Sing along. See your pitch. Get better." />
-    <meta name="twitter:description" content="Sing along to your favourite songs, see your pitch live on the melody and get honest scores." />
+    <meta name="twitter:title" content="Lemody · Free online karaoke with lyrics and live pitch" />
+    <meta name="twitter:description" content="Sing along to Hindi, Punjabi and English songs with lyrics, see your pitch live and get honest scores." />
     <meta name="twitter:image" content="https://www.lemodysounds.online/og-image.jpg" />
     <meta name="twitter:image:alt" content="Lemody: sing along, see your pitch, get better" />
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Lemody",
-        "url": "https://www.lemodysounds.online/",
-        "image": "https://www.lemodysounds.online/og-image.jpg",
-        "logo": "https://www.lemodysounds.online/icon-512.png",
-        "description": "A singing practice app: sing along to your favourite songs, see your pitch live on the melody, follow the lyrics and get honest scores.",
-        "applicationCategory": "MusicApplication",
-        "operatingSystem": "Any (web browser)",
-        "inLanguage": ["en", "hi"],
-        "isAccessibleForFree": true,
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
-        "featureList": ["Live pitch on the song's melody", "Scores for pitch, timing and dynamics", "Synced lyrics", "Change the key and speed", "Analyse your own songs on your device"],
-        "creator": { "@type": "Organization", "name": "Wiecodes", "url": "https://wiecodes.com" }
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.lemodysounds.online/#org",
+            "name": "Wiecodes",
+            "url": "https://wiecodes.com",
+            "email": "wiecodes@gmail.com",
+            "logo": "https://www.lemodysounds.online/icon-512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.lemodysounds.online/#site",
+            "name": "Lemody",
+            "url": "https://www.lemodysounds.online/",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://www.lemodysounds.online/#org" }
+          },
+          {
+            "@type": "WebApplication",
+            "name": "Lemody",
+            "url": "https://www.lemodysounds.online/",
+            "image": "https://www.lemodysounds.online/og-image.jpg",
+            "description": "Free online karaoke and singing practice: sing along with synced lyrics, see your pitch live on the original melody and get honest scores.",
+            "applicationCategory": "MusicApplication",
+            "operatingSystem": "Any (web browser)",
+            "browserRequirements": "Requires a microphone and a recent browser",
+            "inLanguage": ["en", "hi"],
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+            "featureList": ["Live pitch on the song's melody", "Synced lyrics", "Scores for melody, rhythm, stability and dynamics", "Change the key and speed", "Hindi, Punjabi, English, Haryanvi and Garhwali songs"],
+            "creator": { "@id": "https://www.lemodysounds.online/#org" }
+          }
+        ]
       }
     </script>
   </head>
@@ -69,6 +88,11 @@
         <div class="by"><b>Wiecodes</b></div>
       </div>
     </div>
+    <noscript>
+      <h1>Lemody: free online karaoke with lyrics and live pitch</h1>
+      <p>Sing along to Hindi, Punjabi and English songs, see your pitch on the original melody and get a score. Lemody needs JavaScript and a microphone.</p>
+      <p><a href="/songs">Songs</a> · <a href="/guides">Singing guides</a> · <a href="/karaoke-online">Karaoke online</a> · <a href="/pitch-checker">Pitch checker</a> · <a href="/about">About</a> · <a href="/privacy">Privacy</a> · <a href="/contact">Contact</a></p>
+    </noscript>
     <style>
       #boot { --bg: #111111; --main: #f0f0f0; --text: #eeeeee; --sub: #7a7a7a; --track: #1a1a1a;
         position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center;

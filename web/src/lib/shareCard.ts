@@ -1,6 +1,7 @@
 // "Can you beat me?": after a take, a picture of the score to share (WhatsApp, Instagram,
 // …) with a link that opens the same song, and the score to beat.
 
+import { WAVE_PATH } from '../components/Brand'
 import type { ReferenceNote, UserFrame } from './types'
 
 export const SITE = 'https://lemodysounds.online'
@@ -65,10 +66,14 @@ export async function drawCard(i: ShareInfo): Promise<Blob> {
   // brand
   g.textAlign = 'left'
   g.textBaseline = 'alphabetic'
-  drawWave(g, 84, 132, c.main)
+  // the wordmark as the site header draws it (Wordmark, size "lg": 30px text), scaled to 44px
+  const k = 44 / 30
+  drawWave(g, 84, 132, 44 * k, c.main)
   g.fillStyle = c.text
   g.font = f(44, 600)
-  g.fillText('lemody', 170, 146)
+  g.textBaseline = 'middle'
+  g.fillText('lemody', 84 + 44 * k + 8 * k, 132)
+  g.textBaseline = 'alphabetic'
 
   // the song
   g.textAlign = 'center'
@@ -176,15 +181,18 @@ function legend(g: CanvasRenderingContext2D, x: number, y: number, color: string
   g.fillText(label, x + 48, y)
 }
 
-function drawWave(g: CanvasRenderingContext2D, x: number, y: number, color: string) {
+/** Lemody's mark (the same path as the site's logo), `width` wide, centred on y. */
+function drawWave(g: CanvasRenderingContext2D, x: number, y: number, width: number, color: string) {
+  const s = width / 48 // the logo's viewBox is 48 × 24
+  g.save()
+  g.translate(x, y - 12 * s)
+  g.scale(s, s)
   g.strokeStyle = color
-  g.lineWidth = 7
+  g.lineWidth = 2.6
   g.lineCap = 'round'
-  g.beginPath()
-  g.moveTo(x, y)
-  g.bezierCurveTo(x + 14, y - 34, x + 30, y - 34, x + 40, y)
-  g.bezierCurveTo(x + 50, y + 30, x + 64, y + 30, x + 72, y - 6)
-  g.stroke()
+  g.lineJoin = 'round'
+  g.stroke(new Path2D(WAVE_PATH))
+  g.restore()
 }
 
 function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

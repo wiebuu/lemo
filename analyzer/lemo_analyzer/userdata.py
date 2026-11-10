@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS lemo_requests (
 ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS target_id text;
 -- who analysed it on their own device, for everyone who asked (the "coming soon" page)
 ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS helper_uid text;
+-- when Lemody's owner was emailed about it (requests from before this count as told)
+ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS told_at double precision DEFAULT 0;
+ALTER TABLE lemo_requests ALTER COLUMN told_at DROP DEFAULT;
 -- today's top: each singer's best take of the day (only the best 100 are kept, with their voice)
 CREATE TABLE IF NOT EXISTS lemo_top (
   id         text PRIMARY KEY,
@@ -279,6 +282,24 @@ def request_song(uid: str, song_id: str, url: str, title: str | None, artist: st
            ON CONFLICT (uid, song_id) DO UPDATE SET done_at = NULL""",
         (uid, song_id, url, title, artist, time.time()),
     )
+
+
+def untold_requests() -> list[dict]:
+    """Requests Lemody's owner hasn't been emailed about yet, oldest first, each with who
+    asked and how many singers are waiting for that song."""
+    rows = _q(
+        """SELECT r.uid, r.song_id, r.url, r.title, r.artist, u.name, u.email,
+                  (SELECT COUNT(*) FROM lemo_requests w WHERE w.song_id = r.song_id AND w.done_at IS NULL) AS waiting
+           FROM lemo_requests r LEFT JOIN lemo_users u ON u.uid = r.uid
+           WHERE r.told_at IS NULL ORDER BY r.requested_at""")
+    return [{"uid": r["uid"], "songId": r["song_id"], "url": r["url"], "title": r["title"], "artist": r["artist"],
+             "name": r["name"], "email": r["email"], "waiting": int(r["waiting"])} for r in rows]
+
+
+def mark_told(requests: list[dict]) -> None:
+    now = time.time()
+    for r in requests:
+        _q("UPDATE lemo_requests SET told_at = %s WHERE uid = %s AND song_id = %s", (now, r["uid"], r["songId"]))
 
 
 def my_requests(uid: str) -> list[dict]:

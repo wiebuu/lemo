@@ -92,6 +92,7 @@ def _startup() -> None:
                 try:
                     catalog.backfill()
                     deliver_requests()
+                    tell_owner()
                     storage.trim()
                 except Exception as e:
                     print(f"could not refresh the song list: {e}", flush=True)
@@ -716,6 +717,18 @@ def request_song(request: Request, url: str = Form(...)) -> dict:
     title = title or (u.hostname or "").removeprefix("www.")
     _data(lambda: userdata.request_song(_uid(request), song_id, url, title, artist))
     return {"state": "requested", "id": song_id, "title": title, "artist": artist, "days": REQUEST_DAYS}
+
+
+def tell_owner() -> None:
+    """Email Lemody's owner about songs singers asked for since last time. Only where mail
+    can be sent (this Mac; the VPS's host blocks mail ports): the requests stay untold there."""
+    try:
+        new = userdata.untold_requests()
+    except userdata.Unavailable:
+        return
+    if new and mailer.tell_owner(new):
+        userdata.mark_told(new)
+        worker.log(f"emailed the owner about {len(new)} song request(s)")
 
 
 @app.get("/api/requests")

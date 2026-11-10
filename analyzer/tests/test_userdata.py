@@ -131,6 +131,26 @@ class UserDataTests(unittest.TestCase):
             self.assertEqual(self.call("GET", "/api/requests", who=who).json(), [])
             self.assertEqual([s["songId"] for s in self.call("GET", "/api/me", who=who).json()["songs"]], ["yt-AbCdEfGhIjK"])
 
+    def test_the_owner_is_told_about_each_new_request_once(self):
+        url = "https://www.youtube.com/watch?v=AbCdEfGhIjK"
+        self.call("GET", "/api/me")  # signed in: their name is known
+        self.call("GET", "/api/me", who="b")
+        with mock.patch.object(server, "_oembed", return_value=("Song", "Singer")):
+            self.call("POST", "/api/requests", data={"url": url})
+            self.call("POST", "/api/requests", who="b", data={"url": url})
+        with mock.patch.object(server.mailer, "tell_owner", return_value=False) as mail:
+            server.tell_owner()  # no mail server here: they wait
+        self.assertEqual(len(userdata.untold_requests()), 2)
+        with mock.patch.object(server.mailer, "tell_owner", return_value=True) as mail:
+            server.tell_owner()
+            server.tell_owner()  # already told: no second email
+        sent = mail.call_args_list[0].args[0]
+        self.assertEqual([(r["name"], r["title"], r["waiting"]) for r in sent], [("Alice", "Song", 2), ("Bob", "Song", 2)])
+        self.assertEqual(mail.call_count, 1)
+        with mock.patch.object(server, "_oembed", return_value=("Song", "Singer")):
+            self.call("POST", "/api/requests", data={"url": url})  # asked again
+        self.assertEqual(userdata.untold_requests(), [])
+
     def test_a_link_from_another_site_is_delivered_as_the_song_picked_for_it(self):
         with mock.patch.object(server, "_oembed", return_value=("Kesariya", None)):
             r = self.call("POST", "/api/requests", data={"url": "https://open.spotify.com/track/abc123"}).json()

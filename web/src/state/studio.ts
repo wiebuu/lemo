@@ -752,6 +752,8 @@ export class Studio {
   private scriptPending = new Set<string>()
   /** lines whose conversion failed (analyzer offline): not asked again until the script setting changes */
   private scriptGaveUp = new Set<string>()
+  /** lines already asked twice (one retry after a failure) */
+  private scriptRetried = new Set<string>()
 
   /** The lyrics in the chosen script, from the cache; asks the analyzer for lines it hasn't converted yet. */
   private inScript(lines: LyricLine[]): LyricLine[] {
@@ -790,8 +792,11 @@ export class Studio {
       const r = await analyzer.script(texts, to)
       keys.forEach((k, i) => this.scriptCache.set(k, r.lines[i] ?? null))
     } catch {
-      keys.forEach((k) => this.scriptGaveUp.add(k))
-      this.toast('could not convert the lyrics — is the analyzer running?')
+      // a moment's hiccup (network, a busy server): try once more before giving up
+      const again = keys.filter((k) => !this.scriptRetried.has(k))
+      keys.forEach((k) => (this.scriptRetried.has(k) ? this.scriptGaveUp.add(k) : this.scriptRetried.add(k)))
+      if (again.length) setTimeout(() => this.set({ lyricsShown: this.inScript(this.snap.lyrics) }), 3000)
+      else this.toast('could not convert the lyrics right now — try again in a moment')
     } finally {
       keys.forEach((k) => this.scriptPending.delete(k))
     }
@@ -1273,6 +1278,7 @@ export class Studio {
     this.set({ settings })
     if ('lyricsScript' in patch) {
       this.scriptGaveUp.clear()
+      this.scriptRetried.clear()
       this.set({ lyricsShown: this.inScript(this.snap.lyrics) })
     }
     if ('theme' in patch) requestAnimationFrame(() => this.renderer?.refreshTheme())

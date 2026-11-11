@@ -49,8 +49,9 @@ GUEST_READS = re.compile(
     r"/api/(catalog|featured|search/lyrics|songs/match|lyrics|top(/[\w-]+(/voice)?)?|requests/all"
     r"|songs/[\w-]+/(preview|status|reference|render-status|audio/\w+))"
 )
-# counted; and a guest's take can go on today's top (as "a guest singer", without their voice)
-GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|top/(check|submit)|stats/test)")
+# counted; a guest's take can go on today's top (as "a guest singer", without their voice);
+# and a guest can read the lyrics in Hinglish, Hindi or Urdu script
+GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|top/(check|submit)|stats/test|lyrics/script)")
 
 
 @app.middleware("http")

@@ -30,6 +30,10 @@ BOB = {**ALICE, "uid": "bob", "email": "bob@example.com", "name": "Bob"}
 @unittest.skipUnless(os.environ.get("DATABASE_URL") and _reachable(), "local PostgreSQL (lemo_test) not available")
 class UserDataTests(unittest.TestCase):
     def setUp(self):
+        # never real email from a test, whatever analyzer/.env holds (the relay, Gmail)
+        no_mail = mock.patch.dict(os.environ, {"MAIL_RELAY_URL": "", "MAIL_RELAY_SECRET": "", "EMAIL_USER": "", "EMAIL_PASS": ""})
+        no_mail.start()
+        self.addCleanup(no_mail.stop)
         userdata.use(TEST_DSN)
         userdata.status()  # connect + create tables
         userdata._q("TRUNCATE lemo_likes, lemo_song_stats, lemo_top, lemo_daily, lemo_requests, lemo_prefs, lemo_songs, lemo_users")

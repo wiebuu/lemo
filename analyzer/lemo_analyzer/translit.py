@@ -9,7 +9,8 @@
                           those lines come back as None and stay as they are
 
 A line that already carries the wanted script next to another one (captions
-often show "ایسا دیکھا نہیں · aisa dekha naheen") just keeps that part."""
+often show "ایسا دیکھا نہیں · aisa dekha naheen") just keeps that part. A line that
+mixes languages ("Baby I'm yours ये दिल तेरा") has each part converted."""
 
 from __future__ import annotations
 
@@ -199,24 +200,82 @@ def _part_in(text: str, script: str) -> str | None:
     return " ".join(keep)
 
 
-def convert_line(text: str, to: str) -> str | None:
-    """to: 'latin' | 'deva' | 'urdu'. None when it can't be done honestly."""
-    if not text.strip():
+def _runs(text: str) -> list[tuple[str, str]]:
+    """The line cut into runs of words in one script: [("latin", "Baby I'm yours"), ("deva", "ये दिल तेरा")].
+    Words with no letters (numbers, dashes) go with the run they're in."""
+    runs: list[tuple[str, list[str]]] = []
+    for w in text.split():
+        sc = word_script(w)
+        if runs and (sc == "none" or sc == runs[-1][0]):
+            runs[-1][1].append(w)
+        elif runs and runs[-1][0] == "none":
+            runs[-1] = (sc, runs[-1][1] + [w])
+        else:
+            runs.append((sc, [w]))
+    return [(sc, " ".join(ws)) for sc, ws in runs]
+
+
+def _plain(t: str) -> str:
+    return re.sub(r"[^a-z]", "", t.lower())
+
+
+def _written_twice(text: str) -> bool:
+    """Captions often give the same line twice, in two scripts ("ایسا دیکھا نہیں · aisa dekha
+    naheen"). Tell that apart from a line that really mixes languages ("Baby I'm yours ये दिल
+    तेरा"), whose two parts are different words."""
+    from difflib import SequenceMatcher
+
+    words = text.split()
+    parts = {sc: [w for w in words if word_script(w) == sc] for sc in ("latin", "deva", "urdu")}
+    parts["latin"] = _cut_translation(parts["latin"])  # an English translation after it isn't a copy
+    present = {sc: " ".join(ws) for sc, ws in parts.items() if ws}
+    if len(present) != 2:
+        return False
+    (_, a), (_, b) = present.items()
+    na, nb = len(a.split()), len(b.split())
+    if not 0.6 <= na / nb <= 1.67:
+        return False
+    if "urdu" in present:  # Urdu can't be read back reliably: about as many words is the best sign
+        return True
+    return SequenceMatcher(None, _plain(deva_to_latin(present["deva"])), _plain(present["latin"])).ratio() >= 0.55
+
+
+def _convert_single(text: str, src: str, to: str) -> str | None:
+    """A run of words all in one script (`src`)."""
+    if src == to or src == "none":
         return text
-    src = script_of(text)
-    target = {"latin": "latin", "deva": "deva", "urdu": "urdu"}[to]
-    if src == target or src == "none":
-        mixed = _part_in(text, target)
-        return mixed if mixed else text
-    part = _part_in(text, target)
-    if part:
-        return part
     if to == "latin":
         return deva_to_latin(text) if src == "deva" else None
     latin = text if src == "latin" else deva_to_latin(text) if src == "deva" else None
     if latin is None:
         return None
     return _google(re.sub(r"[^\w\s']", " ", latin).strip(), "hi" if to == "deva" else "ur")
+
+
+def convert_line(text: str, to: str) -> str | None:
+    """to: 'latin' | 'deva' | 'urdu'. None when it can't be done honestly."""
+    if not text.strip():
+        return text
+    runs = _runs(text)
+    if len({sc for sc, _ in runs if sc != "none"}) > 1:
+        if _written_twice(text):
+            # the same line twice: keep the copy in the wanted script, else convert one copy
+            part = _part_in(text, to)
+            if part:
+                return part
+            one = _part_in(text, "latin") or _part_in(text, "deva")
+            return _convert_single(one, script_of(one), to) if one else None
+        # a line that mixes languages: each part converted, nothing dropped
+        out = []
+        for i, (sc, run) in enumerate(runs):
+            # next to Hindi or Urdu script, Latin letters are English words ("Baby I'm yours"):
+            # they stay as they are rather than being spelled out in another script
+            done = run if sc == "latin" else _convert_single(run, sc, to)
+            if done is not None and i and to == "latin" and sc == "deva":
+                done = done[:1].lower() + done[1:]  # mid-line: no capital
+            out.append(done if done is not None else run)
+        return " ".join(out)
+    return _convert_single(text, script_of(text), to)
 
 
 def convert_lines(lines: list[str], to: str) -> list[str | None]:

@@ -33,6 +33,16 @@ class TranslitTests(unittest.TestCase):
         line2 = "جسم جیسے اجنتا کی مورت کوئی jism jaise ajanta ki moorat koyi Hers is the beauty of the sculptured idols of Ajanta"
         self.assertEqual(convert_line(line2, "latin"), "jism jaise ajanta ki moorat koyi")
 
+    def test_mixed_language_lines_keep_every_word(self):
+        self.assertEqual(convert_line("I love you तुम ही हो", "latin"), "I love you tum hi ho")
+        self.assertEqual(convert_line("Baby I'm yours ये दिल तेरा", "latin"), "Baby I'm yours ye dil tera")
+        # English words next to Hindi script stay English in Hindi / Urdu too
+        self.assertTrue(convert_line("Baby I'm yours ये दिल तेरा", "deva").startswith("Baby I'm yours "))
+
+    def test_hindi_written_twice_keeps_one_copy(self):
+        self.assertEqual(convert_line("तुम ही हो tum hi ho", "latin"), "tum hi ho")
+        self.assertEqual(convert_line("तुम ही हो tum hi ho", "deva"), "तुम ही हो")
+
     def test_urdu_only_is_not_guessed(self):
         self.assertIsNone(convert_line("ایسا دیکھا نہیں", "latin"))
         self.assertIsNone(convert_line("ایسا دیکھا نہیں", "deva"))

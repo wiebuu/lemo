@@ -584,11 +584,11 @@ button:disabled {
 .wave-draw {
   stroke-dasharray: 100 200;
   stroke-dashoffset: 104;
-  animation: wave-draw 2.8s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  animation: wave-draw 1.9s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
 }
 @keyframes wave-draw {
-  0%, 8% { stroke-dashoffset: 104; }
-  88%, 100% { stroke-dashoffset: 0; }
+  from { stroke-dashoffset: 104; }
+  to { stroke-dashoffset: 0; }
 }
 .splash { animation: fadein 0.4s ease both; }
 @media (prefers-reduced-motion: reduce) {

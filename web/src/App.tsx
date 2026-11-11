@@ -119,12 +119,11 @@ export default function App() {
           {/* Options only in practice: they fold away during a test and on the results. */}
           <div className="fold" data-closed={s.session || !!s.lastResult}>
             <div>
-              {/* the settings bar in the middle; the view (lyrics size, graph / lyrics only) in its own pill
-                  beside it — on the right on computers, next to it on phones */}
-              <div className="pb-1 flex justify-center gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                <span className="hidden sm:block" />
+              {/* the settings bar and, right beside it, the view (lyrics size, graph / lyrics only)
+                  in its own pill: centred together */}
+              <div className="pb-1 flex justify-center items-center gap-2">
                 <div className="min-w-0"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div>
-                <div className="flex justify-end"><ViewControls /></div>
+                <ViewControls />
               </div>
             </div>
           </div>

@@ -15,7 +15,7 @@ import { studio } from '../state/studio'
  *   drop        the frame flashes, the colours swing, beams come up from the floor
  *               too and light bursts in from the edges
  *
- * The middle of the screen stays clear (graph, lyrics). Drawn on a half-size canvas
+ * The middle of the screen is softened (graph, lyrics stay readable). Drawn on a half-size canvas
  * with additive light, no React re-render per frame.
  */
 

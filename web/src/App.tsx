@@ -36,6 +36,8 @@ export default function App() {
   const close = useCallback(() => setPanel(null), [])
   const results = !!s.lastResult && !s.session
   const lyricsOnly = s.settings.lyricsOnly
+  // disco lights on: the lyrics sit on a light frosted panel (the lights still show through)
+  const glass = s.settings.disco && !phone
 
   useEffect(() => {
     document.documentElement.dataset.theme = s.settings.theme
@@ -139,7 +141,7 @@ export default function App() {
           <div className={cx('relative flex-1 min-h-0 flex flex-col', phone && 'pt-2')}>
             <ErrorBoundary label="graph">
               <Graph onImport={() => setPanel('load')} hidden={lyricsOnly} overlay={lyricsOnly && (
-                <PinchLyrics className="fade-in absolute inset-0 flex items-center justify-center">
+                <PinchLyrics className={cx('fade-in absolute flex items-center justify-center', glass ? 'lyrics-glass inset-x-2 inset-y-4 sm:inset-x-8' : 'inset-0')}>
                   <FocusLyrics onFix={() => setPanel('fixlyrics')} />
                 </PinchLyrics>
               )} />
@@ -152,7 +154,7 @@ export default function App() {
             <ErrorBoundary label="results">
               {results ? <ResultsPanel big={false} /> : lyricsOnly ? null : (
                 // back from lyrics only: shown once the slot has opened again, never spilling over the player
-                <PinchLyrics className="lyrics-return flex-1 min-h-0 flex flex-col justify-center">
+                <PinchLyrics className={cx('lyrics-return flex-1 min-h-0 flex flex-col justify-center', glass && 'lyrics-glass px-4 py-2')}>
                   <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />
                 </PinchLyrics>
               )}

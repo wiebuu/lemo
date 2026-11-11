@@ -706,7 +706,7 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
 .shelf { scrollbar-width: none; }
 .shelf::-webkit-scrollbar { display: none; }
 
-/* disco lights: a canvas light show on the edges (Disco.tsx); the middle stays clear */
+/* disco lights: a canvas light show, strongest at the edges (Disco.tsx) */
 .disco {
   position: fixed;
   inset: 0;
@@ -714,8 +714,19 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
   height: 100dvh;
   z-index: -1; /* behind the page (the app is its own layer group): graph, lines and lyrics draw on top */
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(ellipse 58% 52% at 50% 48%, transparent 40%, #000 92%);
-  mask-image: radial-gradient(ellipse 58% 52% at 50% 48%, transparent 40%, #000 92%);
+  /* the middle is softened, never cut out: the lights still glow through it */
+  -webkit-mask-image: radial-gradient(ellipse 62% 56% at 50% 48%, rgb(0 0 0 / 0.4) 30%, #000 92%);
+  mask-image: radial-gradient(ellipse 62% 56% at 50% 48%, rgb(0 0 0 / 0.4) 30%, #000 92%);
+}
+
+/* disco on: a light frosted panel behind the lyrics keeps them readable while the
+   lights' colours still show through */
+.lyrics-glass {
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 1.25rem;
+  transition: background 0.4s ease;
 }
 
 /* the disco button's colours flow round while the lights are on (no glow) */

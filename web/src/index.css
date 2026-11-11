@@ -578,21 +578,29 @@ button:disabled {
   .skeleton { animation: none; }
 }
 
-/* ---- loading screen: the wave draws itself, then keeps flowing ---------------- */
-/* the gap is longer than the wave and "hidden" sits past its start, so neither round
-   end of the line peeks out as a dot when it's fully drawn back */
-.wave-draw {
-  stroke-dasharray: 100 200;
-  stroke-dashoffset: 104;
-  animation: wave-draw 1.9s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+/* ---- loading screen: the wave sweeps in and out like a breath ------------------ */
+/* Only transforms move, so the GPU runs it and it stays smooth while scripts load.
+   A soft-edged window (.wave-reveal) slides right over the wave while the wave inside
+   slides back by the same amount, so the wave stays still and is uncovered left to right.
+   The window is 16px wider on each side so the fade never touches the wave itself. */
+.wave-reveal {
+  display: block; overflow: hidden; width: 128px; height: 48px;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
+  animation: wave-window 1.9s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  will-change: transform;
 }
-@keyframes wave-draw {
-  from { stroke-dashoffset: 104; }
-  to { stroke-dashoffset: 0; }
+.wave-reveal > span {
+  display: block; padding: 0 16px; height: 100%;
+  animation: wave-inner 1.9s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  animation-delay: inherit; will-change: transform;
 }
+.wave-reveal svg { display: block; width: 96px; height: 48px; overflow: visible; }
+@keyframes wave-window { from { transform: translateX(-128px); } to { transform: translateX(0); } }
+@keyframes wave-inner { from { transform: translateX(128px); } to { transform: translateX(0); } }
 .splash { animation: fadein 0.4s ease both; }
 @media (prefers-reduced-motion: reduce) {
-  .wave-draw { animation: none; stroke-dashoffset: 0; }
+  .wave-reveal, .wave-reveal > span { animation: none; }
 }
 
 /* ---- site pages (about, help, privacy …) -------------------------------------- */

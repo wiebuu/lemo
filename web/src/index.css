@@ -719,16 +719,6 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
   mask-image: radial-gradient(ellipse 62% 56% at 50% 48%, rgb(0 0 0 / 0.4) 30%, #000 92%);
 }
 
-/* disco on: a light frosted panel behind the lyrics keeps them readable while the
-   lights' colours still show through */
-.lyrics-glass {
-  background: color-mix(in srgb, var(--bg) 40%, transparent);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  border-radius: 1.25rem;
-  transition: background 0.4s ease;
-}
-
 /* the disco button's colours flow round while the lights are on (no glow) */
 .dj-flow { animation: dj-flow 3s linear infinite; }
 @keyframes dj-flow { to { filter: hue-rotate(360deg); } }

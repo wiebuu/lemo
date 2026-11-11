@@ -150,7 +150,7 @@ export default function App() {
           <div className={cx('shrink-0 flex flex-col justify-center',
             results ? (phone ? 'h-[12rem] py-1' : 'h-[10rem] py-4') : lyricsOnly ? 'h-0 overflow-hidden' : phone ? 'min-h-[5rem] py-1' : 'min-h-[6rem] py-3')}>
             <ErrorBoundary label="results">
-              {results ? <ResultsPanel big={false} /> : lyricsOnly ? null : (
+              {results ? <ResultsPanel /> : lyricsOnly ? null : (
                 // back from lyrics only: shown once the slot has opened again, never spilling over the player
                 <PinchLyrics className="lyrics-return flex-1 min-h-0 flex flex-col justify-center">
                   <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />

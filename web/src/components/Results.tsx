@@ -4,13 +4,12 @@ import { lazy, Suspense, useState } from 'react'
 import { Crown, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, X } from 'lucide-react'
 const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel })))
 import { ChallengeBadge } from './Challenge'
-import { LyricTicker } from './LyricTicker'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
 import { formatTime } from '../lib/music'
 import type { MetricResult } from '../lib/evaluation'
 import type { MetricKey } from '../lib/types'
 import { studio } from '../state/studio'
-import { centsInWords, cx, Tabs, Tip, usePhone, useStudio } from './ui'
+import { centsInWords, cx, Tip, usePhone, useStudio } from './ui'
 import { navigate } from '../pages/router'
 
 // Every score keeps its full precision (rankings compare the exact numbers); only the main,
@@ -34,34 +33,14 @@ const ASPECT_OF: Record<MetricKey, ReviewAspect> = { shape: 'pitch', harmony: 'k
 const LEVEL_NAME: Record<number, string> = { 100: 'easy', 50: 'normal', 25: 'strict' }
 const ASPECT_WORD: Record<ReviewAspect, string> = { pitch: 'pitch', key: 'key', tone: 'tone', attack: 'attack', timing: 'timing', steadiness: 'steadiness', loudness: 'loudness' }
 
-/**
- * After a test: one panel with a small header — results | lyrics, you | original
- * (your take is already loaded, ▶ plays it) and ✕ back to practice.
- */
-export function ResultsPanel({ big }: { big?: boolean }) {
+/** After a test: the results, under the graph (or the lyrics) — no switching away from them. */
+export function ResultsPanel() {
   const s = useStudio()
   const phone = usePhone()
   if (!s.lastResult) return null
-  // phones: just the results — every score on the screen, no switching to the lyrics
-  if (phone) return (
+  return (
     <div className="fade-in w-full h-full flex flex-col justify-center overflow-hidden">
-      <ResultsBody tabs={null} compact />
-    </div>
-  )
-  const tabs = (
-    <div className="w-32 sm:w-40 shrink-0">
-      <Tabs<'results' | 'lyrics'> value={s.resultsView} onChange={(v) => studio.setResultsView(v)}
-        options={[{ value: 'results', label: 'results' }, { value: 'lyrics', label: 'lyrics' }]} />
-    </div>
-  )
-  return s.resultsView === 'results' ? (
-    <div className="fade-in w-full h-full flex flex-col justify-center overflow-hidden">
-      <ResultsBody tabs={tabs} />
-    </div>
-  ) : (
-    <div className="fade-in w-full h-full flex items-start gap-3">
-      <div className="flex-1 min-w-0 h-full flex flex-col justify-center overflow-hidden"><LyricTicker big={big} /></div>
-      {tabs}
+      <ResultsBody tabs={null} compact={phone} />
     </div>
   )
 }

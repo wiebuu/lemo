@@ -12,7 +12,9 @@ import { cx, Eq, Tip, usePhone, useStudio } from './ui'
  */
 export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics only: the lines large in the middle of the screen */ focus?: boolean; /** shows "wrong lyrics?" */ onFix?: () => void }) {
   const s = useStudio()
-  const phone = usePhone() && !focus // phones: the line being sung and the next one (no room for the last one)
+  const onPhone = usePhone()
+  const phone = onPhone && !focus // phones: the line being sung and the next one (no room for the last one)
+  const z = lyricSizes(focus ? 'focus' : big ? 'big' : 'normal', onPhone, s.settings.lyricsScale)
   const rows = useMemo(() => lyricRows(s.lyricsShown), [s.lyricsShown])
   const [cur, setCur] = useState(() => rowAt(rows, studio.heardTime()))
   const curRef = useRef(cur)
@@ -54,7 +56,7 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
       // Short lines stay centred as a whole; long lines glide to keep the sung word centred.
       const W = wrap.current.clientWidth
       const full = track.current.scrollWidth
-      const shift = full <= W * 0.9 ? (W - full) / 2 : W / 2 - x
+      const shift = full <= W - 2 * EDGE_FADE - 16 ? (W - full) / 2 : W / 2 - x
       track.current.style.transform = `translate3d(${shift.toFixed(1)}px,0,0)`
     },
     [rows, items, rtl],
@@ -91,18 +93,15 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
 
   return (
     <div className="relative">
-      <div key={cur} className={cx('lyric-rows flex flex-col items-center', focus ? 'gap-3 sm:gap-4' : 'gap-1')}>
-        {!phone && (
-          <div dir="auto" className={cx('lyric-side max-w-full truncate px-6 text-center transition-all duration-500', focus ? SIDE_FOCUS : big ? 'h-6 leading-6 text-base' : 'h-6 leading-6 text-sm')}>
-            {prev?.text ?? ''}
-          </div>
-        )}
-        <div ref={wrap} className={cx('lyric-ticker w-full overflow-hidden transition-all duration-500', focus ? 'h-16 sm:h-24' : big ? 'h-14' : 'h-12')}>
-          <div ref={track} dir={rtl ? 'rtl' : 'ltr'} className={cx('flex items-center h-full w-max whitespace-pre will-change-transform transition-[font-size] duration-500', focus ? 'text-[2.6rem] sm:text-6xl font-medium tracking-tight' : big ? 'text-3xl font-medium tracking-tight' : 'text-[1.7rem] font-medium tracking-tight')}>
+      <div key={cur} className="lyric-rows flex flex-col items-center" style={{ gap: `${z.gap}rem` }}>
+        {!phone && <SideLine text={prev?.text} z={z} lines={focus ? 2 : 1} align="end" />}
+        <div ref={wrap} className="lyric-ticker w-full overflow-hidden transition-[height] duration-300" style={{ height: `${z.midRow}rem` }}>
+          <div ref={track} dir={rtl ? 'rtl' : 'ltr'} className="flex items-center h-full w-max whitespace-pre will-change-transform font-medium tracking-tight transition-[font-size] duration-300"
+            style={{ fontSize: `${z.mid}rem` }}>
             {items.map((it, k) =>
               it.kind === 'gap' ? (
                 <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-gap"
-                  style={{ width: Math.max(28, Math.min(260, (it.end - it.start) * 56)) }}>
+                  style={{ width: Math.max(28, Math.min(260, (it.end - it.start) * 56)) * z.scale }}>
                   <span />
                 </span>
               ) : (
@@ -111,12 +110,10 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
             )}
           </div>
         </div>
-        <div dir="auto" className={cx('lyric-side lyric-next max-w-full truncate px-6 text-center transition-all duration-500', focus ? SIDE_FOCUS : big ? 'h-6 leading-6 text-base' : 'h-6 leading-6 text-sm')}>
-          {next?.text ?? ''}
-        </div>
+        <SideLine text={next?.text} z={z} lines={2} align="start" next />
       </div>
-      {/* phones: in its own row under the lines, never over the player below */}
-      <div className={cx('flex items-center gap-2 text-[11px] text-sub', focus ? 'justify-center h-5 mt-6' : phone ? 'justify-end h-5 mt-0.5' : 'absolute right-0 -bottom-5')}>
+      {/* its own row under the lines: never over the lines or the player below */}
+      <div className={cx('flex items-center gap-2 text-[11px] text-sub h-4', focus ? 'justify-center mt-4' : 'justify-end mt-1')}>
         {onFix && <FixLink onFix={onFix} />}
         {s.lyricsStatus && <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span>}
         {!s.lyricsStatus && s.lyricsNote?.startsWith('script:') && (
@@ -134,8 +131,43 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
   )
 }
 
-/** Lyrics only: the lines around the one being sung, larger than usual. */
-const SIDE_FOCUS = 'h-8 leading-8 text-lg sm:h-10 sm:leading-10 sm:text-2xl'
+/** The ticker's edges fade over this many pixels (the sung word always sits clear of it). */
+const EDGE_FADE = 24
+
+export interface LyricSizes { scale: number; mid: number; side: number; midRow: number; sideLine: number; gap: number }
+
+/**
+ * Lyric sizes in rem for a layout and the singer's zoom. Each row's height comes from
+ * its own text size, so rows never run into each other at any zoom.
+ */
+export function lyricSizes(mode: 'normal' | 'big' | 'focus', phone: boolean, scale: number): LyricSizes {
+  const [mid, side] =
+    mode === 'focus' ? (phone ? [2.4, 1.1] : [3.6, 1.45]) : mode === 'big' ? (phone ? [1.7, 0.95] : [1.875, 1]) : phone ? [1.5, 0.875] : [1.7, 0.875]
+  return {
+    scale,
+    mid: mid * scale,
+    side: side * scale,
+    midRow: mid * scale * 1.55,
+    sideLine: side * scale * 1.5,
+    gap: (mode === 'focus' ? 0.75 : 0.25) * scale,
+  }
+}
+
+/**
+ * The line before or after the one being sung. Up to `lines` lines (wrapping, never cut
+ * off mid-word); its room is always kept, so the rows don't jump when it's empty or short.
+ */
+export function SideLine({ text, z, lines, align, next }: { text?: string; z: LyricSizes; lines: 1 | 2; align: 'start' | 'end'; next?: boolean }) {
+  return (
+    <div className={cx('w-full flex flex-col px-6', align === 'end' ? 'justify-end' : 'justify-start')}
+      style={{ height: `${z.sideLine * lines}rem` }}>
+      <div dir="auto" className={cx('lyric-side text-center text-balance transition-[font-size] duration-300', next && 'lyric-next', lines === 2 ? 'line-clamp-2' : 'truncate')}
+        style={{ fontSize: `${z.side}rem`, lineHeight: 1.5 }}>
+        {text ?? ''}
+      </div>
+    </div>
+  )
+}
 
 /** "wrong lyrics?": always there in practice — whatever the lyrics' source, or none at all. */
 export function FixLink({ onFix, label = 'wrong lyrics?' }: { onFix: () => void; label?: string }) {

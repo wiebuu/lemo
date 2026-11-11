@@ -53,6 +53,8 @@ export interface Settings {
   lyricsScript: LyricsScript
   /** Lyrics only: the graph steps aside (it keeps running) and the lyrics sit big in the centre. */
   lyricsOnly: boolean
+  /** Lyrics text size, 1 = normal (LYRICS_SCALE.min … max). */
+  lyricsScale: number
   layers: GraphLayers
   /** Which default set of layers the saved ones were made from (see LAYERS_VERSION). */
   layersVersion: number
@@ -61,6 +63,9 @@ export interface Settings {
   /** A take good enough for today's top is shared there (your name, photo, result and voice). */
   shareTop: boolean
 }
+
+/** How small / large the lyrics can be made. */
+export const LYRICS_SCALE = { min: 0.8, max: 1.5, step: 0.05 }
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'mono',
@@ -84,6 +89,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showBreaths: true,
   lyricsScript: 'original',
   lyricsOnly: false,
+  lyricsScale: 1,
   layers: { shape: true, loudness: true, exact: true, timing: false },
   layersVersion: 3,
   disco: false,

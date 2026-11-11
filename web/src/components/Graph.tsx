@@ -3,6 +3,7 @@ import { GraphRenderer } from '../render/graph'
 import { studio } from '../state/studio'
 import { BusyCard, cx, useStudio } from './ui'
 import { VoiceCoach } from './VoiceCoach'
+import { attachPinch } from './ViewControls'
 
 /**
  * hidden (lyrics only): the canvas fades out but keeps drawing and scoring underneath;
@@ -48,7 +49,29 @@ export function Graph({ onImport, hidden, overlay }: { onImport: () => void; hid
       }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    // Phones: pinch to zoom — fingers apart shows less time and fewer notes (bigger),
+    // together shows more.
+    let base = { px: 140, span: 16 }
+    const offPinch = attachPinch(
+      el,
+      () => {
+        const st = studio.snap.settings
+        base = { px: st.pxPerSec, span: st.semitoneSpan }
+        return 1
+      },
+      (ratio) => {
+        if (studio.snap.settings.lyricsOnly) return
+        dragged.current = true // a pinch never also jumps the song
+        studio.updateSettings({
+          pxPerSec: Math.round(Math.max(40, Math.min(500, base.px * ratio))),
+          semitoneSpan: Math.round(Math.max(8, Math.min(40, base.span / ratio))),
+        })
+      },
+    )
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      offPinch()
+    }
   }, [])
 
   // Touch: drag sideways to move through the song; a tap (no drag) jumps there.

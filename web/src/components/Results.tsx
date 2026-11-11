@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ViewControls } from './ViewControls'
 import { lazy, Suspense, useState } from 'react'
 import { Crown, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, X } from 'lucide-react'
 const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel })))
@@ -76,7 +77,7 @@ export function ListenControls({ noSwitch }: { /** the you / song switch is show
   const fx = s.voiceFx
   const fxOn = fx.pitch !== 0 || fx.tune !== 0 || fx.echo !== 0 || fx.reverb !== 0 || fx.tone !== 0 || fx.volume !== 1
   return (
-    <div className="fade-in flex items-center gap-1.5">
+    <div className="fade-in flex items-center gap-1 sm:gap-1.5">
       {fxOpen && s.replay && <Suspense fallback={null}><VoiceFxPanel onClose={() => setFxOpen(false)} /></Suspense>}
       {s.canReplay && !noSwitch && <VoiceSwitch />}
       {s.canReplay && s.replay && !phone && ( // phones: kept simple
@@ -88,9 +89,10 @@ export function ListenControls({ noSwitch }: { /** the you / song switch is show
           </button>
         </Tip>
       )}
+      <ViewControls round />
       <Tip tip="Back to practice">
         <button type="button" onClick={() => studio.leaveReview()} aria-label="back to practice"
-          className="w-10 h-10 rounded-full text-sub flex items-center justify-center hover:text-text hover:bg-sub-alt">
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-sub flex items-center justify-center hover:text-text hover:bg-sub-alt">
           <X size={19} />
         </button>
       </Tip>

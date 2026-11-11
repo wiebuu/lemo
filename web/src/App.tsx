@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { detectOutput, onOutputChange } from './audio/output'
 import { SiteFooter } from './pages/Footer'
 import { ConfigBar } from './components/ConfigBar'
@@ -11,7 +11,8 @@ import { FocusLyrics, Lyrics } from './components/Lyrics'
 import { PlayerBar } from './components/PlayerBar'
 import { ResultsPanel, VoiceSwitch } from './components/Results'
 import { BusyCard, cx, Modal, Tip, usePhone, useStudio } from './components/ui'
-import { ChartSpline, Keyboard, TextQuote } from 'lucide-react'
+import { Keyboard } from 'lucide-react'
+import { useLyricsPinch, ViewControls } from './components/ViewControls'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { studio } from './state/studio'
 import { TopCelebration } from './components/TopCelebration'
@@ -117,7 +118,15 @@ export default function App() {
         <main className={cx('flex-1 min-h-0 flex flex-col py-1', phone ? 'gap-1.5' : 'gap-3')}>
           {/* Options only in practice: they fold away during a test and on the results. */}
           <div className="fold" data-closed={s.session || !!s.lastResult}>
-            <div><div className="pb-1"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div></div>
+            <div>
+              {/* the settings bar in the middle; the view (lyrics size, graph / lyrics only) in its own pill
+                  beside it — on the right on computers, next to it on phones */}
+              <div className="pb-1 flex justify-center gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                <span className="hidden sm:block" />
+                <div className="min-w-0"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div>
+                <div className="flex justify-end"><ViewControls /></div>
+              </div>
+            </div>
           </div>
           <ErrorBoundary label="live readout">
             {/* while singing the big note readout needs the room: the name steps aside */}
@@ -130,22 +139,22 @@ export default function App() {
           <div className={cx('relative flex-1 min-h-0 flex flex-col', phone && 'pt-2')}>
             <ErrorBoundary label="graph">
               <Graph onImport={() => setPanel('load')} hidden={lyricsOnly} overlay={lyricsOnly && (
-                <div className="fade-in absolute inset-0 flex items-center justify-center">
+                <PinchLyrics className="fade-in absolute inset-0 flex items-center justify-center">
                   <FocusLyrics onFix={() => setPanel('fixlyrics')} />
-                </div>
+                </PinchLyrics>
               )} />
             </ErrorBoundary>
-            <StageToggle lyricsOnly={lyricsOnly} />
           </div>
-          {/* fixed-height slot under the graph: lyrics, or the results panel after a test */}
-          <div className={cx('shrink-0 flex flex-col justify-center transition-[height] duration-500',
-            phone ? (results ? 'h-[12rem] py-1' : lyricsOnly ? 'h-0' : 'h-[6rem] py-0.5') : results ? 'h-[10rem] py-4' : lyricsOnly ? 'h-0' : 'h-[8rem] py-4')}>
+          {/* slot under the graph: the results panel after a test, or the lyrics — as tall as the
+              lyrics need at their size (each row keeps its own room, so nothing overlaps) */}
+          <div className={cx('shrink-0 flex flex-col justify-center',
+            results ? (phone ? 'h-[12rem] py-1' : 'h-[10rem] py-4') : lyricsOnly ? 'h-0 overflow-hidden' : phone ? 'min-h-[5rem] py-1' : 'min-h-[6rem] py-3')}>
             <ErrorBoundary label="results">
               {results ? <ResultsPanel big={false} /> : lyricsOnly ? null : (
                 // back from lyrics only: shown once the slot has opened again, never spilling over the player
-                <div className="lyrics-return flex-1 min-h-0 flex flex-col justify-center">
+                <PinchLyrics className="lyrics-return flex-1 min-h-0 flex flex-col justify-center">
                   <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />
-                </div>
+                </PinchLyrics>
               )}
             </ErrorBoundary>
           </div>
@@ -219,24 +228,11 @@ export default function App() {
   )
 }
 
-/**
- * Graph ⇄ lyrics only, in the stage's top-right corner: there in practice, while
- * singing and on the results, so the graph is always one tap away.
- */
-function StageToggle({ lyricsOnly }: { lyricsOnly: boolean }) {
-  const Icon = lyricsOnly ? ChartSpline : TextQuote
-  return (
-    <div className="absolute top-0 right-0 z-20">
-      <Tip tip={lyricsOnly ? 'Show the graph again' : 'Lyrics only — hide the graph (it keeps listening)'}>
-        <button type="button" aria-pressed={lyricsOnly} aria-label={lyricsOnly ? 'show the graph' : 'lyrics only'}
-          onClick={() => studio.updateSettings({ lyricsOnly: !lyricsOnly })}
-          className="surface h-8 flex items-center gap-1.5 rounded-full px-2.5 text-[11px] text-sub hover:text-text transition-colors">
-          <Icon size={14} />
-          <span className="hidden sm:inline">{lyricsOnly ? 'graph' : 'lyrics only'}</span>
-        </button>
-      </Tip>
-    </div>
-  )
+/** Lyrics that can be pinched (or ⌘ / ctrl + scrolled) bigger or smaller. */
+function PinchLyrics({ className, children }: { className: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLyricsPinch(ref)
+  return <div ref={ref} className={className} style={{ touchAction: 'none' }}>{children}</div>
 }
 
 /** Once per visit: has the first test checked where the sound goes? */

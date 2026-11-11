@@ -114,6 +114,38 @@ def _send_relay(messages: list[EmailMessage], url: str, secret: str) -> bool:
     return ok
 
 
+def song_already_message(sender: str, to: str, name: str | None, asked: str | None, title: str, artist: str | None) -> EmailMessage:
+    """The song a singer asked for was in Lemody already (under another name, perhaps):
+    what to search for. It's in their song list too."""
+    song = " · ".join(x for x in (title, artist) if x)
+    hi = f"Hi {name.split()[0]}," if name and name.strip() else "Hi,"
+    was = f" ({asked})" if asked and asked.strip().lower() != title.strip().lower() else ""
+    msg = EmailMessage()
+    msg["Subject"] = f"Your song is already in Lemody: {title}"
+    msg["From"] = f"Lemody <{sender}>"
+    msg["To"] = to
+    msg.set_content(f"{hi}\n\nThe song you asked for{was} is already in Lemody, as \"{song}\".\n\n"
+                    f"Search for \"{title}\" to find it. It's in your song list too, ready to sing.\n\n{SITE}\n\nHappy singing,\nLemody")
+    msg.add_alternative(
+        f"""<p>{html.escape(hi)}</p>
+<p>The song you asked for{html.escape(was)} is already in Lemody, as <b>{html.escape(song)}</b>.</p>
+<p>Search for <b>“{html.escape(title)}”</b> to find it. It's in your song list too, ready to sing.</p>
+<p><a href="{SITE}">Sing it now</a></p>
+<p>Happy singing,<br>Lemody</p>""",
+        subtype="html",
+    )
+    return msg
+
+
+def notify_song_already(people: list[dict], asked: str | None, title: str, artist: str | None) -> int:
+    """Tell everyone who asked that the song was here already. Returns how many emails went out."""
+    if not can_send():
+        return 0
+    msgs = [song_already_message(_from(), p["email"], p.get("name"), asked, title, artist)
+            for p in people if p.get("email") and "@" in p["email"]]
+    return len(msgs) if msgs and _send(msgs) else 0
+
+
 def notify_song_added(people: list[dict], title: str | None, artist: str | None, song_id: str, wait: bool = False) -> int:
     """Email everyone in `people` ({email, name}) that their requested song is in. Returns
     how many emails are going out."""

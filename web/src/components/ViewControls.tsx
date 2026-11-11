@@ -9,9 +9,9 @@ const pct = (v: number) => `${Math.round(v * 100)}%`
 
 /**
  * How the stage looks: lyrics size, and graph ⇄ lyrics only. Its own pill beside the
- * settings bar before and after singing; round icons beside ✕ on the results.
+ * settings bar, before singing (not while singing, nor on the results).
  */
-export function ViewControls({ round }: { /** results row: round icon buttons like its neighbours */ round?: boolean }) {
+export function ViewControls() {
   const s = useStudio()
   const lyricsOnly = s.settings.lyricsOnly
   // lyrics only: captions (the lyrics on their own); back to the graph: the melody line
@@ -20,23 +20,19 @@ export function ViewControls({ round }: { /** results row: round icon buttons li
     <Tip tip={lyricsOnly ? 'Show the graph again' : 'Lyrics only — hide the graph (it keeps listening)'}>
       <button type="button" aria-pressed={lyricsOnly} aria-label={lyricsOnly ? 'show the graph' : 'lyrics only'}
         onClick={() => studio.updateSettings({ lyricsOnly: !lyricsOnly })}
-        className={round
-          ? 'w-9 h-9 rounded-full flex items-center justify-center text-sub hover:text-text hover:bg-sub-alt transition-colors'
-          : 'flex items-center gap-1.5 p-1.5 rounded-md text-sub hover:text-text transition-colors'}>
-        <ToggleIcon size={round ? 17 : 15} />
-        {!round && <span className="hidden sm:inline text-xs">{lyricsOnly ? 'graph' : 'lyrics only'}</span>}
+        className="flex items-center gap-1.5 p-1.5 rounded-md text-sub hover:text-text transition-colors">
+        <ToggleIcon size={15} />
+        <span className="hidden sm:inline text-xs">{lyricsOnly ? 'graph' : 'lyrics only'}</span>
       </button>
     </Tip>
   )
   const size = (
     <Menu tip={`Lyrics size · ${pct(s.settings.lyricsScale)} — or pinch the lyrics (⌘ / ctrl + scroll on a computer)`}
-      buttonClassName={round ? 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-sub-alt' : 'px-1.5'}
-      button={<span className="flex items-center gap-1.5"><ALargeSmall size={round ? 18 : 16} /></span>}>
+      buttonClassName="px-1.5"
+      button={<span className="flex items-center gap-1.5"><ALargeSmall size={16} /></span>}>
       <LyricsSize />
     </Menu>
   )
-  // results row: just the graph / lyrics toggle, beside ✕ (the size is a pinch away, and in the pill before singing)
-  if (round) return toggle
   return (
     <div className="surface rounded-full px-2 sm:px-3 py-0.5 text-xs flex items-center gap-0.5 sm:gap-2 shrink-0">
       {size}

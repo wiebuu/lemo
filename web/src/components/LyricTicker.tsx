@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { itemAt, lyricRows, rowAt } from '../lib/lyricTiming'
 import { studio } from '../state/studio'
+import { Languages } from 'lucide-react'
 import { cx, Eq, Tip, usePhone, useStudio } from './ui'
 
 /**
@@ -116,13 +117,9 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
       <div className={cx('flex items-center gap-2 text-[11px] text-sub h-4', focus ? 'justify-center mt-4' : 'justify-end mt-1')}>
         {onFix && <FixLink onFix={onFix} />}
         {s.lyricsStatus && <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span>}
-        {!s.lyricsStatus && s.lyricsNote?.startsWith('script:') && (
-          <Tip wide tip={s.lyricsNote.slice(8)}>
-            <span>some lines kept as found</span>
-          </Tip>
-        )}
+        {!s.lyricsStatus && <ScriptNotice />}
         {!s.lyricsStatus && estimated && (
-          <Tip wide tip={<>Word timing is estimated from the melody's notes{s.lyricsNote ? <> — {s.lyricsNote}.</> : '.'} Fix lines in the lyrics editor (pencil icon).</>}>
+          <Tip wide tip={<>Word timing is estimated from the melody's notes{s.lyricsNote && !s.lyricsNote.startsWith('script:') ? <> — {s.lyricsNote}.</> : '.'} Fix lines in the lyrics editor (pencil icon).</>}>
             <span>≈</span>
           </Tip>
         )}
@@ -166,6 +163,24 @@ export function SideLine({ text, z, lines, align, next }: { text?: string; z: Ly
         {text ?? ''}
       </div>
     </div>
+  )
+}
+
+/**
+ * When lyrics (or some lines) can't be shown in the chosen script — Hinglish, Hindi or
+ * Urdu — a small, plain note says so, so lines in another script never look like a glitch.
+ */
+export function ScriptNotice() {
+  const s = useStudio()
+  if (!s.lyricsNote?.startsWith('script:')) return null
+  const [short, why] = s.lyricsNote.slice(7).split('|')
+  return (
+    <Tip wide tip={why || short}>
+      <span className="inline-flex items-center gap-1.5 text-[11px] text-sub">
+        <Languages size={12} className="shrink-0" />
+        {short}
+      </span>
+    </Tip>
   )
 }
 

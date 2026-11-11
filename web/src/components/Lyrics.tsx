@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { studio } from '../state/studio'
 import { Eq, useStudio, usePhone, cx } from './ui'
-import { FixLink, LyricTicker, lyricSizes, SideLine } from './LyricTicker'
+import { FixLink, LyricTicker, lyricSizes, ScriptNotice, SideLine } from './LyricTicker'
 import type { LyricLine } from '../lib/types'
 
 /** Monkeytype-style words: sung = text colour, current = main with caret, upcoming = sub. */
@@ -54,12 +54,10 @@ export function Lyrics({ onEdit, onFix, big }: { onEdit: () => void; onFix: () =
   return (
     <div className="flex flex-col">
       <LineRows mode={big ? 'big' : 'normal'} />
-      {!s.session && (
-        <span className="self-end flex items-center gap-2 text-[11px] text-sub h-4 mt-1">
-          {s.lyricsStatus && <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span>}
-          <FixLink onFix={onFix} />
-        </span>
-      )}
+      <span className="self-end flex items-center gap-3 text-[11px] text-sub h-4 mt-1">
+        {s.lyricsStatus ? <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span> : <ScriptNotice />}
+        {!s.session && <FixLink onFix={onFix} />}
+      </span>
     </div>
   )
 }
@@ -144,7 +142,14 @@ function FocusBody({ onFix }: { onFix: () => void }) {
   if (lines.some((l) => l.words?.length)) {
     return <div className="w-full"><LyricTicker focus onFix={s.session ? undefined : onFix} /></div>
   }
-  if (lines.length && lines.some((l) => l.start !== null)) return <LineRows mode="focus" />
+  if (lines.length && lines.some((l) => l.start !== null)) {
+    return (
+      <div className="w-full flex flex-col items-center">
+        <LineRows mode="focus" />
+        <div className="h-4 mt-4">{!s.lyricsStatus && <ScriptNotice />}</div>
+      </div>
+    )
+  }
   return (
     <SongTitle title={s.track.title} artist={s.track.artist}>
       {s.lyricsStatus ? <><Eq />{s.lyricsStatus}</> : !s.session && <FixLink onFix={onFix} label={lines.length ? "lyrics aren't timed — fix them" : 'add lyrics'} />}

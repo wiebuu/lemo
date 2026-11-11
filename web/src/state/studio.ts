@@ -356,6 +356,7 @@ export class Studio {
     this.reviewCache = null
     this.fxId++ // a voice-effects render still running for the old take is ignored
     this.lyricsJob++
+    this.statusTasks.clear() // the last song's lyric work: its messages go with it
     this.set({
       lastResult: null, focus: null, replay: false, canReplay: false, resultsView: 'results', resultMode: null, topRank: null, viewing: null, challenge: null,
       voiceFxBusy: false, lyricsStatus: null, lyricPos: { line: -1, word: -1 }, loop: null,
@@ -627,12 +628,37 @@ export class Studio {
     else if (align) void this.alignWords(++this.lyricsJob)
   }
 
+  // Lyric work shows one line of status ("finding lyrics", "timing words" …). Each task
+  // owns its own message and always takes it away when it ends — however it ends, even
+  // after a newer task took over — so a finished task never leaves its message behind.
+  private statusTasks = new Map<number, string>()
+  private statusSeq = 0
+  private lyricTask(text: string) {
+    const id = ++this.statusSeq
+    this.statusTasks.set(id, text)
+    this.showLyricStatus()
+    return {
+      update: (t: string) => {
+        if (!this.statusTasks.has(id)) return
+        this.statusTasks.set(id, t)
+        this.showLyricStatus()
+      },
+      end: () => {
+        if (this.statusTasks.delete(id)) this.showLyricStatus()
+      },
+    }
+  }
+  private showLyricStatus() {
+    const latest = [...this.statusTasks.values()].pop() ?? null
+    if (latest !== this.snap.lyricsStatus) this.set({ lyricsStatus: latest })
+  }
+
   /** Plain lyrics → each line timed to the vocal (on the analyzer), with its words. */
   private async timePlainLyrics(job: number, mine: boolean) {
     const id = this.analyzerId
     if (!id) return
     const texts = this.snap.lyrics.map((l) => l.text)
-    this.set({ lyricsStatus: 'timing the lyrics to the singer' })
+    const task = this.lyricTask('timing the lyrics to the singer')
     try {
       for (let tries = 0; tries < 300; tries++) {
         if (job !== this.lyricsJob) return
@@ -643,7 +669,7 @@ export class Studio {
             id: `a${i}-${Date.now().toString(36)}`, start: l.start, end: l.end, text: l.text, verified: false,
             ...(l.words ? { words: l.words, wordsSource: 'aligned' as const } : {}),
           }))
-          this.set({ lyricsStatus: null })
+          task.end()
           this.setLyrics(lines, false, mine)
           return
         }
@@ -651,13 +677,14 @@ export class Studio {
           this.set({ lyricsNote: `couldn't time these lyrics: ${r.error ?? 'unknown error'}` })
           break
         }
-        if (r.message) this.set({ lyricsStatus: r.message })
+        if (r.message) task.update(r.message)
         await new Promise((res) => setTimeout(res, 2000))
       }
     } catch {
       /* analyzer offline */
+    } finally {
+      task.end()
     }
-    if (job === this.lyricsJob) this.set({ lyricsStatus: null })
   }
 
   /** On load: fetch synced lyrics if the song has none, then time the words to the singer. */
@@ -674,7 +701,7 @@ export class Studio {
       this.rebuildTrack()
     }
     if (!this.snap.lyrics.length) {
-      this.set({ lyricsStatus: 'finding lyrics' })
+      const finding = this.lyricTask('finding lyrics')
       let lines: LyricLine[] = []
       let preparedAt: number | undefined
       try {
@@ -699,9 +726,11 @@ export class Studio {
         if (lines.length) this.toast(`lyrics from ${pick.source}`)
       } catch {
         /* offline or not found — the lyrics area offers manual entry */
+      } finally {
+        finding.end()
       }
       if (job !== this.lyricsJob) return
-      if (!lines.length) return this.set({ lyricsStatus: null })
+      if (!lines.length) return
       this.setLyrics(lines, false, false)
       this.savePrefs({ lyricsAt: preparedAt ?? this.baseTrack?.lyricsAt })
       if (lines.every((l) => l.start === null)) return // being timed to the singer (timePlainLyrics)
@@ -719,7 +748,7 @@ export class Studio {
       .filter((x) => x.l.start !== null && x.l.wordsSource !== 'aligned' && x.l.wordsSource !== 'chart')
     if (!todo.length) return
     const payload = todo.map((x) => ({ start: x.l.start!, end: x.end, text: x.l.text }))
-    this.set({ lyricsStatus: 'timing words' })
+    const task = this.lyricTask('timing words')
     try {
       await this.fromAnalyzer(id, () => fetch(`/api/songs/${id}/status`))
       for (let tries = 0; tries < 400; tries++) {
@@ -742,13 +771,14 @@ export class Studio {
           break
         }
         if (r.status === 'unavailable') break // this server doesn't time words: estimated timing stays
-        if (r.message) this.set({ lyricsStatus: r.message })
+        if (r.message) task.update(r.message)
         await new Promise((res) => setTimeout(res, 2000))
       }
     } catch {
       /* analyzer offline — estimated timing stays */
+    } finally {
+      task.end()
     }
-    if (job === this.lyricsJob) this.set({ lyricsStatus: null })
   }
 
   // ---- lyrics script (Hinglish / Hindi / Urdu) ---------------------------------
@@ -770,10 +800,12 @@ export class Studio {
     }
     const todo: string[] = []
     let failed = 0
+    let offline = 0
     const out = lines.map((l) => {
       const k = `${to}\0${l.text}`
       if (!this.scriptCache.has(k)) {
-        if (l.text.trim() && !this.scriptPending.has(k) && !this.scriptGaveUp.has(k)) todo.push(l.text)
+        if (this.scriptGaveUp.has(k)) offline++
+        else if (l.text.trim() && !this.scriptPending.has(k)) todo.push(l.text)
         return l
       }
       const v = this.scriptCache.get(k)
@@ -784,8 +816,16 @@ export class Studio {
       return v === l.text ? l : retextLine(l, v)
     })
     if (todo.length) void this.convertScript(to, todo)
+    // Lines that stay as written get a plain note (shown under the lyrics), so it never
+    // looks like a glitch: "script:<short>|<why>"
     const name = to === 'latin' ? 'Hinglish' : to === 'deva' ? 'Hindi script' : 'Urdu script'
-    const note = failed ? `script: ${failed} line${failed > 1 ? 's' : ''} can't be shown in ${name} (written in Urdu script, which leaves out vowels)` : null
+    const total = lines.filter((l) => l.text.trim()).length
+    const miss = failed + offline
+    const short = !miss ? '' : miss >= total ? `${name} isn't available for these lyrics — shown as written` : `${miss} of ${total} lines aren't in ${name} — shown as written`
+    const why = offline && !failed
+      ? 'Converting needs the Lemody server, which couldn\'t be reached just now. Pick the script again in a moment to retry.'
+      : `These lines are written in a script that can't be turned into ${name} reliably (Urdu script leaves out most vowels), so they're shown as they are.`
+    const note = miss ? `script:${short}|${why}` : null
     if (note !== this.snap.lyricsNote && (note || this.snap.lyricsNote?.startsWith('script:'))) this.snap = { ...this.snap, lyricsNote: note }
     return out
   }
@@ -793,7 +833,7 @@ export class Studio {
   private async convertScript(to: 'latin' | 'deva' | 'urdu', texts: string[]) {
     const keys = texts.map((t) => `${to}\0${t}`)
     keys.forEach((k) => this.scriptPending.add(k))
-    this.set({ lyricsStatus: 'converting lyrics' })
+    const task = this.lyricTask('converting lyrics')
     try {
       const r = await analyzer.script(texts, to)
       keys.forEach((k, i) => this.scriptCache.set(k, r.lines[i] ?? null))
@@ -805,8 +845,9 @@ export class Studio {
       else this.toast('could not convert the lyrics right now — try again in a moment')
     } finally {
       keys.forEach((k) => this.scriptPending.delete(k))
+      task.end()
     }
-    this.set({ lyricsStatus: null, lyricsShown: this.inScript(this.snap.lyrics) })
+    this.set({ lyricsShown: this.inScript(this.snap.lyrics) })
   }
 
   resetLyrics() {

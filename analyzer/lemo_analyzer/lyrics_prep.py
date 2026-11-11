@@ -61,6 +61,16 @@ def prepare(song_id: str, title: str, artist: str) -> tuple[bool, str]:
     vid = song_id[3:] if song_id.startswith("yt-") else None
     found = lyrics.find(title or ref.get("title") or "", artist or ref.get("artist") or "",
                         float(ref.get("duration") or 0), vid, ref.get("notes"))
+    if found.get("synced") or found.get("plain"):
+        try:
+            found["timed"] = timed_lines(found, d, ref)
+        except Exception as e:
+            # found, but can't be timed to the singer (Urdu-script lyrics, say): the singing's
+            # own words instead, which come timed
+            if not transcribe.available():
+                raise
+            worker.log(f"lyrics {song_id}: {found.get('source')} lyrics couldn't be timed ({e}): transcribing instead")
+            found = {"candidates": found.get("candidates"), "failedSources": found.get("failedSources")}
     if not (found.get("synced") or found.get("plain")):
         # no lyrics site has it: write down what's sung (Whisper, on the vocal alone)
         heard = heard_lines(d, song_id)
@@ -72,7 +82,6 @@ def prepare(song_id: str, title: str, artist: str) -> tuple[bool, str]:
         (d / FILE).write_text(json.dumps(found, ensure_ascii=False))
         to_store(d)
         return True, f"transcribed · {len(heard)} lines"
-    found["timed"] = timed_lines(found, d, ref)
     found["preparedAt"] = int(time.time())
     (d / FILE).write_text(json.dumps(found, ensure_ascii=False))
     to_store(d)
@@ -144,6 +153,22 @@ def with_lyrics() -> set[str]:
         except Exception:
             pass
     return have
+
+
+def transcribed() -> set[str]:
+    """Songs whose lyrics were transcribed from the singing (worth checking: Whisper can
+    mishear, more so in languages it doesn't know). Here or in the store."""
+    root = jobs.song_dir("x").parent
+    mark = '"transcribed": true'
+    out = {p.parent.name for p in root.glob(f"*/{FILE}") if mark in p.read_text(errors="ignore")} if root.exists() else set()
+    if remote.enabled():
+        _, path = remote._host_path()
+        try:
+            found = remote._ssh(f"cd {shlex.quote(path)} && grep -l {shlex.quote(mark)} */{FILE} 2>/dev/null || true")
+            out |= {line.split("/")[0] for line in found.split() if line.endswith(f"/{FILE}")}
+        except Exception:
+            pass
+    return out
 
 
 def for_song(song_id: str, title: str | None, artist: str | None) -> None:

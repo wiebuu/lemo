@@ -10,9 +10,9 @@ import { cx, Eq, Tip, usePhone, useStudio } from './ui'
  * when the line changes. Driven by its own animation frame; React only re-renders
  * on a line change.
  */
-export function LyricTicker({ big, onFix }: { big?: boolean; /** shows "wrong lyrics?" */ onFix?: () => void }) {
+export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics only: the lines large in the middle of the screen */ focus?: boolean; /** shows "wrong lyrics?" */ onFix?: () => void }) {
   const s = useStudio()
-  const phone = usePhone() // phones: the line being sung and the next one (no room for the last one)
+  const phone = usePhone() && !focus // phones: the line being sung and the next one (no room for the last one)
   const rows = useMemo(() => lyricRows(s.lyricsShown), [s.lyricsShown])
   const [cur, setCur] = useState(() => rowAt(rows, studio.heardTime()))
   const curRef = useRef(cur)
@@ -91,14 +91,14 @@ export function LyricTicker({ big, onFix }: { big?: boolean; /** shows "wrong ly
 
   return (
     <div className="relative">
-      <div key={cur} className="lyric-rows flex flex-col items-center gap-1">
+      <div key={cur} className={cx('lyric-rows flex flex-col items-center', focus ? 'gap-3 sm:gap-4' : 'gap-1')}>
         {!phone && (
-          <div dir="auto" className={cx('lyric-side h-6 leading-6 max-w-full truncate px-6 text-center transition-all duration-500', big ? 'text-base' : 'text-sm')}>
+          <div dir="auto" className={cx('lyric-side max-w-full truncate px-6 text-center transition-all duration-500', focus ? SIDE_FOCUS : big ? 'h-6 leading-6 text-base' : 'h-6 leading-6 text-sm')}>
             {prev?.text ?? ''}
           </div>
         )}
-        <div ref={wrap} className={cx('lyric-ticker w-full overflow-hidden transition-all duration-500', big ? 'h-14' : 'h-12')}>
-          <div ref={track} dir={rtl ? 'rtl' : 'ltr'} className={cx('flex items-center h-full w-max whitespace-pre will-change-transform transition-[font-size] duration-500', big ? 'text-3xl font-medium tracking-tight' : 'text-[1.7rem] font-medium tracking-tight')}>
+        <div ref={wrap} className={cx('lyric-ticker w-full overflow-hidden transition-all duration-500', focus ? 'h-16 sm:h-24' : big ? 'h-14' : 'h-12')}>
+          <div ref={track} dir={rtl ? 'rtl' : 'ltr'} className={cx('flex items-center h-full w-max whitespace-pre will-change-transform transition-[font-size] duration-500', focus ? 'text-[2.6rem] sm:text-6xl font-medium tracking-tight' : big ? 'text-3xl font-medium tracking-tight' : 'text-[1.7rem] font-medium tracking-tight')}>
             {items.map((it, k) =>
               it.kind === 'gap' ? (
                 <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-gap"
@@ -111,12 +111,12 @@ export function LyricTicker({ big, onFix }: { big?: boolean; /** shows "wrong ly
             )}
           </div>
         </div>
-        <div dir="auto" className={cx('lyric-side lyric-next h-6 leading-6 max-w-full truncate px-6 text-center transition-all duration-500', big ? 'text-base' : 'text-sm')}>
+        <div dir="auto" className={cx('lyric-side lyric-next max-w-full truncate px-6 text-center transition-all duration-500', focus ? SIDE_FOCUS : big ? 'h-6 leading-6 text-base' : 'h-6 leading-6 text-sm')}>
           {next?.text ?? ''}
         </div>
       </div>
       {/* phones: in its own row under the lines, never over the player below */}
-      <div className={cx('flex items-center gap-2 text-[11px] text-sub', phone ? 'justify-end h-5 mt-0.5' : 'absolute right-0 -bottom-5')}>
+      <div className={cx('flex items-center gap-2 text-[11px] text-sub', focus ? 'justify-center h-5 mt-6' : phone ? 'justify-end h-5 mt-0.5' : 'absolute right-0 -bottom-5')}>
         {onFix && <FixLink onFix={onFix} />}
         {s.lyricsStatus && <span className="flex items-center gap-2"><Eq />{s.lyricsStatus}</span>}
         {!s.lyricsStatus && s.lyricsNote?.startsWith('script:') && (
@@ -133,6 +133,9 @@ export function LyricTicker({ big, onFix }: { big?: boolean; /** shows "wrong ly
     </div>
   )
 }
+
+/** Lyrics only: the lines around the one being sung, larger than usual. */
+const SIDE_FOCUS = 'h-8 leading-8 text-lg sm:h-10 sm:leading-10 sm:text-2xl'
 
 /** "wrong lyrics?": always there in practice — whatever the lyrics' source, or none at all. */
 export function FixLink({ onFix, label = 'wrong lyrics?' }: { onFix: () => void; label?: string }) {

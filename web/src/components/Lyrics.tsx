@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { studio } from '../state/studio'
 import { Eq, useStudio, usePhone, cx } from './ui'
 import { FixLink, LyricTicker } from './LyricTicker'
 import type { LyricLine } from '../lib/types'
@@ -77,12 +79,13 @@ export function Lyrics({ onEdit, onFix, big }: { onEdit: () => void; onFix: () =
   )
 }
 
-function CurrentLine({ line, word, big }: { line: LyricLine; word: number; big?: boolean }) {
+function CurrentLine({ line, word, big, focus }: { line: LyricLine; word: number; big?: boolean; focus?: boolean }) {
+  const size = focus ? 'text-[2.6rem] sm:text-6xl font-medium tracking-tight leading-[4rem] sm:leading-[6rem]' : big ? 'text-3xl sm:text-4xl leading-[3rem]' : 'text-2xl sm:text-[1.7rem] leading-9'
   if (!line.words?.length) {
-    return <div className={cx('text-text truncate max-w-full transition-all duration-500', big ? 'text-3xl sm:text-4xl leading-[3rem]' : 'text-2xl sm:text-[1.7rem] leading-9')}>{line.text}</div>
+    return <div dir="auto" className={cx('text-text truncate max-w-full transition-all duration-500', size)}>{line.text}</div>
   }
   return (
-    <div className={cx('max-w-full truncate transition-all duration-500', big ? 'text-3xl sm:text-4xl leading-[3rem]' : 'text-2xl sm:text-[1.7rem] leading-9')}>
+    <div dir="auto" className={cx('max-w-full truncate transition-all duration-500', size)}>
       {line.words.map((w, i) => (
         <span
           key={i}
@@ -97,4 +100,62 @@ function CurrentLine({ line, word, big }: { line: LyricLine; word: number; big?:
       ))}
     </div>
   )
+}
+
+/**
+ * Lyrics only: the graph steps aside and the lyrics sit large in the middle of the
+ * screen. With no lyrics to follow (none, still loading, or not timed) the song's
+ * name and singer stand there instead, so the middle is never empty.
+ */
+export function FocusLyrics({ onFix }: { onFix: () => void }) {
+  const s = useStudio()
+  const lines = s.lyricsShown
+  const intro = useBeforeFirstLine(lines)
+  if (!s.track) return null
+  if (intro) return <SongTitle title={s.track.title} artist={s.track.artist} />
+  if (lines.some((l) => l.words?.length)) {
+    return <div className="w-full"><LyricTicker focus onFix={s.session ? undefined : onFix} /></div>
+  }
+  if (lines.length && lines.some((l) => l.start !== null)) {
+    const cur = s.lyricPos.line
+    const idx = cur < 0 ? 0 : cur
+    const prev = cur > 0 ? lines[cur - 1] : null
+    const next = lines[idx + (cur < 0 ? 0 : 1)] ?? null
+    const side = 'text-sub/70 text-lg sm:text-2xl truncate max-w-full h-8 sm:h-10 leading-8 sm:leading-10'
+    return (
+      <div className="w-full flex flex-col items-center gap-3 sm:gap-4 text-center px-4">
+        <div dir="auto" className={side}>{prev?.text ?? ''}</div>
+        {cur >= 0 ? <CurrentLine line={lines[cur]} word={s.lyricPos.word} focus /> : <div className="h-16 sm:h-24" />}
+        <div dir="auto" className={cx(side, 'text-sub')}>{next?.text ?? ''}</div>
+      </div>
+    )
+  }
+  return (
+    <SongTitle title={s.track.title} artist={s.track.artist}>
+      {s.lyricsStatus ? <><Eq />{s.lyricsStatus}</> : !s.session && <FixLink onFix={onFix} label={lines.length ? "lyrics aren't timed — fix them" : 'add lyrics'} />}
+    </SongTitle>
+  )
+}
+
+function SongTitle({ title, artist, children }: { title: string; artist?: string; children?: ReactNode }) {
+  return (
+    <div className="fade-in flex flex-col items-center gap-3 text-center px-6 max-w-full">
+      <div className="text-[2.2rem] sm:text-6xl font-medium tracking-tight text-text leading-tight line-clamp-2 break-words">{title}</div>
+      {artist && <div className="text-lg sm:text-2xl text-sub truncate max-w-full">{artist}</div>}
+      <div className="mt-4 h-5 flex items-center gap-2 text-[11px] text-sub">{children}</div>
+    </div>
+  )
+}
+
+/** The intro: more than a couple of seconds before the first line is sung. */
+function useBeforeFirstLine(lines: LyricLine[]) {
+  const first = lines.find((l) => l.start !== null)?.start ?? null
+  const check = useCallback(() => first !== null && studio.heardTime() < first - 2, [first])
+  const [before, setBefore] = useState(check)
+  useEffect(() => {
+    setBefore(check())
+    const id = setInterval(() => setBefore(check()), 250)
+    return () => clearInterval(id)
+  }, [check])
+  return before
 }

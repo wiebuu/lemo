@@ -1,10 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { GraphRenderer } from '../render/graph'
 import { studio } from '../state/studio'
-import { BusyCard, useStudio } from './ui'
+import { BusyCard, cx, useStudio } from './ui'
 import { VoiceCoach } from './VoiceCoach'
 
-export function Graph({ onImport }: { onImport: () => void }) {
+/**
+ * hidden (lyrics only): the canvas fades out but keeps drawing and scoring underneath;
+ * `overlay` takes its place, under the voice coach and the loading card.
+ */
+export function Graph({ onImport, hidden, overlay }: { onImport: () => void; hidden?: boolean; overlay?: ReactNode }) {
   const s = useStudio()
   const wrap = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -37,7 +41,7 @@ export function Graph({ onImport }: { onImport: () => void }) {
         e.preventDefault()
         const span = Math.max(8, Math.min(40, st.semitoneSpan + Math.sign(e.deltaY || e.deltaX) * 2))
         studio.updateSettings({ semitoneSpan: span })
-      } else if (horizontal && studio.snap.track) {
+      } else if (horizontal && studio.snap.track && !studio.snap.settings.lyricsOnly) {
         e.preventDefault()
         const px = e.deltaX || e.deltaY
         studio.scrollBy((px * (e.deltaMode === 1 ? 16 : 1)) / st.pxPerSec)
@@ -51,7 +55,7 @@ export function Graph({ onImport }: { onImport: () => void }) {
   const drag = useRef<{ x: number; moved: boolean } | null>(null)
   const dragged = useRef(false)
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === 'mouse' || !s.track) return
+    if (e.pointerType === 'mouse' || !s.track || hidden) return
     drag.current = { x: e.clientX, moved: false }
     dragged.current = false
   }
@@ -75,7 +79,7 @@ export function Graph({ onImport }: { onImport: () => void }) {
       dragged.current = false
       return
     }
-    if (!r || !s.track) return
+    if (!r || !s.track || hidden) return
     const rect = wrap.current!.getBoundingClientRect()
     studio.seek(r.timeAtX(e.clientX - rect.left, { time: studio.heardTime(), pxPerSec: s.settings.pxPerSec }))
   }
@@ -90,17 +94,18 @@ export function Graph({ onImport }: { onImport: () => void }) {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       style={{ touchAction: 'none' }}
-      className="relative w-full flex-1 min-h-[160px] cursor-crosshair select-none"
+      className={cx('relative w-full flex-1 min-h-[160px] select-none', !hidden && 'cursor-crosshair')}
       aria-label="pitch graph: click to jump, scroll to zoom"
     >
-      <canvas ref={canvas} className="absolute inset-0 w-full h-full" />
-      {s.track && !noMelody && (
+      <canvas ref={canvas} className={cx('absolute inset-0 w-full h-full transition-opacity duration-500', hidden && 'opacity-0')} />
+      {overlay}
+      {s.track && !noMelody && !hidden && (
         <div className="absolute top-1 left-10 flex items-center gap-4 text-[11px] text-sub pointer-events-none" aria-hidden>
           <span className="flex items-center gap-1.5"><span className="w-4 h-[3px] rounded-full bg-voice" />you</span>
           <span className="flex items-center gap-1.5"><span className="w-4 h-[3px] rounded-full bg-text/60" />original</span>
         </div>
       )}
-      {noMelody && (
+      {noMelody && !hidden && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-sub text-center px-6 pointer-events-none">
           <div>no reference melody for this audio yet</div>
           <div className="text-xs max-w-md leading-relaxed">

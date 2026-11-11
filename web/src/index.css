@@ -186,6 +186,17 @@ input[type='range']::-webkit-slider-thumb {
     background: var(--text);
   }
 }
+/* the speed slider: the part up to the thumb in the theme colour */
+input[type='range'].speed-range::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, var(--main) var(--fill), var(--sub-alt) var(--fill));
+}
+input[type='range'].speed-range::-webkit-slider-thumb {
+  background: var(--main);
+}
+input[type='range'].speed-range::-moz-range-progress {
+  height: 3px;
+  background: var(--main);
+}
 input[type='range']::-moz-range-track {
   height: 3px;
   background: var(--sub-alt);
@@ -433,6 +444,9 @@ button:disabled {
 }
 .fade-in {
   animation: fadein 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.lyrics-return {
+  animation: fadein 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) 0.4s both;
 }
 .toast-in {
   animation: toast-in 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);

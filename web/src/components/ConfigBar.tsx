@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   Languages,
   AudioLines, AudioWaveform, Clock, Wind, Crosshair, Gauge, Metronome, Minus, Piano, Plus, SignalHigh, SignalLow, SignalMedium, SlidersHorizontal, Spline, Target, Waves,
@@ -7,7 +8,12 @@ import { studio } from '../state/studio'
 import { PREVIEW } from './previews'
 import { cx, Divider, IconToggle, Menu, MenuItem, MenuLabel, Tip, useStudio } from './ui'
 
-const SPEEDS = [0.75, 0.9, 1]
+const SPEEDS = [0.5, 0.75, 0.9, 1, 1.1]
+/** What the analyzer can render: half speed up to 1.25×, in steps of 0.05. */
+const SPEED_MIN = 0.5
+const SPEED_MAX = 1.25
+const SPEED_STEP = 0.05
+const speedLabel = (v: number) => `${+v.toFixed(2)}×`
 const KEY_RANGE = 12
 
 const DETAILS = [
@@ -43,42 +49,27 @@ export function ConfigBar() {
   return (
     <div className="flex justify-center">
       <div className="surface rounded-full px-2 sm:px-3 py-0.5 text-xs flex items-center gap-0.5 sm:gap-2 max-w-full overflow-x-auto [scrollbar-width:none]">
-        <Tip tip={speedWhy ?? 'Slow the song down to learn it. The pitch stays the same.'} preview={speedWhy ? undefined : PREVIEW.speed}>
-          <span className={cx('flex items-center gap-1 text-sub pl-1', speedWhy && 'opacity-40')}>
-            <Gauge size={15} />
-            {SPEEDS.map((v) => (
-              <button key={v} type="button" disabled={!!speedWhy} onClick={() => studio.setVariant(v, s.transpose)}
-                className={cx('px-1 py-1 tabular-nums', s.speed === v ? 'text-main' : 'hover:text-text')}>
-                {v === 1 ? '1×' : `${v}`}
-              </button>
-            ))}
-          </span>
-        </Tip>
+        <Menu
+          tip={speedWhy ?? 'Speed — slow the song down to learn it. The pitch stays the same.'}
+          disabled={!!speedWhy}
+          active={s.speed !== 1}
+          buttonClassName={cx('px-1.5', speedWhy && 'opacity-40')}
+          button={<span className="flex items-center gap-1.5"><Gauge size={15} /><span className="tabular-nums text-xs min-w-[2.4em] text-left">{speedLabel(s.speed)}</span></span>}
+        >
+          {(close) => <SpeedPicker value={s.speed} onPick={(v) => { close(); if (v !== s.speed) studio.setVariant(v, s.transpose) }} />}
+        </Menu>
         <Divider />
-        <span className={cx('flex items-center gap-0.5', keyWhy && 'opacity-40')}>
-          <Tip tip={keyWhy ?? 'Move the music up or down to fit your voice. One step = one piano key.'} preview={keyWhy ? undefined : PREVIEW.key}>
-            <Piano size={15} className="text-sub mx-1" />
-          </Tip>
-          <Tip tip={keyWhy ?? 'One key lower'}>
-            <button type="button" className="p-1 text-sub hover:text-text" disabled={!!keyWhy || s.transpose <= -KEY_RANGE}
-              onClick={() => studio.setVariant(s.speed, s.transpose - 1)} aria-label="key down"><Minus size={13} /></button>
-          </Tip>
-          <Menu
-            tip={keyWhy ?? 'Pick any key'}
-            disabled={!!keyWhy}
-            active={s.transpose !== 0}
-            buttonClassName="w-8 px-0 text-center tabular-nums"
-            button={<>{s.transpose > 0 ? '+' : ''}{s.transpose}</>}
-          >
-            {(close) => (
-              <KeyPicker value={s.transpose} onPick={(k) => { close(); if (k !== s.transpose) studio.setVariant(s.speed, k) }} />
-            )}
-          </Menu>
-          <Tip tip={keyWhy ?? 'One key higher'}>
-            <button type="button" className="p-1 text-sub hover:text-text" disabled={!!keyWhy || s.transpose >= KEY_RANGE}
-              onClick={() => studio.setVariant(s.speed, s.transpose + 1)} aria-label="key up"><Plus size={13} /></button>
-          </Tip>
-        </span>
+        <Menu
+          tip={keyWhy ?? 'Key — move the music up or down to fit your voice. One step = one piano key.'}
+          disabled={!!keyWhy}
+          active={s.transpose !== 0}
+          buttonClassName={cx('px-1.5', keyWhy && 'opacity-40')}
+          button={<span className="flex items-center gap-1.5"><Piano size={15} /><span className="tabular-nums text-xs min-w-[1.6em] text-left">{s.transpose > 0 ? '+' : ''}{s.transpose}</span></span>}
+        >
+          {(close) => (
+            <KeyPicker value={s.transpose} onPick={(k) => { close(); if (k !== s.transpose) studio.setVariant(s.speed, k) }} />
+          )}
+        </Menu>
         {/* bigger screens: metronome, breath marks and the lyrics script */}
         <span className="hidden sm:contents">
         <Divider />
@@ -175,6 +166,53 @@ const SCRIPTS: { id: LyricsScript; label: string; short: string; sample: string;
   { id: 'deva', label: 'हिंदी', short: 'हि', sample: 'तुम', tip: 'Devanagari script.' },
   { id: 'urdu', label: 'اردو', short: 'ار', sample: 'تم', tip: 'Urdu (Nastaliq) script, right to left.' },
 ]
+
+/**
+ * Speed: a slider for any speed from 0.5× to 1.25×, and the usual ones one tap away.
+ * The song is converted once you let go (not on every step of the drag).
+ */
+function SpeedPicker({ value, onPick }: { value: number; onPick: (v: number) => void }) {
+  const [draft, setDraft] = useState(value)
+  const input = useRef<HTMLInputElement>(null)
+  const pick = useRef(onPick)
+  useEffect(() => {
+    pick.current = onPick
+  })
+  // the native "change" fires once, when the slider is let go (React's onChange fires on every step)
+  useEffect(() => {
+    const el = input.current!
+    const commit = () => pick.current(+(Math.round(Number(el.value) / SPEED_STEP) * SPEED_STEP).toFixed(2))
+    el.addEventListener('change', commit)
+    return () => el.removeEventListener('change', commit)
+  }, [])
+  const pct = ((draft - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * 100
+  return (
+    <div>
+      <MenuLabel>speed · the pitch stays the same</MenuLabel>
+      <div className="flex items-baseline justify-center gap-1 pt-1 pb-2">
+        <span className="text-2xl font-medium tabular-nums text-text">{+draft.toFixed(2)}</span>
+        <span className="text-sm text-sub">×</span>
+      </div>
+      <div className="px-1">
+        <input type="range" min={SPEED_MIN} max={SPEED_MAX} step={SPEED_STEP} value={draft} aria-label="speed"
+          className="speed-range w-full" style={{ '--fill': `${pct}%` } as CSSProperties}
+          ref={input} onChange={(e) => setDraft(Number(e.target.value))} />
+        <div className="flex justify-between text-[10px] text-sub/70 tabular-nums -mt-0.5">
+          <span>{speedLabel(SPEED_MIN)}</span><span>{speedLabel(SPEED_MAX)}</span>
+        </div>
+      </div>
+      <div className="flex gap-1 px-1 mt-2">
+        {SPEEDS.map((v) => (
+          <button key={v} type="button" onClick={() => onPick(v)}
+            className={cx('flex-1 h-7 rounded-md text-[11px] tabular-nums transition-colors',
+              v === value ? 'bg-main text-bg' : 'text-sub hover:text-text hover:bg-bg/40')}>
+            {speedLabel(v)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 /** Every key from −12 to +12 in one grid — jump straight to the one that fits your voice. */
 function KeyPicker({ value, onPick }: { value: number; onPick: (k: number) => void }) {

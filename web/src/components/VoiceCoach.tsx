@@ -20,7 +20,7 @@ export function VoiceCoach({ issue }: { issue: VoiceIssue | null }) {
   const Icon = ICON[issue]
   const { title, hint } = ISSUE_TEXT[issue]
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center px-3" role="status" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center px-12" role="status" aria-live="polite">
       <div key={issue} className="coach-in flex items-start gap-3 max-w-md rounded-2xl modal-card shadow-xl px-4 py-3">
         <span className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-main/15 text-main flex items-center justify-center">
           <Icon size={16} />

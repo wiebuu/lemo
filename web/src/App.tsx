@@ -7,11 +7,11 @@ import { Header, type Panel } from './components/Header'
 import { LiveStats } from './components/LiveStats'
 import { LoadPanel } from './components/LoadPanel'
 import { takeChallenge, takeLinkedSong } from './lib/linkedSong'
-import { Lyrics } from './components/Lyrics'
+import { FocusLyrics, Lyrics } from './components/Lyrics'
 import { PlayerBar } from './components/PlayerBar'
 import { ResultsPanel, VoiceSwitch } from './components/Results'
 import { BusyCard, cx, Modal, Tip, usePhone, useStudio } from './components/ui'
-import { Keyboard } from 'lucide-react'
+import { ChartSpline, Keyboard, TextQuote } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { studio } from './state/studio'
 import { TopCelebration } from './components/TopCelebration'
@@ -34,6 +34,7 @@ export default function App() {
   const headphones = useHeadphoneNotice(s.session)
   const close = useCallback(() => setPanel(null), [])
   const results = !!s.lastResult && !s.session
+  const lyricsOnly = s.settings.lyricsOnly
 
   useEffect(() => {
     document.documentElement.dataset.theme = s.settings.theme
@@ -126,14 +127,26 @@ export default function App() {
             )) : undefined} />
           </ErrorBoundary>
           {/* phones: a little air between the song's name and the graph */}
-          <div className={cx('flex-1 min-h-0 flex flex-col', phone && 'pt-2')}>
-            <ErrorBoundary label="graph"><Graph onImport={() => setPanel('load')} /></ErrorBoundary>
+          <div className={cx('relative flex-1 min-h-0 flex flex-col', phone && 'pt-2')}>
+            <ErrorBoundary label="graph">
+              <Graph onImport={() => setPanel('load')} hidden={lyricsOnly} overlay={lyricsOnly && (
+                <div className="fade-in absolute inset-0 flex items-center justify-center">
+                  <FocusLyrics onFix={() => setPanel('fixlyrics')} />
+                </div>
+              )} />
+            </ErrorBoundary>
+            <StageToggle lyricsOnly={lyricsOnly} />
           </div>
           {/* fixed-height slot under the graph: lyrics, or the results panel after a test */}
           <div className={cx('shrink-0 flex flex-col justify-center transition-[height] duration-500',
-            phone ? (results ? 'h-[12rem] py-1' : 'h-[6rem] py-0.5') : results ? 'h-[10rem] py-4' : 'h-[8rem] py-4')}>
+            phone ? (results ? 'h-[12rem] py-1' : lyricsOnly ? 'h-0' : 'h-[6rem] py-0.5') : results ? 'h-[10rem] py-4' : lyricsOnly ? 'h-0' : 'h-[8rem] py-4')}>
             <ErrorBoundary label="results">
-              {results ? <ResultsPanel big={false} /> : <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />}
+              {results ? <ResultsPanel big={false} /> : lyricsOnly ? null : (
+                // back from lyrics only: shown once the slot has opened again, never spilling over the player
+                <div className="lyrics-return flex-1 min-h-0 flex flex-col justify-center">
+                  <Lyrics onEdit={() => setPanel('lyrics')} onFix={() => setPanel('fixlyrics')} big={s.session} />
+                </div>
+              )}
             </ErrorBoundary>
           </div>
         </main>
@@ -202,6 +215,26 @@ export default function App() {
       {panel === 'tutorial' && <Tutorial onClose={close} />}
       {panel === 'calibrate' && <Calibration onClose={() => setPanel('settings')} />}
       </Suspense>
+    </div>
+  )
+}
+
+/**
+ * Graph ⇄ lyrics only, in the stage's top-right corner: there in practice, while
+ * singing and on the results, so the graph is always one tap away.
+ */
+function StageToggle({ lyricsOnly }: { lyricsOnly: boolean }) {
+  const Icon = lyricsOnly ? ChartSpline : TextQuote
+  return (
+    <div className="absolute top-0 right-0 z-20">
+      <Tip tip={lyricsOnly ? 'Show the graph again' : 'Lyrics only — hide the graph (it keeps listening)'}>
+        <button type="button" aria-pressed={lyricsOnly} aria-label={lyricsOnly ? 'show the graph' : 'lyrics only'}
+          onClick={() => studio.updateSettings({ lyricsOnly: !lyricsOnly })}
+          className="surface h-8 flex items-center gap-1.5 rounded-full px-2.5 text-[11px] text-sub hover:text-text transition-colors">
+          <Icon size={14} />
+          <span className="hidden sm:inline">{lyricsOnly ? 'graph' : 'lyrics only'}</span>
+        </button>
+      </Tip>
     </div>
   )
 }

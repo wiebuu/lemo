@@ -51,6 +51,8 @@ export interface Settings {
   showBreaths: boolean
   /** Lyrics script: as found, Hinglish (latin), Hindi (deva) or Urdu. */
   lyricsScript: LyricsScript
+  /** Lyrics only: the graph steps aside (it keeps running) and the lyrics sit big in the centre. */
+  lyricsOnly: boolean
   layers: GraphLayers
   /** Which default set of layers the saved ones were made from (see LAYERS_VERSION). */
   layersVersion: number
@@ -81,6 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showHistory: false,
   showBreaths: true,
   lyricsScript: 'original',
+  lyricsOnly: false,
   layers: { shape: true, loudness: true, exact: true, timing: false },
   layersVersion: 3,
   disco: false,

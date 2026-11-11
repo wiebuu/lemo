@@ -1,8 +1,12 @@
 """Emails to singers: "the song you asked for is in Lemody now", and to Lemody's owner
 (LEMO_OWNER_EMAIL) about each song a singer asks for.
 
-Sent through Gmail SMTP with EMAIL_USER / EMAIL_PASS (an app password) from analyzer/.env.
-Without them nothing is sent. Sending happens in a background thread, so a slow or
+Two ways to send, from analyzer/.env:
+- MAIL_RELAY_URL + MAIL_RELAY_SECRET: a Google Apps Script web app on the Gmail account
+  (tools/mail-relay.gs) that sends what it's given, over HTTPS. For the VPS, whose host
+  blocks the mail ports (465 / 587).
+- EMAIL_USER / EMAIL_PASS: Gmail SMTP with an app password.
+Without either nothing is sent. Sending happens in a background thread, so a slow or
 failing mail server never holds up the song list."""
 
 from __future__ import annotations
@@ -11,7 +15,9 @@ import html
 import os
 import smtplib
 import ssl
+import json
 import threading
+import urllib.request
 from email.message import EmailMessage
 
 from . import config  # noqa: F401  (loads analyzer/.env into the environment)
@@ -25,10 +31,21 @@ def _creds() -> tuple[str, str] | None:
     return (user, pw) if user and pw else None
 
 
+def _relay() -> tuple[str, str] | None:
+    url = os.environ.get("MAIL_RELAY_URL", "").strip()
+    secret = os.environ.get("MAIL_RELAY_SECRET", "").strip()
+    return (url, secret) if url.startswith("https://") and secret else None
+
+
 def can_send() -> bool:
-    """A mail account is set (the Mac). The VPS has none, as its host blocks mail ports: it
-    leaves requested songs for the Mac to deliver, so nobody misses their email."""
-    return _creds() is not None
+    """Email can go out from here: through the relay, or a Gmail account."""
+    return _relay() is not None or _creds() is not None
+
+
+def _from() -> str:
+    """The address emails are from (with the relay, Gmail sends them as its own account)."""
+    c = _creds()
+    return c[0] if c else os.environ.get("MAIL_FROM", "wiecodes@gmail.com").strip()
 
 
 def song_added_message(sender: str, to: str, name: str | None, title: str | None, artist: str | None, song_id: str) -> EmailMessage:
@@ -50,9 +67,14 @@ def song_added_message(sender: str, to: str, name: str | None, title: str | None
     return msg
 
 
-def _send(messages: list[EmailMessage], creds: tuple[str, str]) -> bool:
-    """False when the mail server couldn't be reached (the VPS, for one, can't: its host
-    blocks mail ports)."""
+def _send(messages: list[EmailMessage]) -> bool:
+    """Send through the relay if there is one, else Gmail SMTP. False when nothing went out."""
+    relay = _relay()
+    if relay:
+        return _send_relay(messages, *relay)
+    creds = _creds()
+    if not creds:
+        return False
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context(), timeout=30) as s:
             s.login(*creds)
@@ -67,16 +89,40 @@ def _send(messages: list[EmailMessage], creds: tuple[str, str]) -> bool:
         return False
 
 
+def _send_relay(messages: list[EmailMessage], url: str, secret: str) -> bool:
+    """Each message to the Apps Script relay as JSON. True when at least one went out."""
+    ok = False
+    for m in messages:
+        html_part = m.get_body(("html",))
+        body = {
+            "secret": secret,
+            "to": str(m["To"]),
+            "subject": str(m["Subject"]),
+            "text": m.get_body(("plain",)).get_content(),
+            "html": html_part.get_content() if html_part else "",
+        }
+        req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:  # Apps Script answers via a redirect: followed
+                answer = r.read().decode(errors="replace").strip()
+            if answer == "ok":
+                ok = True
+            else:
+                print(f"mail relay refused {m['To']}: {answer[:200]}", flush=True)
+        except Exception as e:
+            print(f"could not reach the mail relay for {m['To']}: {e}", flush=True)
+    return ok
+
+
 def notify_song_added(people: list[dict], title: str | None, artist: str | None, song_id: str, wait: bool = False) -> int:
     """Email everyone in `people` ({email, name}) that their requested song is in. Returns
     how many emails are going out."""
-    creds = _creds()
-    if not creds:
+    if not can_send():
         return 0
-    msgs = [song_added_message(creds[0], p["email"], p.get("name"), title, artist, song_id)
+    msgs = [song_added_message(_from(), p["email"], p.get("name"), title, artist, song_id)
             for p in people if p.get("email") and "@" in p["email"]]
     if msgs:
-        t = threading.Thread(target=_send, args=(msgs, creds), daemon=True, name="lemo-mail")
+        t = threading.Thread(target=_send, args=(msgs,), daemon=True, name="lemo-mail")
         t.start()
         if wait:
             t.join()
@@ -105,7 +151,7 @@ def song_requested_message(sender: str, to: str, r: dict) -> EmailMessage:
 def tell_owner(requests: list[dict]) -> bool:
     """Email the owner (LEMO_OWNER_EMAIL) one message per request, right away. True when
     they went out; False when they couldn't (no account or owner set, or no mail server)."""
-    creds, owner = _creds(), os.environ.get("LEMO_OWNER_EMAIL", "").strip()
-    if not creds or "@" not in owner:
+    owner = os.environ.get("LEMO_OWNER_EMAIL", "").strip()
+    if not can_send() or "@" not in owner:
         return False
-    return not requests or _send([song_requested_message(creds[0], owner, r) for r in requests], creds)
+    return not requests or _send([song_requested_message(_from(), owner, r) for r in requests])

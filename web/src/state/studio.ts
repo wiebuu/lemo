@@ -665,14 +665,18 @@ export class Studio {
     const job = ++this.lyricsJob
     const track = this.snap.track
     if (!track || !this.analyzerId) return
-    // lyrics found automatically for an older name of this song (it was renamed): look again
-    if (this.prefs.lyrics && !this.prefs.lyricsMine && this.baseTrack && this.prefs.lyricsFor !== lyricsKey(this.baseTrack)) {
+    // lyrics found automatically for an older name of this song (it was renamed), or the
+    // server has newer ones (found, pasted in admin, transcribed since): look again. A
+    // singer's own lyrics are never replaced.
+    const newer = !!this.baseTrack?.lyricsAt && this.baseTrack.lyricsAt > (this.prefs.lyricsAt ?? 0)
+    if (this.prefs.lyrics && !this.prefs.lyricsMine && this.baseTrack && (this.prefs.lyricsFor !== lyricsKey(this.baseTrack) || newer)) {
       this.savePrefs({ lyrics: undefined, lyricsFor: undefined })
       this.rebuildTrack()
     }
     if (!this.snap.lyrics.length) {
       this.set({ lyricsStatus: 'finding lyrics' })
       let lines: LyricLine[] = []
+      let preparedAt: number | undefined
       try {
         const vid = this.analyzerId.startsWith('yt-') ? this.analyzerId.slice(3) : undefined
         const r = await analyzer.lyrics(track.title, track.artist ?? '', track.duration, vid, this.analyzerId ?? undefined)
@@ -683,6 +687,7 @@ export class Studio {
             ? r.candidates.find((c) => c.synced && c.script === want && c.duration && Math.abs(c.duration - track.duration) <= 2)
             : undefined
         const pick = alt ?? r
+        preparedAt = r.preparedAt
         if (!alt && r.timed?.some((l) => l.start !== null)) {
           // found and timed to the singer ahead of time: line and word timing ready to use
           lines = r.timed.map((l, i) => ({
@@ -698,6 +703,7 @@ export class Studio {
       if (job !== this.lyricsJob) return
       if (!lines.length) return this.set({ lyricsStatus: null })
       this.setLyrics(lines, false, false)
+      this.savePrefs({ lyricsAt: preparedAt ?? this.baseTrack?.lyricsAt })
       if (lines.every((l) => l.start === null)) return // being timed to the singer (timePlainLyrics)
     }
     await this.alignWords(job)

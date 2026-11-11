@@ -77,6 +77,8 @@ export interface ReferenceTrack {
   melodySource: string
   /** One of the server's featured songs (kept there; not copied into the browser). */
   featured?: boolean
+  /** when the server's lyrics for this song last changed (seconds): newer than what was saved → reload them */
+  lyricsAt?: number
   loudness?: LoudnessEnvelope
   harmony?: HarmonySegment[]
   /** 'exact' (demo, known chords) or 'estimated' (chroma analysis of the backing). */

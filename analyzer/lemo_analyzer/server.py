@@ -111,6 +111,9 @@ def _startup() -> None:
         from . import lyrics_prep
 
         lyrics_prep.catch_up_forever()  # stored songs still without lyrics, while idle
+        from . import align_queue
+
+        align_queue.serve_forever()  # lyrics pasted on the VPS, timed here
         remote.push_models(CONFIG.data_dir / "models")  # for browsers that analyse songs themselves
         if CONFIG.enable_youtube:
             # every song's YouTube views, once a week (between songs being analysed)
@@ -502,6 +505,10 @@ def reference(song_id: str) -> dict:
     storage.touch(d)
     _active()
     ref["featured"] = d.name in storage.featured_ids()
+    try:  # when this song's lyrics were last found / pasted / transcribed (the site reloads newer ones)
+        ref["lyricsAt"] = json.loads((d / "lyrics.json").read_text()).get("preparedAt")
+    except (OSError, json.JSONDecodeError):
+        pass
     return ref
 
 
@@ -991,9 +998,20 @@ def align_plain_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     cache = d / f"align-{key}.json"
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
-    if not _can_align():  # no alignment model here: lines timed to the sung phrases instead
-        from . import phrase_timing
+    if not _can_align():
+        # no model here (the VPS): the Mac that analyses songs times them; only if it doesn't
+        # get to it in a few minutes are the lines timed roughly, to the sung phrases
+        from . import align_queue, phrase_timing
 
+        if align_queue.available():
+            got = align_queue.result(song_id, key)
+            if got and got.get("lines") is not None:
+                cache.write_text(json.dumps(got["lines"]))
+                return {"status": "done", "lines": got["lines"]}
+            if got and got.get("error"):
+                return {"status": "failed", "error": got["error"]}
+            if align_queue.ask(song_id, key, {"kind": "plain", "lines": lines, "span": list(span)}) < align_queue.WAIT_SEC:
+                return {"status": "running", "message": "timing the lyrics to the singer"}
         return {"status": "done", "lines": phrase_timing.time_lines(lines, ref.get("notes", []), float(ref.get("duration") or 0))}
     with _align_lock:
         job = _align_jobs.get(key)
@@ -1041,7 +1059,18 @@ def align_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
     if not _can_align():
-        return {"status": "unavailable"}  # line timing stays; words are estimated in the browser
+        # no model here (the VPS): the Mac times the words; if it doesn't get to it soon,
+        # the line timing stays and words are estimated in the browser
+        from . import align_queue
+
+        if align_queue.available():
+            got = align_queue.result(song_id, key)
+            if got and got.get("lines") is not None:
+                cache.write_text(json.dumps(got["lines"]))
+                return {"status": "done", "lines": got["lines"]}
+            if not (got and got.get("error")) and align_queue.ask(song_id, key, {"kind": "lines", "lines": lines}) < align_queue.WAIT_SEC:
+                return {"status": "running", "message": "timing each word to the singer"}
+        return {"status": "unavailable"}
     with _align_lock:
         job = _align_jobs.get(key)
         if job and job["status"] == "failed":

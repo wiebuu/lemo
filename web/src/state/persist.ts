@@ -102,6 +102,8 @@ export interface SongPrefs {
   lyricsMine?: boolean
   /** found automatically for this "title · artist" — looked up again if the song is renamed */
   lyricsFor?: string
+  /** the server's lyrics were from this time (its lyricsAt): newer ones there replace these */
+  lyricsAt?: number
   breaths?: BreathMark[]
   chart?: { notes: ReferenceNote[]; source: string; tempo?: number }
   offsetMs?: number

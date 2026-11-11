@@ -44,6 +44,8 @@ export interface LyricsResult extends Omit<LyricsCandidate, 'source' | 'script'>
   candidates: LyricsCandidate[]
   failedSources: string[]
   /** the best version already timed to the singer (prepared ahead of time on the server) */
+  /** when the server found / was given these lyrics (seconds) */
+  preparedAt?: number
   timed?: { start: number | null; end: number | null; text: string; words?: { start: number; end: number; text: string }[] | null }[]
 }
 

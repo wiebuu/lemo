@@ -1,8 +1,8 @@
 import { useEffect, type CSSProperties, type RefObject } from 'react'
-import { ALargeSmall, ChartSpline, TextQuote } from 'lucide-react'
+import { ALargeSmall, Captions, ChartSpline } from 'lucide-react'
 import { LYRICS_SCALE } from '../state/persist'
 import { studio } from '../state/studio'
-import { cx, Divider, Menu, MenuLabel, Tip, usePhone, useStudio } from './ui'
+import { cx, Divider, Menu, MenuLabel, Tip, useStudio } from './ui'
 
 const clampScale = (v: number) => Math.round(Math.min(LYRICS_SCALE.max, Math.max(LYRICS_SCALE.min, v)) * 100) / 100
 const pct = (v: number) => `${Math.round(v * 100)}%`
@@ -13,31 +13,30 @@ const pct = (v: number) => `${Math.round(v * 100)}%`
  */
 export function ViewControls({ round }: { /** results row: round icon buttons like its neighbours */ round?: boolean }) {
   const s = useStudio()
-  const phone = usePhone()
   const lyricsOnly = s.settings.lyricsOnly
-  const ToggleIcon = lyricsOnly ? ChartSpline : TextQuote
+  // lyrics only: captions (the lyrics on their own); back to the graph: the melody line
+  const ToggleIcon = lyricsOnly ? ChartSpline : Captions
   const toggle = (
     <Tip tip={lyricsOnly ? 'Show the graph again' : 'Lyrics only — hide the graph (it keeps listening)'}>
       <button type="button" aria-pressed={lyricsOnly} aria-label={lyricsOnly ? 'show the graph' : 'lyrics only'}
         onClick={() => studio.updateSettings({ lyricsOnly: !lyricsOnly })}
         className={round
-          ? 'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sub hover:text-text hover:bg-sub-alt transition-colors'
+          ? 'w-9 h-9 rounded-full flex items-center justify-center text-sub hover:text-text hover:bg-sub-alt transition-colors'
           : 'flex items-center gap-1.5 p-1.5 rounded-md text-sub hover:text-text transition-colors'}>
-        <ToggleIcon size={round ? 18 : 15} />
+        <ToggleIcon size={round ? 17 : 15} />
         {!round && <span className="hidden sm:inline text-xs">{lyricsOnly ? 'graph' : 'lyrics only'}</span>}
       </button>
     </Tip>
   )
   const size = (
-    <Menu tip="Lyrics size — or pinch the lyrics (⌘ / ctrl + scroll on a computer)"
-      active={s.settings.lyricsScale !== 1}
+    <Menu tip={`Lyrics size · ${pct(s.settings.lyricsScale)} — or pinch the lyrics (⌘ / ctrl + scroll on a computer)`}
       buttonClassName={round ? 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-sub-alt' : 'px-1.5'}
       button={<span className="flex items-center gap-1.5"><ALargeSmall size={round ? 18 : 16} /></span>}>
       <LyricsSize />
     </Menu>
   )
-  // results row on phones: just the toggle (no room to spare; pinching sets the size there)
-  if (round) return <>{!phone && size}{toggle}</>
+  // results row: just the graph / lyrics toggle, beside ✕ (the size is a pinch away, and in the pill before singing)
+  if (round) return toggle
   return (
     <div className="surface rounded-full px-2 sm:px-3 py-0.5 text-xs flex items-center gap-0.5 sm:gap-2 shrink-0">
       {size}

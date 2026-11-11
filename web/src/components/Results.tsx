@@ -83,17 +83,19 @@ export function ListenControls({ noSwitch }: { /** the you / song switch is show
       {s.canReplay && s.replay && !phone && ( // phones: kept simple
         <Tip tip="Voice effects: tune, pitch, echo, reverb">
           <button type="button" onClick={() => { setFxOpen((o) => !o); studio.setListenSource('me') }} aria-label="voice effects" aria-pressed={fxOpen}
-            className={cx('relative w-10 h-10 rounded-full flex items-center justify-center transition-colors', fxOpen ? 'bg-main text-bg' : 'text-sub hover:text-text hover:bg-sub-alt')}>
-            <SlidersHorizontal size={19} />
+            className={cx('relative w-9 h-9 rounded-full flex items-center justify-center transition-colors', fxOpen ? 'bg-main text-bg' : 'text-sub hover:text-text hover:bg-sub-alt')}>
+            <SlidersHorizontal size={17} />
             {fxOn && !fxOpen && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-main" />}
           </button>
         </Tip>
       )}
+      {/* how it looks and leaving, apart from the listening controls */}
+      {(s.canReplay && (!noSwitch || (s.replay && !phone))) && <span aria-hidden className="w-px h-5 bg-line mx-1" />}
       <ViewControls round />
       <Tip tip="Back to practice">
         <button type="button" onClick={() => studio.leaveReview()} aria-label="back to practice"
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-sub flex items-center justify-center hover:text-text hover:bg-sub-alt">
-          <X size={19} />
+          className="w-9 h-9 rounded-full text-sub flex items-center justify-center hover:text-text hover:bg-sub-alt">
+          <X size={18} />
         </button>
       </Tip>
     </div>

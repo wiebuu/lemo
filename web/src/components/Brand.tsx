@@ -3,6 +3,14 @@ import { cx } from './ui'
 /** The mark: a sung line — nothing else. */
 export const WAVE_PATH = 'M2 14 C7 14 8 5 13 5 S20 19 26 19 S33 8 38 8 S44 13 46 13'
 
+/**
+ * Every loading animation runs on one clock that starts when the page opens (index.html's
+ * loading screen does the same), so React taking over never makes the wave jump.
+ * Worked out once: a new delay on a re-render would restart the animation mid-sweep.
+ */
+let delay: string | null = null
+const loadingDelay = () => (delay ??= `-${Math.round(performance.now())}ms`)
+
 export function Wave({ className, draw }: { className?: string; /** sweeps in and out (loading) */ draw?: boolean }) {
   const svg = (
     <svg viewBox="0 0 48 24" className={cx('overflow-visible', draw ? undefined : className)} aria-hidden>
@@ -10,9 +18,8 @@ export function Wave({ className, draw }: { className?: string; /** sweeps in an
     </svg>
   )
   if (!draw) return svg
-  // carry on from where the page's own loading screen was, instead of starting over
   return (
-    <span className="wave-reveal" style={{ animationDelay: `-${Math.round(performance.now())}ms` }}>
+    <span className="wave-reveal" style={{ animationDelay: loadingDelay() }}>
       <span>{svg}</span>
     </span>
   )
@@ -35,12 +42,12 @@ export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
  */
 export function Splash({ label }: { label?: string }) {
   return (
-    <div className="splash h-dvh flex flex-col items-center justify-center px-6" role="status" aria-live="polite">
+    <div className="h-dvh flex flex-col items-center justify-center px-6" role="status" aria-live="polite">
       <div className="flex flex-col items-center">
         <Wave draw />
         <div className="mt-5 text-[28px] font-semibold tracking-[-0.03em] leading-none text-text">lemody</div>
         <div className="mt-6 h-[2px] w-28 rounded-full bg-sub-alt overflow-hidden">
-          <div className="busy-indeterminate h-full w-1/3 rounded-full bg-main" style={{ animationDelay: `-${Math.round(performance.now())}ms` }} />
+          <div className="busy-indeterminate h-full w-1/3 rounded-full bg-main" style={{ animationDelay: loadingDelay() }} />
         </div>
         <div className="mt-3 h-4 text-[11px] text-sub">{label ?? ''}</div>
       </div>

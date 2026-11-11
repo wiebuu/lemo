@@ -115,6 +115,12 @@
     </style>
     <script>
       // match the saved theme's colours, so the loading screen doesn't flash a different background
+      // run the animations on a clock that starts when the page opens; React's loading screen
+      // uses the same clock, so the wave carries straight on when it takes over
+      try {
+        var d = '-' + Math.round(performance.now()) + 'ms'
+        ;[].forEach.call(document.querySelectorAll('#boot .w, #boot .w > span, #boot .bar i'), function (e) { e.style.animationDelay = d })
+      } catch (e) {}
       try {
         var s = JSON.parse(localStorage.getItem('lemo.settings') || '{}') || {}
         var t = s.themePicked ? s.theme : 'mono'

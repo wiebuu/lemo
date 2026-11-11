@@ -4,14 +4,14 @@ import { startCloud, stopCloud } from '../state/cloud'
 import { SiteFooter } from '../pages/Footer'
 import { Splash, Wordmark } from './Brand'
 
-const SPLASH_MS = 1800
+const SPLASH_MS = 2000
 
 /** Lemody opens for everyone: a guest can find, open and sing any song. Signing in with
  * Google (the header's button) keeps your settings, songs and scores in your account. */
 export function AuthGate({ children }: { children: ReactNode }) {
   const a = useAuth()
   const uid = a.status === 'signed-in' ? a.user.uid : null
-  // the loading screen always plays through once (the wave draws in ~1.1 s), even when sign-in is instant
+  // the loading screen always plays through once (until the wave has fully swept in, at 1.9 s), even when sign-in is instant
   const [shown, setShown] = useState(() => performance.now() >= SPLASH_MS)
   useEffect(() => {
     if (shown) return

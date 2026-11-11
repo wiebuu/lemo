@@ -108,6 +108,13 @@ ul.songs li span{color:var(--sub);font-size:14px;text-align:right}
 .tags a{display:inline-block;margin:0 6px 8px 0;padding:4px 12px;border:1px solid var(--line);border-radius:999px;text-decoration:none;font-size:14px;color:var(--sub)}
 footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--sub);font-size:13px;line-height:2}
 footer a{color:var(--sub);margin-right:14px;text-decoration:none}
+ul.songs li[hidden],.guide-list li[hidden]{display:none}
+.pager{display:flex;justify-content:center;align-items:center;gap:4px;margin:12px 0 4px;font-size:13px}
+.pager button{min-width:32px;height:32px;padding:0 6px;border:0;border-radius:999px;background:none;color:var(--sub);font:inherit;cursor:pointer}
+.pager button:hover{color:var(--text)}
+.pager button[aria-current]{background:var(--text);color:var(--bg);font-weight:600}
+.pager button:disabled{opacity:.3;cursor:default}
+.pager span{width:24px;text-align:center;color:var(--sub)}
 #ck{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:calc(100% - 32px);max-width:440px;display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;font-size:12px;color:var(--sub)}
 #ck span{flex:1}#ck a{color:var(--sub)}
 #ck button{border:0;border-radius:999px;background:var(--text);color:var(--bg);font:600 12px inherit;padding:6px 14px;cursor:pointer}
@@ -126,6 +133,14 @@ ${body}
 <footer>${FOOTER.map(([href, label]) => `<a href="${href}">${esc(label)}</a>`).join('')}<br>© ${new Date().getFullYear()} Lemody · made by <a href="https://wiecodes.com/about">Wiecodes</a></footer>
 </div>
 <div id="ck" hidden><span>Lemody uses cookies for sign-in and ads. <a href="/privacy">Privacy</a></span><button type="button">OK</button></div>
+<script>
+/* long lists: 20 at a time (every link stays in the page for search engines) */
+(function(){var N=20;document.querySelectorAll('ul.songs,ul.guide-list').forEach(function(ul){var li=[].slice.call(ul.children);if(li.length<=N)return;var pages=Math.ceil(li.length/N),at=0,nav=document.createElement('nav');nav.className='pager';nav.setAttribute('aria-label','pages');ul.after(nav);
+function list(){var keep=[0,pages-1,at-2,at-1,at,at+1,at+2].filter(function(p,i,a){return p>=0&&p<pages&&a.indexOf(p)===i}).sort(function(a,b){return a-b}),out=[];keep.forEach(function(p,i){if(i&&p-keep[i-1]>1)out.push(-1);out.push(p)});return out}
+function btn(label,p,cur,dis,aria){var b=document.createElement('button');b.type='button';b.textContent=label;if(aria)b.setAttribute('aria-label',aria);if(cur)b.setAttribute('aria-current','page');b.disabled=!!dis;b.onclick=function(){go(p,true)};return b}
+function go(p,scroll){at=p;li.forEach(function(l,i){l.hidden=i<at*N||i>=(at+1)*N});nav.textContent='';nav.append(btn('‹',at-1,0,at===0,'previous page'));list().forEach(function(q){if(q<0){var s=document.createElement('span');s.textContent='…';nav.append(s)}else nav.append(btn(String(q+1),q,q===at))});nav.append(btn('›',at+1,0,at===pages-1,'next page'));if(scroll&&ul.getBoundingClientRect().top<0)ul.scrollIntoView({block:'start'})}
+go(0)})})();
+</script>
 <script>try{var k='lemo.cookieNote',c=document.getElementById('ck');if(!localStorage.getItem(k)){c.hidden=false;c.querySelector('button').onclick=function(){localStorage.setItem(k,'1');c.hidden=true}}}catch(e){}</script>
 </body>
 </html>

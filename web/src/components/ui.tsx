@@ -449,3 +449,61 @@ export function BusyCard({ label, progress, detail }: { label: string; progress:
     </div>
   )
 }
+
+/** Lists everywhere show this many rows to a page. */
+export const PAGE_SIZE = 20
+
+/**
+ * One page of a list. `reset` (a search, a filter…) goes back to the first page when it
+ * changes; a list that shrinks (an item removed) never strands you past its last page.
+ */
+export function usePaged<T>(items: T[], reset: unknown = null, size = PAGE_SIZE) {
+  const [page, setPage] = useState(0)
+  const key = JSON.stringify(reset)
+  useEffect(() => setPage(0), [key])
+  const pages = Math.max(1, Math.ceil(items.length / size))
+  const at = Math.min(page, pages - 1)
+  return { items: items.slice(at * size, (at + 1) * size), offset: at * size, at, pages, go: setPage }
+}
+
+/** Pages to offer: the first, the last, and two either side of this one (… between). */
+function pageList(at: number, pages: number): (number | '…')[] {
+  const keep = new Set([0, pages - 1, at - 2, at - 1, at, at + 1, at + 2].filter((p) => p >= 0 && p < pages))
+  const out: (number | '…')[] = []
+  ;[...keep].sort((a, b) => a - b).forEach((p, i, arr) => {
+    if (i && p - arr[i - 1] > 1) out.push('…')
+    out.push(p)
+  })
+  return out
+}
+
+/**
+ * ‹ 1 2 3 … 9 › under a list (nothing when it fits on one page). Going to a page brings
+ * the top of the list (the element just before this) back into view.
+ */
+export function Pager({ at, pages, onPage }: { at: number; pages: number; onPage: (page: number) => void }) {
+  const nav = useRef<HTMLElement>(null)
+  if (pages <= 1) return null
+  const go = (p: number) => {
+    onPage(p)
+    nav.current?.previousElementSibling?.scrollIntoView({ block: 'nearest' })
+  }
+  return (
+    <nav ref={nav} aria-label="pages" className="not-prose flex items-center justify-center gap-1 pt-3 pb-1 text-xs">
+      <button type="button" aria-label="previous page" disabled={at === 0} onClick={() => go(at - 1)}
+        className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">‹</button>
+      {pageList(at, pages).map((p, i) =>
+        p === '…' ? (
+          <span key={`gap${i}`} className="w-6 text-center text-sub">…</span>
+        ) : (
+          <button key={p} type="button" aria-current={p === at ? 'page' : undefined} onClick={() => go(p)}
+            className={cx('min-w-8 h-8 px-1 rounded-full tabular-nums', p === at ? 'bg-main text-bg font-medium' : 'text-sub hover:text-text')}>
+            {p + 1}
+          </button>
+        ),
+      )}
+      <button type="button" aria-label="next page" disabled={at === pages - 1} onClick={() => go(at + 1)}
+        className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">›</button>
+    </nav>
+  )
+}

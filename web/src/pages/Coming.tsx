@@ -5,7 +5,7 @@ import { useAuth } from '../auth/firebase'
 import { songLink } from '../lib/songLinks'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
-import { cx } from '../components/ui'
+import { cx, Pager, usePaged } from '../components/ui'
 import { navigate } from './router'
 
 const DeviceRun = lazy(() => import('../components/DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
@@ -41,6 +41,8 @@ function site(url: string): string {
 export function ComingPage() {
   const auth = useAuth()
   const [board, setBoard] = useState<RequestBoard | null>(null)
+  const waiting = usePaged(board?.pending ?? [])
+  const added = usePaged(board?.added ?? [])
   const [err, setErr] = useState<string | null>(null)
   const [device, setDevice] = useState<{ ok: boolean; why?: string } | null>(null)
   const [running, setRunning] = useState<{ songId: string; src: string | File } | null>(null)
@@ -103,7 +105,7 @@ export function ComingPage() {
             <p>Nothing waiting — every song asked for is in. <a href="#ask" onClick={(e) => { e.preventDefault(); setAsking(true) }}>Ask for one</a>.</p>
           )}
           <ul className="not-prose border-t border-line" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {board.pending.map((r) => {
+            {waiting.items.map((r) => {
               const t = tidyTitle(r.title ?? '', r.artist ?? '')
               const fileLink = songLink(r.url)?.kind === 'file'
               const here = running?.songId === r.songId
@@ -146,12 +148,13 @@ export function ComingPage() {
               )
             })}
           </ul>
+          <Pager at={waiting.at} pages={waiting.pages} onPage={waiting.go} />
 
           {board.added.length > 0 && (
             <>
               <h2>Added this week · {board.added.length}</h2>
               <ul className="not-prose border-t border-line" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {board.added.map((r) => {
+                {added.items.map((r) => {
                   const t = tidyTitle(r.title ?? '', r.artist ?? '')
                   return (
                     <li key={r.songId} className="border-b border-line py-2.5 flex items-center gap-3" style={{ margin: 0 }}>
@@ -171,6 +174,7 @@ export function ComingPage() {
                   )
                 })}
               </ul>
+              <Pager at={added.at} pages={added.pages} onPage={added.go} />
             </>
           )}
           <p className="mt-6">Want a song that isn’t here? <a href="#ask" onClick={(e) => { e.preventDefault(); setAsking(true) }}>Paste its link</a>.</p>

@@ -5,7 +5,7 @@ import { useAuth } from '../auth/firebase'
 import { formatTime } from '../lib/music'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
-import { cx } from '../components/ui'
+import { cx, Pager, usePaged } from '../components/ui'
 import { go, navigate } from './router'
 
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`
@@ -51,6 +51,7 @@ function Avatar({ e }: { e: Pick<TopEntry, 'name' | 'photo'> }) {
 /** Today's top: each singer's best take of the day; open one to see and hear how they sang it. */
 export function TopPage() {
   const { data, error } = useLoad<TopBoard>(analyzer.top)
+  const top = usePaged(data?.entries ?? [])
   const open = (e: TopEntry) => {
     navigate('/')
     void studio.openTopTake(e.id)
@@ -73,7 +74,7 @@ export function TopPage() {
       )}
       {data && data.entries.length > 0 && (
         <ol className="not-prose -mx-2 sm:mx-0 border-t border-line" style={{ listStyle: 'none', padding: 0 }}>
-          {data.entries.map((e) => {
+          {top.items.map((e) => {
             const t = tidyTitle(e.title ?? '', e.artist ?? '')
             return (
               <li key={e.id} style={{ margin: 0, padding: 0 }} className="border-b border-line">
@@ -102,6 +103,7 @@ export function TopPage() {
           })}
         </ol>
       )}
+      {data && <Pager at={top.at} pages={top.pages} onPage={top.go} />}
     </>
   )
 }

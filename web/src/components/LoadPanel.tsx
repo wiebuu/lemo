@@ -19,7 +19,7 @@ import { FeaturedShelf } from './FeaturedShelf'
 import { LikeButton } from './Like'
 import { Plays, PreviewButton, usePreview } from './SongSearch'
 import { SongSearch } from './SongSearch'
-import { cx, Eq, Menu, MenuItem, Tip } from './ui'
+import { cx, Eq, Menu, MenuItem, Pager, Tip, usePaged } from './ui'
 
 const STAGES: { id: JobStage; label: string }[] = [
   { id: 'fetching', label: 'get audio' },
@@ -486,6 +486,12 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
     [featured, byId, shownLang, sort],
   )
   const ownShown = find.trim() ? searchSongs(own, find, 500) : own
+  // your songs, a page at a time: songs you asked for first (not while searching), then yours
+  const mineRows = [
+    ...(find.trim() ? [] : requests.map((r) => ({ kind: 'request' as const, r }))),
+    ...ownShown.map((it, n) => ({ kind: 'song' as const, it, n })),
+  ]
+  const minePage = usePaged(mineRows, [find, tab])
   // Featured stays the first tab while it loads (placeholder rows), instead of showing
   // "your songs" and then jumping to featured when it arrives.
   const featuredLoading = loading && !featured.length
@@ -559,8 +565,9 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
             )}
           </>
         ) : own.length || requests.length ? (
+          <>
           <ol className="flex flex-col">
-            {!find.trim() && requests.map((r) => (
+            {minePage.items.map((row) => row.kind === 'request' ? ((r) => (
               <li key={r.songId} className="group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
                 <span className="text-[11px] text-sub">··</span>
                 <span className="min-w-0 truncate text-[14px] text-sub" title={r.title ?? ''}>{r.title ?? 'requested song'}</span>
@@ -572,9 +579,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                   </button>
                 </Tip>
               </li>
-            ))}
-            {find.trim() && !ownShown.length && <li className="px-2 py-2 text-xs text-sub">none of your songs match “{find.trim()}”</li>}
-            {ownShown.map((it, n) => (
+            ))(row.r) : ((it, n) => (
               <li key={it.id} className="track group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
                 <span className="text-[11px] text-sub tabular-nums">{String(n + 1).padStart(2, '0')}</span>
                 <button
@@ -602,28 +607,17 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                   </button>
                 </Tip>
               </li>
-            ))}
+            ))(row.it, row.n))}
+            {find.trim() && !ownShown.length && <li className="px-2 py-2 text-xs text-sub">none of your songs match “{find.trim()}”</li>}
           </ol>
+          <Pager at={minePage.at} pages={minePage.pages} onPage={minePage.go} />
+          </>
         ) : (
           <div className="text-xs text-sub py-2 px-2">songs you open or add show up here — on every device you sign in on. nothing is stored on your phone.</div>
         )}
       </div>
     </div>
   )
-}
-
-/** Every song in Lemody, the most played first (a play = someone got a result on it). */
-const EXPLORE_PAGE = 20
-
-/** Pages to offer: the first, the last, and two either side of this one (… between). */
-function pageList(at: number, pages: number): (number | '…')[] {
-  const keep = new Set([0, pages - 1, at - 2, at - 1, at, at + 1, at + 2].filter((p) => p >= 0 && p < pages))
-  const out: (number | '…')[] = []
-  ;[...keep].sort((a, b) => a - b).forEach((p, i, arr) => {
-    if (i && p - arr[i - 1] > 1) out.push('…')
-    out.push(p)
-  })
-  return out
 }
 
 /** Songs (already filtered and sorted), 20 to a page; a search ranks by how well they match. */
@@ -639,13 +633,11 @@ function Explore({ songs: list, loading, find, lang, sort, opening, online, onOp
   onOpen: (id: string) => void
 }) {
   const preview = usePreview()
-  const [page, setPage] = useState(0)
-  const top = useRef<HTMLDivElement>(null)
   useEffect(() => () => preview.stop(), [])
-  useEffect(() => setPage(0), [find, lang, sort])
-  if (loading) return <SkeletonRows />
   const q = find.trim()
-  const ranked = q ? searchSongs(list, q, list.length) : list
+  const ranked = useMemo(() => (q ? searchSongs(list, q, list.length) : list), [list, q])
+  const page = usePaged(ranked, [find, lang, sort])
+  if (loading) return <SkeletonRows />
   if (!ranked.length) return (
     <div className="text-xs text-sub py-2 px-2 leading-relaxed">
       {q ? <>no {lang ? `${languageName(lang)} ` : ''}song matches “{q}”. </> : <>no {lang ? `${languageName(lang)} ` : ''}songs here yet. </>}
@@ -655,19 +647,12 @@ function Explore({ songs: list, loading, find, lang, sort, opening, online, onOp
       )}
     </div>
   )
-  const pages = Math.max(1, Math.ceil(ranked.length / EXPLORE_PAGE))
-  const at = Math.min(page, pages - 1)
-  const songs = ranked.slice(at * EXPLORE_PAGE, (at + 1) * EXPLORE_PAGE).map((c) => ({ ...c, ...tidyTitle(c.title, c.artist) }))
-  const go = (p: number) => {
-    preview.stop()
-    setPage(p)
-    top.current?.scrollIntoView({ block: 'nearest' })
-  }
+  const songs = page.items.map((c) => ({ ...c, ...tidyTitle(c.title, c.artist) }))
   return (
-    <div ref={top}>
+    <div>
       <ol className="flex flex-col">
         {songs.map((it, i) => {
-          const n = at * EXPLORE_PAGE + i
+          const n = page.offset + i
           return (
             <li key={it.id} className="track group grid grid-cols-[1.75rem_2rem_1fr_auto_auto_auto] items-center gap-2 px-2 py-1 rounded-lg">
               <span className={cx('text-[11px] tabular-nums', n < 3 && !q && sort !== 'lemody' && (it.views || it.sung) ? 'text-main font-medium' : 'text-sub')}>{String(n + 1).padStart(2, '0')}</span>
@@ -689,24 +674,7 @@ function Explore({ songs: list, loading, find, lang, sort, opening, online, onOp
           )
         })}
       </ol>
-      {pages > 1 && (
-        <nav aria-label="pages" className="flex items-center justify-center gap-1 pt-3 pb-1 text-xs">
-          <button type="button" aria-label="previous page" disabled={at === 0} onClick={() => go(at - 1)}
-            className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">‹</button>
-          {pageList(at, pages).map((p, i) =>
-            p === '…' ? (
-              <span key={`gap${i}`} className="w-6 text-center text-sub">…</span>
-            ) : (
-              <button key={p} type="button" aria-current={p === at ? 'page' : undefined} onClick={() => go(p)}
-                className={cx('min-w-8 h-8 px-1 rounded-full tabular-nums', p === at ? 'bg-main text-bg font-medium' : 'text-sub hover:text-text')}>
-                {p + 1}
-              </button>
-            ),
-          )}
-          <button type="button" aria-label="next page" disabled={at === pages - 1} onClick={() => go(at + 1)}
-            className="w-8 h-8 rounded-full text-sub hover:text-text disabled:opacity-30">›</button>
-        </nav>
-      )}
+      <Pager at={page.at} pages={page.pages} onPage={(p) => { preview.stop(); page.go(p) }} />
     </div>
   )
 }

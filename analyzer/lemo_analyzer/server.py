@@ -999,9 +999,17 @@ def align_plain_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
     if not _can_align():
-        # no model here (the VPS): the Mac that analyses songs times them; only if it doesn't
-        # get to it in a few minutes are the lines timed roughly, to the sung phrases
-        from . import align_queue, phrase_timing
+        # no model here (the VPS). Usually the paste is this song's own words (corrected,
+        # another spelling or script): timed from the song's timed lyrics, at once. If not,
+        # the Mac that analyses songs times them; only if it doesn't get to it in a few
+        # minutes are the lines timed roughly, to the sung phrases
+        from . import align_queue, phrase_timing, text_align
+
+        known = _known_timing(d, song_id)
+        matched = text_align.time_lines(lines, known) if known else None
+        if matched:
+            cache.write_text(json.dumps(matched))
+            return {"status": "done", "lines": matched}
 
         if align_queue.available():
             got = align_queue.result(song_id, key)
@@ -1036,6 +1044,28 @@ def align_plain_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     return {"status": "running", "message": "timing the lyrics to the singer"}
 
 
+def _known_timing(d: Path, song_id: str) -> list[dict] | None:
+    """The song's own timed lyrics (lyrics.json, timed on the Mac), here or in the store."""
+    from . import align_queue
+
+    for f in (d / "lyrics.json", (align_queue._store() or Path("/nonexistent")) / song_id / "lyrics.json"):
+        try:
+            timed = json.loads(f.read_text()).get("timed")
+            if timed:
+                return timed
+        except (OSError, json.JSONDecodeError):
+            continue
+    return None
+
+
+def _overlaps(matched: dict, line: dict, slack: float = 3.0) -> bool:
+    """The words found for a line fall where the line is (give or take a few seconds)."""
+    s, e = line.get("start"), line.get("end")
+    if s is None or e is None:
+        return True
+    return matched["start"] >= float(s) - slack and matched["end"] <= float(e) + slack
+
+
 def _can_align() -> bool:
     """Word timing runs the MMS model (torch): only where torch is installed."""
     import importlib.util
@@ -1059,9 +1089,18 @@ def align_lyrics(song_id: str, body: dict = Body(...)) -> dict:
     if cache.exists():
         return {"status": "done", "lines": json.loads(cache.read_text())}
     if not _can_align():
-        # no model here (the VPS): the Mac times the words; if it doesn't get to it soon,
-        # the line timing stays and words are estimated in the browser
-        from . import align_queue
+        # no model here (the VPS): the words timed from the song's timed lyrics when they
+        # match; else the Mac times them; if it doesn't get to it soon, the line timing
+        # stays and words are estimated in the browser
+        from . import align_queue, text_align
+
+        known = _known_timing(d, song_id)
+        matched = text_align.time_lines([str(ln.get("text") or "") for ln in lines], known) if known else None
+        if matched and len(matched) == len(lines):
+            words = [m["words"] if _overlaps(m, ln) else None for m, ln in zip(matched, lines)]
+            if sum(w is not None for w in words) >= 0.6 * len(lines):
+                cache.write_text(json.dumps(words))
+                return {"status": "done", "lines": words}
 
         if align_queue.available():
             got = align_queue.result(song_id, key)

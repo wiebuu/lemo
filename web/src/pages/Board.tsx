@@ -73,13 +73,15 @@ export function TopPage() {
         </div>
       )}
       {data && data.entries.length > 0 && (
-        <ol className="not-prose -mx-2 sm:mx-0 border-t border-line" style={{ listStyle: 'none', padding: 0 }}>
+        // no dividing lines: each row is its own rounded highlight (on hover, and your own take),
+        // so the highlight never runs into a line above or below it
+        <ol className="not-prose -mx-2 sm:mx-0 flex flex-col gap-1" style={{ listStyle: 'none', padding: 0 }}>
           {top.items.map((e) => {
             const t = tidyTitle(e.title ?? '', e.artist ?? '')
             return (
-              <li key={e.id} style={{ margin: 0, padding: 0 }} className="border-b border-line">
+              <li key={e.id} style={{ margin: 0, padding: 0 }}>
                 <button type="button" onClick={() => open(e)}
-                  className={cx('group w-full flex items-center gap-2 sm:gap-3 px-2 py-2 sm:py-2.5 text-left rounded-lg transition-colors hover:bg-sub-alt', e.mine && 'bg-sub-alt/60')}>
+                  className={cx('group w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 text-left rounded-xl transition-colors hover:bg-sub-alt/70', e.mine && 'bg-sub-alt/50')}>
                   <span className={cx('w-5 sm:w-7 text-right text-xs sm:text-base tabular-nums shrink-0', e.rank <= 3 ? 'text-main font-semibold' : 'text-sub')}>
                     {e.rank === 1 ? <Crown size={14} className="inline -mt-0.5" /> : e.rank}
                   </span>

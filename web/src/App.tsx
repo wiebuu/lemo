@@ -139,7 +139,7 @@ export default function App() {
           <div className={cx('relative flex-1 min-h-0 flex flex-col', phone && 'pt-2')}>
             <ErrorBoundary label="graph">
               <Graph onImport={() => setPanel('load')} hidden={lyricsOnly} overlay={lyricsOnly && (
-                <PinchLyrics className="fade-in absolute inset-0 flex items-center justify-center pb-[10vh]" /* a little above the middle: reads better than dead centre */>
+                <PinchLyrics className={cx('fade-in absolute inset-0 flex items-center justify-center', !results && 'pb-[10vh]')} /* a little above the middle reads better — not on the results, whose panel already sits below */>
                   <FocusLyrics onFix={() => setPanel('fixlyrics')} />
                 </PinchLyrics>
               )} />

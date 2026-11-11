@@ -15,7 +15,7 @@ import threading
 import time
 from pathlib import Path
 
-from . import catalog, jobs, remote, worker
+from . import catalog, jobs, remote, transcribe, worker
 from .config import CONFIG
 
 FILE = "lyrics.json"
@@ -62,12 +62,57 @@ def prepare(song_id: str, title: str, artist: str) -> tuple[bool, str]:
     found = lyrics.find(title or ref.get("title") or "", artist or ref.get("artist") or "",
                         float(ref.get("duration") or 0), vid, ref.get("notes"))
     if not (found.get("synced") or found.get("plain")):
-        return False, "no lyrics found"
+        # no lyrics site has it: write down what's sung (Whisper, on the vocal alone)
+        heard = heard_lines(d, song_id)
+        if not heard:
+            return False, "no lyrics found (none online, and nothing clear to transcribe)"
+        found = {**found, "source": transcribe.SOURCE, "match": "transcribed from the vocal", "transcribed": True,
+                 "synced": transcribe.as_lrc(heard), "plain": None, "timed": heard,
+                 "preparedAt": int(time.time())}
+        (d / FILE).write_text(json.dumps(found, ensure_ascii=False))
+        to_store(d)
+        return True, f"transcribed · {len(heard)} lines"
     found["timed"] = timed_lines(found, d, ref)
     found["preparedAt"] = int(time.time())
     (d / FILE).write_text(json.dumps(found, ensure_ascii=False))
     to_store(d)
     return True, f"{found.get('source')} · {'synced' if found.get('synced') else 'plain'} · {len(found['timed'])} lines"
+
+
+def heard_lines(d: Path, song_id: str) -> list[dict]:
+    """The song's words, transcribed from its separated vocal ([] when Whisper isn't here)."""
+    if not transcribe.available():
+        return []
+    from .audio import wav_stems
+
+    lang = (catalog.load().get(song_id) or {}).get("lang")
+    with wav_stems(d, ("vocals",)) as wd:
+        return transcribe.transcribe(wd / "vocals.wav", lang)
+
+
+def save_pasted(song_id: str, text: str) -> tuple[bool, str]:
+    """Lyrics pasted by hand (the admin page): timed to the singer, then kept with the song
+    like found ones. Any script; blank lines dropped."""
+    from . import translit
+
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return False, "paste the song's lyrics, one line per line"
+    d = jobs.song_dir(song_id)
+    if not ((d / "reference.json").exists() or remote.pull(d)):
+        return False, "not stored"
+    ref = json.loads((d / "reference.json").read_text())
+    found = {"source": "added by hand", "match": "pasted in Lemody admin", "plain": "\n".join(lines), "synced": None,
+             "script": translit.script_of(" ".join(lines))}
+    found["timed"] = timed_lines(found, d, ref)
+    found["preparedAt"] = int(time.time())
+    (d / FILE).write_text(json.dumps(found, ensure_ascii=False))
+    to_store(d)
+    return True, f"added by hand · {len(found['timed'])} lines"
+
+
+def save_pasted_in_worker(song_id: str, text: str, send) -> tuple[bool, str]:
+    return save_pasted(song_id, text)
 
 
 def prepare_in_worker(song_id: str, title: str, artist: str, send) -> tuple[bool, str]:
@@ -113,7 +158,9 @@ def for_song(song_id: str, title: str | None, artist: str | None) -> None:
         worker.log(f"lyrics {song_id}: failed: {e}")
 
 
-_tried: set[str] = set()
+# when each song without lyrics was last tried: tried again a week later (lyrics sites grow)
+_tried: dict[str, float] = {}
+RETRY_SEC = 7 * 86400
 
 
 def catch_up_forever() -> None:
@@ -126,14 +173,14 @@ def catch_up_forever() -> None:
         while True:
             try:
                 missing = [(sid, e) for sid, e in sorted(catalog.load().items())
-                           if sid.startswith(("yt-", "up-")) and sid not in _tried]
+                           if sid.startswith(("yt-", "up-")) and time.time() - _tried.get(sid, 0) > RETRY_SEC]
                 have = with_lyrics() if missing else set()
                 for sid, e in missing:
                     if sid in have:
                         continue
                     while jobs.MANAGER.busy():  # songs being analysed go first
                         time.sleep(15)
-                    _tried.add(sid)  # once per run: a song with no lyrics anywhere isn't retried in a loop
+                    _tried[sid] = time.time()  # not again for a week: a song with no lyrics anywhere isn't retried in a loop
                     for_song(sid, e.get("title"), e.get("artist"))
             except Exception as e:
                 worker.log(f"lyrics catch-up: {e}")

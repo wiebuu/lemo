@@ -6,11 +6,23 @@
 import { clampSeek, ctxTimeFor, loopJump, songTimeAt, type ClockAnchor, type LoopRegion } from '../lib/timeline'
 import { VoiceChain } from './voiceChain'
 import { setAudioSession } from './mic'
+import { wholeTrack, type StemTrack } from './stream'
 
+/** A source's stems: whole buffers, or tracks still filling in (see stream.ts). */
 export interface StemSet {
-  backing: AudioBuffer
-  guide?: AudioBuffer
+  backing: AudioBuffer | StemTrack
+  guide?: AudioBuffer | StemTrack
 }
+
+interface Stems {
+  backing: StemTrack
+  guide?: StemTrack
+}
+
+const asTrack = (x: AudioBuffer | StemTrack): StemTrack => (x instanceof AudioBuffer ? wholeTrack(x) : x)
+
+/** Playback waits for at least this much audio ahead before starting again after a stall. */
+const RESUME_AHEAD = 3
 
 export interface AudioSource {
   duration: number
@@ -38,11 +50,19 @@ export class PlaybackEngine {
   /** Echo, reverb and tone on your voice when you listen back (results screen). */
   readonly voiceChain: VoiceChain
   private nodes: AudioBufferSourceNode[] = []
+  /** The stems' players, each with its own gain (for a seamless hand-over as more audio arrives). */
+  private stemNodes: { src: AudioBufferSourceNode; gain: GainNode }[] = []
+  /** The stems' players were started with audio up to here (buffer seconds). */
+  private armedUntil = 0
+  /** Playing, but waiting for more of the song to arrive (YouTube's spinner). */
+  buffering = false
+  private unwatch: (() => void) | null = null
+  private lastLoadedEmit = 0
   private anchor: ClockAnchor | null = null
   private pausedAt = 0
-  private stems: StemSet | null = null
+  private stems: Stems | null = null
   private source: AudioSource | null = null
-  private variants = new Map<string, StemSet>()
+  private variants = new Map<string, Stems>()
   private loadAbort: AbortController | null = null
   private listeners = new Set<Listener>()
   private nextBeat = -1
@@ -223,8 +243,49 @@ export class PlaybackEngine {
     return songTimeAt(this.anchor, ctxTime)
   }
 
+  /** Buffer seconds of the current stems that have arrived (the one that's behind). */
+  private loadedSec(): number {
+    const st = this.stems
+    if (!st) return 0
+    return Math.min(st.backing.loaded, st.guide?.loaded ?? Infinity)
+  }
+  private get allLoaded(): boolean {
+    const st = this.stems
+    return !!st && st.backing.done && (st.guide?.done ?? true)
+  }
+  /** Song seconds loaded so far (the grey part of the progress bar). */
+  get loadedTime(): number {
+    if (!this.stems) return 0
+    return this.allLoaded ? this.duration : Math.min(this.duration, this.loadedSec() * this.speed)
+  }
+
+  /** Follow the current stems as they fill in: resume after a stall, update the bar. */
+  private watch() {
+    this.unwatch?.()
+    const st = this.stems
+    if (!st) return
+    const on = () => {
+      if (this.stems !== st) return
+      if (this.buffering && (this.allLoaded || this.loadedSec() >= this.pausedAt / this.speed + RESUME_AHEAD)) {
+        this.buffering = false
+        void this.play()
+        return
+      }
+      const now = performance.now()
+      if (this.allLoaded || now - this.lastLoadedEmit > 250) {
+        this.lastLoadedEmit = now
+        this.emit()
+      }
+    }
+    const offs = [st.backing.subscribe(on), st.guide?.subscribe(on)]
+    this.unwatch = () => offs.forEach((o) => o?.())
+  }
+
   async setSource(source: AudioSource | null) {
     this.stop()
+    this.buffering = false
+    this.unwatch?.()
+    this.loadAbort?.abort()
     this.source = source
     this.variants.clear()
     this.stems = null
@@ -242,23 +303,27 @@ export class PlaybackEngine {
     if (!this.source.canSpeed) speed = 1
     if (!this.source.canTranspose) semitones = 0
     if (speed === this.speed && semitones === this.semitones && this.stems) return
-    const wasPlaying = this.playing
+    const wasPlaying = this.playing || this.buffering
     const at = this.heardTime()
     this.stop()
+    this.buffering = false
     this.pausedAt = at
     await this.loadVariant(speed, semitones)
-    if (wasPlaying) this.play()
+    if (wasPlaying) void this.play()
   }
 
   private async loadVariant(speed: number, semitones: number) {
     const key = `${speed}|${semitones}`
     let stems = this.variants.get(key)
     if (!stems) {
+      // a version still downloading stops here: it's dropped (fetched again if picked again)
       this.loadAbort?.abort()
+      for (const [k, v] of this.variants) if (!v.backing.done || (v.guide && !v.guide.done)) this.variants.delete(k)
       const ac = new AbortController()
       this.loadAbort = ac
-      stems = await this.source!.load(this.ctx, speed, semitones, ac.signal)
+      const got = await this.source!.load(this.ctx, speed, semitones, ac.signal)
       if (ac.signal.aborted) throw new DOMException('aborted', 'AbortError')
+      stems = { backing: asTrack(got.backing), guide: got.guide && asTrack(got.guide) }
       // Decoded audio is big (~10 MB per stem-minute): keep only the current and the previous version.
       if (this.variants.size >= 2) this.variants.delete(this.variants.keys().next().value!)
       this.variants.set(key, stems)
@@ -266,6 +331,7 @@ export class PlaybackEngine {
     this.stems = stems
     this.speed = speed
     this.semitones = semitones
+    this.watch()
     this.emit()
   }
 
@@ -288,29 +354,76 @@ export class PlaybackEngine {
 
   async play() {
     if (!this.stems || this.playing) return
+    this.buffering = false
     if (this.ctx.state !== 'running' && !(await this.resumeSoon())) {
       // (play is always a tap, so this rarely happens; the next tap resumes it)
       this.onSilenced?.()
     }
     if (this.pausedAt >= this.duration - 0.05) this.pausedAt = this.loop?.start ?? 0
     if (this.window && (this.pausedAt >= this.window.end - 0.05 || this.pausedAt < this.window.start)) this.pausedAt = this.window.start
-    const startCtx = this.ctx.currentTime + 0.03
     const bufferOffset = this.pausedAt / this.speed
-    const start = (buf: AudioBuffer | undefined, gain: GainNode) => {
-      if (!buf || bufferOffset >= buf.duration) return
-      const n = this.ctx.createBufferSource()
-      n.buffer = buf
-      n.connect(gain)
-      n.start(startCtx, bufferOffset)
-      this.nodes.push(n)
+    // that part of the song hasn't arrived yet: wait for it (the spinner shows)
+    if (!this.allLoaded && bufferOffset > this.loadedSec() - 0.25) {
+      this.buffering = true
+      this.emit()
+      return
     }
-    start(this.stems.backing, this.backingGain)
-    start(this.stems.guide, this.guideGain)
+    const startCtx = this.ctx.currentTime + 0.03
+    this.startStems(startCtx, bufferOffset)
     if (this.voice) this.startVoice(startCtx, this.pausedAt)
     this.anchor = { ctxStart: startCtx, songStart: this.pausedAt, speed: this.speed }
     this.steady = null
     this.nextBeat = -1
     this.emit()
+  }
+
+  /** Start the stems at context time `when`, `offset` buffer seconds in. */
+  private startStems(when: number, offset: number, fadeIn = 0) {
+    const st = this.stems!
+    const players: { src: AudioBufferSourceNode; gain: GainNode }[] = []
+    for (const [track, bus] of [[st.backing, this.backingGain], [st.guide, this.guideGain]] as const) {
+      if (!track || offset >= track.buffer.duration) continue
+      const src = this.ctx.createBufferSource()
+      src.buffer = track.buffer
+      const gain = this.ctx.createGain()
+      src.connect(gain).connect(bus)
+      if (fadeIn) {
+        gain.gain.setValueAtTime(0, when)
+        gain.gain.linearRampToValueAtTime(1, when + fadeIn)
+      }
+      src.start(when, offset)
+      players.push({ src, gain })
+    }
+    this.stemNodes.push(...players)
+    this.armedUntil = this.allLoaded ? Infinity : this.loadedSec()
+    return players
+  }
+
+  /**
+   * More of the song has arrived than the players were started with: start fresh
+   * players on the same buffers at the exact same spot and cross-fade (10 ms) — the
+   * same samples on both sides, so nothing is heard.
+   */
+  private rearm() {
+    if (!this.anchor) return
+    const when = this.ctx.currentTime + 0.05
+    const offset = songTimeAt(this.anchor, when) / this.speed
+    const old = this.stemNodes
+    this.stemNodes = []
+    this.startStems(when, offset, 0.01)
+    for (const { src, gain } of old) {
+      gain.gain.setValueAtTime(1, when)
+      gain.gain.linearRampToValueAtTime(0, when + 0.01)
+      try {
+        src.stop(when + 0.02)
+      } catch {
+        /* already stopped */
+      }
+      src.onended = () => {
+        src.disconnect()
+        gain.disconnect()
+      }
+    }
   }
 
   /** Start the take so that it lines up with song time `songT` at context time `when`. */
@@ -356,6 +469,11 @@ export class PlaybackEngine {
 
   /** Stop exactly at what the listener heard last — resuming continues from there. */
   pause() {
+    if (this.buffering) {
+      this.buffering = false
+      this.emit()
+      return
+    }
     if (!this.anchor) return
     this.pausedAt = clampSeek(this.heardTime(), this.duration)
     this.stop()
@@ -372,13 +490,24 @@ export class PlaybackEngine {
       n.disconnect()
     }
     this.nodes = []
+    for (const { src, gain } of this.stemNodes) {
+      try {
+        src.stop()
+      } catch {
+        /* already stopped */
+      }
+      src.disconnect()
+      gain.disconnect()
+    }
+    this.stemNodes = []
     this.voiceNode = null
     this.anchor = null
     this.steady = null
   }
 
   seek(t: number) {
-    const wasPlaying = this.playing
+    const wasPlaying = this.playing || this.buffering
+    this.buffering = false
     this.onDiscontinuity?.() // while still "playing", so takes end without a results popup
     this.stop()
     if (this.window) t = Math.max(this.window.start, Math.min(t, this.window.end - 0.05))
@@ -410,6 +539,19 @@ export class PlaybackEngine {
       this.emit()
       return
     }
+    if (this.armedUntil !== Infinity) {
+      const pos = t / this.speed
+      const loaded = this.allLoaded ? Infinity : this.loadedSec()
+      if (pos >= this.armedUntil - 1.5 && loaded > this.armedUntil + 0.5) this.rearm()
+      else if (pos >= this.armedUntil - 0.05) {
+        // caught up with the download: wait for more (playback carries on by itself)
+        this.pausedAt = Math.min(t, this.armedUntil * this.speed)
+        this.stop()
+        this.buffering = true
+        this.emit()
+        return
+      }
+    }
     if (this.metronome && this.tempo) this.scheduleClicks(t)
   }
 
@@ -440,6 +582,7 @@ export class PlaybackEngine {
 
   dispose() {
     this.stop()
+    this.unwatch?.()
     this.loadAbort?.abort()
     this.listeners.clear()
     void this.ctx.close()
@@ -478,7 +621,8 @@ export function fileSource(buffer: AudioBuffer): AudioSource {
  */
 export function analyzerSource(
   duration: number,
-  fetchStem: (stem: 'backing' | 'vocals', speed: number, semis: number, signal: AbortSignal) => Promise<ArrayBuffer>,
+  /** The stem, ready to play: open once its first part has arrived (see stream.ts). */
+  fetchStem: (ctx: BaseAudioContext, stem: 'backing' | 'vocals', speed: number, semis: number, signal: AbortSignal) => Promise<StemTrack>,
 ): AudioSource {
   return {
     duration,
@@ -486,9 +630,7 @@ export function analyzerSource(
     canSpeed: true,
     canTranspose: true,
     load: async (ctx, speed, semis, signal) => {
-      const [backing, guide] = await Promise.all(
-        (['backing', 'vocals'] as const).map(async (stem) => ctx.decodeAudioData(await fetchStem(stem, speed, semis, signal))),
-      )
+      const [backing, guide] = await Promise.all((['backing', 'vocals'] as const).map((stem) => fetchStem(ctx, stem, speed, semis, signal)))
       return { backing, guide }
     },
   }

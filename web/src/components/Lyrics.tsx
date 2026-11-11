@@ -112,7 +112,25 @@ export function FocusLyrics({ onFix }: { onFix: () => void }) {
   const lines = s.lyricsShown
   const intro = useBeforeFirstLine(lines)
   if (!s.track) return null
-  if (intro) return <SongTitle title={s.track.title} artist={s.track.artist} />
+  // The intro: the name and singer fade away a few seconds before the first line,
+  // then the lines fade in, so there's time to get ready before singing.
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      <div aria-hidden={!intro} className={cx('absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-1000 ease-out',
+        intro ? 'opacity-100' : 'opacity-0 -translate-y-2 pointer-events-none')}>
+        <SongTitle title={s.track.title} artist={s.track.artist} />
+      </div>
+      <div className={cx('w-full flex justify-center transition-opacity duration-700 ease-out', intro ? 'opacity-0' : 'opacity-100 delay-500')}>
+        <FocusBody onFix={onFix} />
+      </div>
+    </div>
+  )
+}
+
+function FocusBody({ onFix }: { onFix: () => void }) {
+  const s = useStudio()
+  const lines = s.lyricsShown
+  if (!s.track) return null
   if (lines.some((l) => l.words?.length)) {
     return <div className="w-full"><LyricTicker focus onFix={s.session ? undefined : onFix} /></div>
   }
@@ -139,7 +157,7 @@ export function FocusLyrics({ onFix }: { onFix: () => void }) {
 
 function SongTitle({ title, artist, children }: { title: string; artist?: string; children?: ReactNode }) {
   return (
-    <div className="fade-in flex flex-col items-center gap-3 text-center px-6 max-w-full">
+    <div className="flex flex-col items-center gap-3 text-center px-6 max-w-full">
       <div className="text-[2.2rem] sm:text-6xl font-medium tracking-tight text-text leading-tight line-clamp-2 break-words">{title}</div>
       {artist && <div className="text-lg sm:text-2xl text-sub truncate max-w-full">{artist}</div>}
       <div className="mt-4 h-5 flex items-center gap-2 text-[11px] text-sub">{children}</div>
@@ -147,10 +165,12 @@ function SongTitle({ title, artist, children }: { title: string; artist?: string
   )
 }
 
-/** The intro: more than a couple of seconds before the first line is sung. */
+/** The intro: more than a few seconds before the first line is sung (the name gives way early). */
+const INTRO_LEAD = 4
+
 function useBeforeFirstLine(lines: LyricLine[]) {
   const first = lines.find((l) => l.start !== null)?.start ?? null
-  const check = useCallback(() => first !== null && studio.heardTime() < first - 2, [first])
+  const check = useCallback(() => first !== null && studio.heardTime() < first - INTRO_LEAD, [first])
   const [before, setBefore] = useState(check)
   useEffect(() => {
     setBefore(check())

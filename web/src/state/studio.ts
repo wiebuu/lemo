@@ -7,6 +7,11 @@ import { signedIn, signInWithGoogle } from '../auth/firebase'
 import { levelTake } from '../lib/level'
 import { demoSource, demoTrack } from '../audio/demo'
 import { analyzerSource, fileSource, PlaybackEngine, type AudioSource } from '../audio/engine'
+import { streamStem } from '../audio/stream'
+
+/** A song opens once this share of it has arrived (at least OPEN_MIN_SEC); the rest streams in. */
+const OPEN_SHARE = 0.07
+const OPEN_MIN_SEC = 6
 import { isBluetoothMic, MicError, MicInput, type MicReading } from '../audio/mic'
 import { midiToNoteName } from '../lib/music'
 import { tidyTitle } from '../lib/titles'
@@ -41,6 +46,10 @@ export interface Snapshot {
   /** what's happening right now under the busy label, e.g. "downloading · 3.1 / 5.9 MB" */
   busyDetail: string | null
   playing: boolean
+  /** Playing, but waiting for more of the song to arrive (a spinner on the play button). */
+  buffering: boolean
+  /** Song seconds downloaded so far (the grey part of the progress bar). */
+  loadedTime: number
   speed: number
   transpose: number
   loop: LoopRegion | null
@@ -195,7 +204,7 @@ export class Studio {
   }
 
   snap: Snapshot = {
-    track: null, caps: null, busy: null, busyProgress: null, busyDetail: null, playing: false, speed: 1, transpose: 0, loop: null, metronome: false,
+    track: null, caps: null, busy: null, busyProgress: null, busyDetail: null, playing: false, buffering: false, loadedTime: 0, speed: 1, transpose: 0, loop: null, metronome: false,
     phrases: [], phrase: -1, breaths: [], lyrics: [], lyricPos: { line: -1, word: -1 }, mic: 'off', micError: null,
     muted: false, voiceIssue: null, settings: persist.settings(), attempts: [], lastResult: null, challenge: null, offsetMs: 0, error: null,
     canReplay: false, replay: false, listenSource: 'me', voiceFx: NO_FX, voiceFxBusy: false, session: false, lyricsShown: [], lyricsStatus: null, lyricsNote: null, toast: null, reviewAspect: 'pitch', resultsView: 'results', focus: null, resultMode: null,
@@ -220,7 +229,6 @@ export class Studio {
       patch = { busyProgress: null, busyDetail: null, ...patch }
       this.stemFrac = { backing: 0, vocals: 0 }
       this.stemDetail = { backing: '', vocals: '' }
-      this.stemBytes = { backing: [0, 0], vocals: [0, 0] }
     }
     this.snap = { ...this.snap, ...patch }
     this.viewDirty = true
@@ -244,7 +252,10 @@ export class Studio {
         this.endSession()
       }
       e.subscribe(() => {
-        if (this.snap.playing !== e.playing) this.set({ playing: e.playing })
+        const loadedTime = Math.round(e.loadedTime * 4) / 4
+        if (this.snap.playing !== e.playing || this.snap.buffering !== e.buffering || this.snap.loadedTime !== loadedTime) {
+          this.set({ playing: e.playing, buffering: e.buffering, loadedTime })
+        }
       })
       this.engine = e
       this.applyVolumes()
@@ -377,17 +388,29 @@ export class Studio {
       // YouTube titles carry cast lists, "8K Video Song" etc.: keep the song name and singer
       const ref = { ...raw, ...tidyTitle(raw.title, raw.artist) }
       this.analyzerId = id
-      const fetchStem = async (stem: 'backing' | 'vocals', speed: number, semis: number, signal: AbortSignal) => {
+      const fetchStem = async (ctx: BaseAudioContext, stem: 'backing' | 'vocals', speed: number, semis: number, signal: AbortSignal) => {
         const original = speed === 1 && semis === 0
         // A new key / speed is converted on the analyzer first: follow its progress.
         let converting = !original
         if (converting) void this.followRender(id, stem, speed, semis, () => converting && !signal.aborted)
         const res = await this.fromAnalyzer(id, () => fetch(analyzer.stemUrl(id, stem, speed, semis), { signal }))
         converting = false
+        // The song opens once its first part has arrived; the rest loads while you sing.
         const from = original ? 0 : 0.6
-        const blob = await readWithProgress(res, (got, total) => this.stemBytes_(stem, got, total, from))
-        this.stemProgress(stem, this.stemFrac[stem], 'getting it ready') // the bar stays the download's share
-        return blob.arrayBuffer()
+        const head = Math.min(ref.duration / speed, Math.max(OPEN_MIN_SEC, (ref.duration / speed) * OPEN_SHARE))
+        const track = await streamStem(ctx, res, signal, (got, total) => {
+          if (total) this.stemProgress(stem, from + (1 - from) * Math.min(1, got / total / OPEN_SHARE) * 0.5, '')
+        })
+        await new Promise<void>((resolve, reject) => {
+          const check = () => {
+            this.stemProgress(stem, from + (1 - from) * Math.min(1, track.loaded / head), '')
+            if (signal.aborted) return (off(), reject(new DOMException('aborted', 'AbortError')))
+            if (track.done || track.loaded >= head) return (off(), resolve())
+          }
+          const off = track.subscribe(check)
+          check()
+        })
+        return track
       }
       await this.loadTrack(ref, analyzerSource(ref.duration, fetchStem), 'loading audio', seq)
       if (seq !== this.loadSeq) return
@@ -402,33 +425,7 @@ export class Studio {
 
   private stemFrac = { backing: 0, vocals: 0 }
   private stemDetail = { backing: '', vocals: '' }
-  private stemBytes: Record<'backing' | 'vocals', [got: number, total: number]> = { backing: [0, 0], vocals: [0, 0] }
   private lastProgress = 0
-
-  /**
-   * Bytes of one stem arrived. Both stems download together, so the text and the bar
-   * count them together: "downloading · 3.1 / 7.4 MB" and the same share on the bar
-   * (until both sizes are known, the bar follows each stem's own share).
-   */
-  private stemBytes_(stem: 'backing' | 'vocals', got: number, total: number, from: number) {
-    this.stemBytes[stem] = [got, total]
-    const [gb, tb] = this.stemBytes.backing
-    const [gv, tv] = this.stemBytes.vocals
-    const both = tb > 0 && tv > 0
-    const frac = both ? (gb + gv) / (tb + tv) : total ? got / total : 0
-    const detail = `downloading · ${both ? `${mb(gb + gv)} / ${mb(tb + tv)} MB` : `${mb(gb + gv)} MB`}`
-    const at = from + (1 - from) * frac // the bar's share = the share of MB downloaded
-    if (both) {
-      // one count for both: the bar is exactly the combined share (never behind what it showed)
-      const shown = Math.max(at, Math.min(this.stemFrac.backing, this.stemFrac.vocals))
-      this.stemFrac = { backing: shown, vocals: shown }
-      this.stemDetail = { backing: detail, vocals: detail }
-    } else {
-      this.stemFrac[stem] = Math.max(this.stemFrac[stem], at)
-      this.stemDetail[stem] = detail
-    }
-    this.stemProgress(stem, this.stemFrac[stem], detail)
-  }
 
   /** Both stems load side by side: the bar shows their average, the text the one that's behind. */
   private stemProgress(stem: 'backing' | 'vocals', frac: number, detail: string) {
@@ -879,6 +876,7 @@ export class Studio {
   async togglePlay() {
     const e = this.engine
     if (!e || !this.snap.track) return
+    if (e.buffering) return e.pause() // waiting for the song: stop waiting
     if (e.playing) {
       e.pause()
       // In a test, pausing keeps the take open — resume continues the same test.
@@ -1846,25 +1844,6 @@ function viewChanged(a: GraphView | null, b: GraphView): boolean {
   return false
 }
 
-const mb = (bytes: number) => (bytes / 1048576).toFixed(1)
-
-/** Read a response body while reporting how much has arrived. */
-async function readWithProgress(res: Response, onProgress: (got: number, total: number) => void): Promise<Blob> {
-  const total = Number(res.headers.get('content-length')) || 0
-  const type = res.headers.get('content-type') ?? ''
-  if (!res.body) return res.blob()
-  const reader = res.body.getReader()
-  const chunks: Uint8Array[] = []
-  let got = 0
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    chunks.push(value)
-    got += value.length
-    onProgress(got, total)
-  }
-  return new Blob(chunks as BlobPart[], { type })
-}
 
 /**
  * Which song automatically found lyrics belong to, and how they were picked; they're

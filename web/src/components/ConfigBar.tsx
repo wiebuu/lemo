@@ -54,7 +54,7 @@ export function ConfigBar() {
           disabled={!!speedWhy}
           active={s.speed !== 1}
           buttonClassName={cx('px-1.5', speedWhy && 'opacity-40')}
-          button={<span className="flex items-center gap-1.5"><Gauge size={15} /><span className="tabular-nums text-xs min-w-[2.4em] text-left">{speedLabel(s.speed)}</span></span>}
+          button={<span className="flex items-center gap-1.5"><Gauge size={15} /><span className="tabular-nums text-xs">{speedLabel(s.speed)}</span></span>}
         >
           {(close) => <SpeedPicker value={s.speed} onPick={(v) => { close(); if (v !== s.speed) studio.setVariant(v, s.transpose) }} />}
         </Menu>
@@ -64,7 +64,7 @@ export function ConfigBar() {
           disabled={!!keyWhy}
           active={s.transpose !== 0}
           buttonClassName={cx('px-1.5', keyWhy && 'opacity-40')}
-          button={<span className="flex items-center gap-1.5"><Piano size={15} /><span className="tabular-nums text-xs min-w-[1.6em] text-left">{s.transpose > 0 ? '+' : ''}{s.transpose}</span></span>}
+          button={<span className="flex items-center gap-1.5"><Piano size={15} /><span className="tabular-nums text-xs">{s.transpose > 0 ? '+' : ''}{s.transpose}</span></span>}
         >
           {(close) => (
             <KeyPicker value={s.transpose} onPick={(k) => { close(); if (k !== s.transpose) studio.setVariant(s.speed, k) }} />

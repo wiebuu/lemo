@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { ChevronFirst, Circle, Mic, MicOff, MicVocal, Music, Pause, Play, RefreshCcwDot, Repeat, SkipBack, SkipForward, Square, UserRound, Volume2 } from 'lucide-react'
+import { ChevronFirst, LoaderCircle, Circle, Mic, MicOff, MicVocal, Music, Pause, Play, RefreshCcwDot, Repeat, SkipBack, SkipForward, Square, UserRound, Volume2 } from 'lucide-react'
 import { formatTime } from '../lib/music'
 import { studio } from '../state/studio'
 import { PREVIEW } from './previews'
@@ -45,6 +45,11 @@ export function PlayerBar() {
           onPointerMove={(e) => e.buttons === 1 && !disabled && seekFromPointer(e.clientX)}
         >
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] group-hover:h-[5px] transition-all rounded bg-sub-alt overflow-hidden">
+            {/* how much of the song has arrived (the rest loads while you sing) */}
+            {duration > 0 && s.loadedTime < duration && (
+              <div className="absolute inset-y-0 left-0 bg-sub/35 rounded-full transition-[width] duration-300 ease-out"
+                style={{ width: `${(s.loadedTime / duration) * 100}%` }} />
+            )}
             {s.focus && duration > 0 && (
               <div className="absolute inset-y-0 bg-text/25 rounded"
                 style={{ left: `${(s.focus.start / duration) * 100}%`, width: `${((s.focus.end - s.focus.start) / duration) * 100}%` }} />
@@ -126,10 +131,10 @@ export function PlayerBar() {
             type="button"
             onClick={() => studio.togglePlay()}
             disabled={disabled}
-            aria-label="play / pause (space)"
+            aria-label={s.buffering ? 'loading — tap to pause' : 'play / pause (space)'}
             className="mx-1 w-12 h-12 rounded-full flex items-center justify-center bg-main text-bg hover:brightness-110 active:scale-95 transition-all disabled:opacity-35"
           >
-            {s.playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+            {s.buffering ? <LoaderCircle size={22} className="animate-spin" /> : s.playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
           </button>
           <Tip tip={s.session ? 'End the test and see your results (T)' : s.lastResult ? 'Start a new test from the same spot (T)' : 'Start a test — sing along and get scored (T)'}>
             <button

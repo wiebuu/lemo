@@ -22,14 +22,6 @@ from . import audio, auth, catalog, device, jobs, lyrics, lyricsearch, mailer, p
 from .config import CONFIG, FFMPEG, RUBBERBAND, device_name
 
 app = FastAPI(title="Lemody analyzer", version="0.1.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=list(CONFIG.cors_origins),
-    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["X-Lemo-Link"],
-)
 
 def _to_store(request: Request, url: str):
     """Send the browser to a file in the song store. Our own app asks for the link itself
@@ -46,7 +38,7 @@ def _to_store(request: Request, url: str):
 # sign-in (see auth.py).
 OPEN_PATHS = {"/api/health", "/api/stats"}
 GUEST_READS = re.compile(
-    r"/api/(catalog|featured|search/lyrics|songs/match|lyrics|top(/[\w-]+(/voice)?)?|requests/all"
+    r"/api/(catalog|featured|search/lyrics|songs/match|lyrics|top(/[\w-]+(/voice)?)?|requests|requests/all"
     r"|songs/[\w-]+/(preview|status|reference|render-status|audio/\w+))"
 )
 # counted; a guest's take can go on today's top (as "a guest singer", without their voice);
@@ -58,17 +50,32 @@ GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|top/(check|submit)|stats/te
 async def require_google_sign_in(request: Request, call_next):
     path = request.url.path
     if path.startswith("/api/") and path not in OPEN_PATHS and request.method != "OPTIONS":
-        guest = not request.headers.get("authorization") and (
-            (request.method == "GET" and GUEST_READS.fullmatch(path)) or (request.method == "POST" and GUEST_POSTS.fullmatch(path))
-        )
-        if guest:
+        guest_ok = (request.method == "GET" and GUEST_READS.fullmatch(path)) or (request.method == "POST" and GUEST_POSTS.fullmatch(path))
+        header = request.headers.get("authorization")
+        if guest_ok and not header:
             request.state.user = None
         else:
             try:
-                request.state.user = auth.verify(request.headers.get("authorization"))
+                request.state.user = auth.verify(header)
             except auth.AuthError as e:
-                return JSONResponse({"detail": str(e)}, status_code=401)
+                # why, for the log (never the token): an expired or rejected sign-in
+                print(f"sign-in refused for {request.method} {path}: {e}", flush=True)
+                if not guest_ok:
+                    return JSONResponse({"detail": str(e)}, status_code=401)
+                request.state.user = None  # something a guest may do anyway: carry on as a guest
     return await call_next(request)
+
+
+# Added last, so it wraps everything above: every answer — a refused sign-in too — carries
+# the CORS headers, and the browser sees the real reply instead of a "blocked by CORS" error.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(CONFIG.cors_origins),
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Lemo-Link"],
+)
 
 
 @app.on_event("shutdown")
@@ -743,6 +750,8 @@ def tell_owner() -> None:
 
 @app.get("/api/requests")
 def my_requests(request: Request) -> list[dict]:
+    if request.state.user is None:
+        return []  # a guest hasn't asked for any
     return _data(lambda: userdata.my_requests(_uid(request)))
 
 

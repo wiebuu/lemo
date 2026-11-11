@@ -46,7 +46,8 @@ def verify(header: str | None) -> dict:
     if _request is None:
         _request = google_requests.Request()
     try:
-        claims = id_token.verify_firebase_token(token, _request, audience=CONFIG.firebase_project_id)
+        # a little leeway for clocks that differ by a few seconds (else a fresh token is "used too early")
+        claims = id_token.verify_firebase_token(token, _request, audience=CONFIG.firebase_project_id, clock_skew_in_seconds=30)
     except Exception as e:  # bad signature, expired, wrong project …
         raise AuthError(f"sign-in not valid ({e})") from e
     if not claims or (claims.get("firebase") or {}).get("sign_in_provider") != "google.com":

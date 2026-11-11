@@ -15,8 +15,6 @@ from __future__ import annotations
 
 import json
 import re
-import shlex
-import subprocess
 import sys
 import time
 
@@ -25,15 +23,10 @@ from lemo_analyzer import remote, storage, youtube
 
 def _on_server(code: str) -> str:
     """Run Python next to the server's database and return what it prints last."""
-    host, _ = remote._host_path()
-    if not host:
-        r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
-    else:
-        cmd = f"cd ~/lemo/analyzer && .venv/bin/python -c {shlex.quote(code)}"
-        r = subprocess.run(["ssh", *remote.SSH_OPTS.split(), host, cmd], capture_output=True, text=True, timeout=60)
-    if r.returncode != 0:
-        sys.exit(f"couldn't reach the server's database: {r.stderr.strip()[-300:]}")
-    return r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
+    try:
+        return remote.on_server(code)
+    except Exception as e:
+        sys.exit(f"couldn't reach the server's database: {str(e)[-300:]}")
 
 
 def pending() -> list[dict]:

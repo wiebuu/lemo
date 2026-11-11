@@ -93,12 +93,23 @@ def _startup() -> None:
                     catalog.backfill()
                     if mailer.can_send():  # where singers (and the owner) can be emailed: this Mac
                         deliver_requests()
-                        tell_owner()
                     storage.trim()
                 except Exception as e:
                     print(f"could not refresh the song list: {e}", flush=True)
 
         threading.Thread(target=relist, daemon=True, name="lemo-relist").start()
+
+        # a song a singer asks for: emailed to the owner within a couple of minutes
+        def watch_requests() -> None:
+            while True:
+                try:
+                    tell_owner()
+                except Exception as e:
+                    print(f"could not email about song requests: {e}", flush=True)
+                time.sleep(120)
+
+        if mailer.can_send():
+            threading.Thread(target=watch_requests, daemon=True, name="lemo-requests-mail").start()
         from . import lyrics_prep
 
         lyrics_prep.catch_up_forever()  # stored songs still without lyrics, while idle
@@ -721,8 +732,22 @@ def request_song(request: Request, url: str = Form(...)) -> dict:
 
 
 def tell_owner() -> None:
-    """Email Lemody's owner about songs singers asked for since last time. Only where mail
-    can be sent (this Mac; the VPS's host blocks mail ports): the requests stay untold there."""
+    """Email Lemody's owner (LEMO_OWNER_EMAIL) about songs singers asked for since last
+    time. Only where mail can be sent (this Mac; the VPS's host blocks mail ports). The
+    site's requests live in the VPS's database, so with a VPS set up they're read from
+    there over SSH, and marked as told there once the email has gone."""
+    if remote.enabled() and remote._host_path()[0]:
+        try:
+            got = remote.on_server("import json; from lemo_analyzer import userdata; print(json.dumps(userdata.untold_requests()))")
+            new = json.loads(got or "[]")
+        except Exception as e:
+            print(f"could not check the VPS for song requests: {e}", flush=True)
+            return
+        if new and mailer.tell_owner(new):
+            told = json.dumps([{"uid": r["uid"], "songId": r["songId"]} for r in new])
+            remote.on_server(f"import json; from lemo_analyzer import userdata; userdata.mark_told(json.loads({told!r})); print('ok')")
+            worker.log(f"emailed the owner about {len(new)} song request(s)")
+        return
     try:
         new = userdata.untold_requests()
     except userdata.Unavailable:

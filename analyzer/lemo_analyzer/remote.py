@@ -12,6 +12,7 @@ import base64
 import hashlib
 import shlex
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -54,6 +55,17 @@ def _ssh(cmd: str, timeout: float = 30) -> str:
     if r.returncode != 0:
         raise RuntimeError(f"VPS: {(r.stderr or r.stdout).strip()[-200:]}")
     return r.stdout
+
+
+def on_server(code: str, timeout: float = 60) -> str:
+    """Run Python next to the VPS's database (the site's accounts and song requests) and
+    return the last line it prints. On the VPS itself it runs right here."""
+    host, _ = _host_path()
+    cmd = f"cd ~/lemo/analyzer && .venv/bin/python -c {shlex.quote(code)}"
+    out = _ssh(cmd, timeout) if host else subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, timeout=timeout, check=True).stdout
+    lines = out.strip().splitlines()
+    return lines[-1] if lines else ""
 
 
 def _rsync(src: str, dst: str, timeout: float = 900, tries: int = 4) -> None:

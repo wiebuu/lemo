@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDownWideNarrow, Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
 import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
 import { signedIn, signInWithGoogle } from '../auth/firebase'
@@ -17,7 +17,7 @@ const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: 
 const TooWeak = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak })))
 import { FeaturedShelf } from './FeaturedShelf'
 import { LikeButton } from './Like'
-import { Plays, PreviewButton, usePreview } from './SongSearch'
+import { Plays, PreviewButton, useLyricHits, usePreview, withLyricHits } from './SongSearch'
 import { SongSearch } from './SongSearch'
 import { cx, Eq, Menu, MenuItem, Pager, Tip, usePaged } from './ui'
 
@@ -485,7 +485,8 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
     }), sort),
     [featured, byId, shownLang, sort],
   )
-  const ownShown = find.trim() ? searchSongs(own, find, 500) : own
+  const ownLyrics = useLyricHits(tab === 'mine' ? find : '')
+  const ownShown: ((typeof own)[number] & { line?: string })[] = find.trim() ? withLyricHits(searchSongs(own, find, 500), own, ownLyrics.hits) : own
   // your songs, a page at a time: songs you asked for first (not while searching), then yours
   const mineRows = [
     ...(find.trim() ? [] : requests.map((r) => ({ kind: 'request' as const, r }))),
@@ -580,7 +581,9 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                 </Tip>
               </li>
             ))(row.r) : ((it, n) => (
-              <li key={it.id} className="track group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
+              <Fragment key={it.id}>
+              {it.line && !(n > 0 && ownShown[n - 1]?.line) && <FromLyrics />}
+              <li className="track group grid grid-cols-[1.75rem_1fr_auto_auto] items-baseline gap-3 px-2 py-1.5 rounded-lg">
                 <span className="text-[11px] text-sub tabular-nums">{String(n + 1).padStart(2, '0')}</span>
                 <button
                   type="button"
@@ -592,6 +595,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                   <span className="text-[14px] font-medium text-text group-hover:text-main">{it.title}</span>
                   {it.artist && <span className="text-[11px] text-sub ml-2">{it.artist}</span>}
                   <Plays n={plays.get(it.id)} />
+                  {it.line && <span className="block text-[12px] text-sub italic truncate">“{it.line}”</span>}
                 </button>
                 <span className="text-[11px] text-sub tabular-nums">
                   {opening === it.id ? <span className="flex items-center gap-1 text-main"><Loader2 size={11} className="animate-spin" />opening</span> : formatTime(it.duration)}
@@ -607,8 +611,9 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                   </button>
                 </Tip>
               </li>
+              </Fragment>
             ))(row.it, row.n))}
-            {find.trim() && !ownShown.length && <li className="px-2 py-2 text-xs text-sub">none of your songs match “{find.trim()}”</li>}
+            {find.trim() && !ownShown.length && <li className="px-2 py-2 text-xs text-sub">{ownLyrics.pending ? 'looking in the lyrics…' : `none of your songs match “${find.trim()}”`}</li>}
           </ol>
           <Pager at={minePage.at} pages={minePage.pages} onPage={minePage.go} />
           </>
@@ -635,9 +640,12 @@ function Explore({ songs: list, loading, find, lang, sort, opening, online, onOp
   const preview = usePreview()
   useEffect(() => () => preview.stop(), [])
   const q = find.trim()
-  const ranked = useMemo(() => (q ? searchSongs(list, q, list.length) : list), [list, q])
+  // like the big search box: names first, then songs found by a line of their lyrics
+  const lyrics = useLyricHits(find)
+  const ranked = useMemo<(CatalogItem & { line?: string })[]>(() => (q ? withLyricHits(searchSongs(list, q, list.length), list, lyrics.hits) : list), [list, q, lyrics.hits])
   const page = usePaged(ranked, [find, lang, sort])
   if (loading) return <SkeletonRows />
+  if (!ranked.length && lyrics.pending) return <LyricsLooking />
   if (!ranked.length) return (
     <div className="text-xs text-sub py-2 px-2 leading-relaxed">
       {q ? <>no {lang ? `${languageName(lang)} ` : ''}song matches “{q}”. </> : <>no {lang ? `${languageName(lang)} ` : ''}songs here yet. </>}
@@ -654,12 +662,15 @@ function Explore({ songs: list, loading, find, lang, sort, opening, online, onOp
         {songs.map((it, i) => {
           const n = page.offset + i
           return (
-            <li key={it.id} className="track group grid grid-cols-[1.75rem_2rem_1fr_auto_auto_auto] items-center gap-2 px-2 py-1 rounded-lg">
+            <Fragment key={it.id}>
+            {it.line && !songs[i - 1]?.line && <FromLyrics />}
+            <li className="track group grid grid-cols-[1.75rem_2rem_1fr_auto_auto_auto] items-center gap-2 px-2 py-1 rounded-lg">
               <span className={cx('text-[11px] tabular-nums', n < 3 && !q && sort !== 'lemody' && (it.views || it.sung) ? 'text-main font-medium' : 'text-sub')}>{String(n + 1).padStart(2, '0')}</span>
               <PreviewButton id={it.id} has={it.preview !== false} preview={preview} />
               <button type="button" disabled={!online || !!opening} onClick={() => { preview.stop(); onOpen(it.id) }} className="min-w-0 text-left truncate">
                 <span className="text-[14px] font-medium text-text group-hover:text-main">{it.title}</span>
                 {it.artist && <span className="text-[11px] text-sub ml-2">{it.artist}</span>}
+                {it.line && <span className="block text-[12px] text-sub italic truncate">“{it.line}”</span>}
               </button>
               <span className="text-[11px] text-sub tabular-nums whitespace-nowrap">
                 <span className="hidden sm:inline">{countsLine(it)}</span>
@@ -671,12 +682,23 @@ function Explore({ songs: list, loading, find, lang, sort, opening, online, onOp
                 {opening === it.id ? <Loader2 size={11} className="animate-spin inline text-main" /> : it.duration ? formatTime(it.duration) : ''}
               </span>
             </li>
+            </Fragment>
           )
         })}
       </ol>
       <Pager at={page.at} pages={page.pages} onPage={(p) => { preview.stop(); page.go(p) }} />
     </div>
   )
+}
+
+/** The heading above songs found by their lyrics (as in the big search box). */
+function FromLyrics() {
+  return <li aria-hidden className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-sub">From the lyrics</li>
+}
+
+/** No name matched yet, and the lyrics are still being searched. */
+function LyricsLooking() {
+  return <div className="text-xs text-sub py-2 px-2 flex items-center gap-2"><Eq /> looking in the lyrics…</div>
 }
 
 type LibraryView = { lang: string | null; sort: SortOrder }

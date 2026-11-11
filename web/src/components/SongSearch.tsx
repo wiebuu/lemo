@@ -15,6 +15,37 @@ import { cx, Tip, usePhone } from './ui'
  * already here opens it; any other site's link can be sent to Lemody to add. A few
  * words from the lyrics find the song too, spelled any way ("From the lyrics").
  */
+/**
+ * Songs whose lyrics contain what's typed (two words or more, spelled any way): asked of
+ * the server once typing pauses. The same lookup behind every search box.
+ */
+export function useLyricHits(query: string) {
+  const [sung, setSung] = useState<{ q: string; hits: { id: string; line: string }[] } | null>(null)
+  const q = query.trim().split(/\s+/).length >= 2 ? query.trim() : ''
+  useEffect(() => {
+    if (!q) return
+    let gone = false
+    const t = setTimeout(() => {
+      analyzer.searchLyrics(q).then((hits) => !gone && setSung({ q, hits }), () => !gone && setSung({ q, hits: [] }))
+    }, 300)
+    return () => { gone = true; clearTimeout(t) }
+  }, [q])
+  return { hits: q && sung?.q === q ? sung.hits : [], pending: !!q && sung?.q !== q }
+}
+
+/** Name matches first, then songs found by their lyrics (each with the line that matched). */
+export function withLyricHits<T extends { id: string }>(named: T[], pool: T[], hits: { id: string; line: string }[]): (T & { line?: string })[] {
+  const have = new Set(named.map((s) => s.id))
+  const byId = new Map(pool.map((s) => [s.id, s]))
+  const extra = hits.flatMap((h) => {
+    const it = byId.get(h.id)
+    if (!it || have.has(h.id)) return []
+    have.add(h.id)
+    return [{ ...it, line: h.line }]
+  })
+  return [...named, ...extra]
+}
+
 export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, onLink, onAsk, onTyping, actions, autoFocus }: {
   catalog: CatalogItem[]
   /** the song list is still on its way */
@@ -65,30 +96,17 @@ export function SongSearch({ catalog, loading, busy, opening, disabled, onOpen, 
   const locked = askable && checked && !checked.song ? (link?.kind === 'locked' ? link.site : 'YouTube') : null
   const similar = locked && checked ? checked.similar : []
   const named = useMemo(() => (link ? [] : searchSongs(catalog, q)), [catalog, q, link])
-  // a bit of the lyrics (two words or more): asked of the server once typing pauses
-  const [sung, setSung] = useState<{ q: string; hits: { id: string; line: string }[] } | null>(null)
-  const lyricQ = !link && q.trim().split(/\s+/).length >= 2 ? q.trim() : ''
-  useEffect(() => {
-    if (!lyricQ) return
-    let gone = false
-    const t = setTimeout(() => {
-      analyzer.searchLyrics(lyricQ).then((hits) => !gone && setSung({ q: lyricQ, hits }), () => !gone && setSung({ q: lyricQ, hits: [] }))
-    }, 300)
-    return () => { gone = true; clearTimeout(t) }
-  }, [lyricQ])
-  const lyricsPending = !!lyricQ && sung?.q !== lyricQ
+  const { hits: lyricHits, pending: lyricsPending } = useLyricHits(link ? '' : q)
   const found = useMemo(() => {
     const ids = new Set(named.map((s) => s.id))
-    const fromLyrics = lyricQ && sung?.q === lyricQ
-      ? sung.hits.flatMap((h) => {
-          const it = catalog.find((c) => c.id === h.id)
-          if (!it || ids.has(it.id)) return []
-          const t = tidyTitle(it.title, it.artist)
-          return [{ ...it, shownTitle: t.title, shownArtist: t.artist, line: h.line }]
-        }).slice(0, 5)
-      : []
+    const fromLyrics = lyricHits.flatMap((h) => {
+      const it = catalog.find((c) => c.id === h.id)
+      if (!it || ids.has(it.id)) return []
+      const t = tidyTitle(it.title, it.artist)
+      return [{ ...it, shownTitle: t.title, shownArtist: t.artist, line: h.line }]
+    }).slice(0, 5)
     return [...named, ...fromLyrics] as (typeof named[number] & { line?: string })[]
-  }, [named, sung, lyricQ, catalog])
+  }, [named, lyricHits, catalog])
   useEffect(() => setSel(0), [q])
   useEffect(() => () => preview.stop(), [])
 

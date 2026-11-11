@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ViewControls } from './ViewControls'
 import { lazy, Suspense, useState } from 'react'
 import { Crown, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, X } from 'lucide-react'
 const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel })))
@@ -88,6 +89,9 @@ export function ListenControls({ noSwitch }: { /** the you / song switch is show
           </button>
         </Tip>
       )}
+      {/* how it looks and leaving, apart from the listening controls */}
+      {(s.canReplay && (!noSwitch || (s.replay && !phone))) && <span aria-hidden className="w-px h-5 bg-line mx-1" />}
+      <ViewControls round />
       <Tip tip="Back to practice">
         <button type="button" onClick={() => studio.leaveReview()} aria-label="back to practice"
           className="w-9 h-9 rounded-full text-sub flex items-center justify-center hover:text-text hover:bg-sub-alt">

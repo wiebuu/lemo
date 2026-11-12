@@ -122,7 +122,8 @@ ul.songs li[hidden],.guide-list li[hidden]{display:none}
 .pager button[aria-current]{background:var(--text);color:var(--bg);font-weight:600}
 .pager button:disabled{opacity:.3;cursor:default}
 .pager span{width:24px;text-align:center;color:var(--sub)}
-#ck{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:calc(100% - 32px);max-width:440px;display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;font-size:12px;color:var(--sub)}
+#ck{position:fixed;z-index:50;left:50%;bottom:12px;transform:translateX(-50%);width:calc(100% - 32px);max-width:440px;display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;font-size:12px;color:var(--sub)}
+#ck[hidden]{display:none}
 #ck span{flex:1}#ck a{color:var(--sub)}
 #ck button{border:0;border-radius:999px;background:var(--text);color:var(--bg);font:600 12px inherit;padding:6px 14px;cursor:pointer}
 </style>
@@ -148,7 +149,7 @@ function btn(label,p,cur,dis,aria){var b=document.createElement('button');b.type
 function go(p,scroll){at=p;li.forEach(function(l,i){l.hidden=i<at*N||i>=(at+1)*N});nav.textContent='';nav.append(btn('‹',at-1,0,at===0,'previous page'));list().forEach(function(q){if(q<0){var s=document.createElement('span');s.textContent='…';nav.append(s)}else nav.append(btn(String(q+1),q,q===at))});nav.append(btn('›',at+1,0,at===pages-1,'next page'));if(scroll&&ul.getBoundingClientRect().top<0)ul.scrollIntoView({block:'start'})}
 go(0)})})();
 </script>
-<script>try{var k='lemo.cookieNote',c=document.getElementById('ck');if(!localStorage.getItem(k)){c.hidden=false;c.querySelector('button').onclick=function(){localStorage.setItem(k,'1');c.hidden=true}}}catch(e){}</script>
+<script>try{var k='lemo.cookieNote',c=document.getElementById('ck');if(!localStorage.getItem(k)){c.hidden=false;localStorage.setItem(k,'seen');c.querySelector('button').onclick=function(){try{localStorage.setItem(k,'1')}catch(e){}c.hidden=true}}}catch(e){}</script>
 </body>
 </html>
 `

@@ -15,6 +15,11 @@ import { ARTICLES, FOOTER, KARAOKE_LANGS, SITE, UPDATED, UPDATED_ISO } from '../
 const here = dirname(fileURLToPath(import.meta.url))
 const dist = join(here, '..', 'dist')
 const queue = join(here, '..', '..', 'analyzer', 'featured.json')
+// Lemody's own YouTube Shorts per song ({ "yt-<id>": [{ short, date }] }); a song page shows the
+// ones already published on the day of the build
+const SHORTS = existsSync(join(here, 'shorts.json')) ? JSON.parse(readFileSync(join(here, 'shorts.json'), 'utf8')) : {}
+const TODAY = new Date().toISOString().slice(0, 10)
+const shortsOf = (id) => (SHORTS[id] ?? []).filter((x) => x.date <= TODAY)
 
 const LANGS = {
   hi: 'Hindi', pa: 'Punjabi', gw: 'Garhwali', ku: 'Kumaoni', hr: 'Haryanvi', en: 'English', ur: 'Urdu',
@@ -91,6 +96,8 @@ b{color:var(--text);font-weight:600}
 .cta,.button{display:inline-block;background:var(--text);color:var(--bg);text-decoration:none;font-weight:600;padding:11px 22px;border-radius:999px;margin:8px 0 4px}
 .cta:hover,.button:hover{color:var(--bg);opacity:.9}
 .note{color:var(--sub);font-size:13px}
+.short{width:100%;max-width:300px;aspect-ratio:9/16;margin:12px 0;border-radius:14px;overflow:hidden;background:#000}
+.short iframe{width:100%;height:100%;border:0;display:block}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:20px 0}
 .card-title{font-weight:600}
 .faq{margin:16px 0 28px;border-top:1px solid var(--line)}
@@ -231,6 +238,7 @@ for (const s of songs) {
   const also = [...more.slice(start), ...more.slice(0, start)].slice(0, 12)
   const lang = s.lang ? `${s.lang} ` : ''
   const lp = langPage(s.lang)
+  const vids = shortsOf(s.id)
   write(`sing/${s.slug}`, page({
     path: `/sing/${s.slug}`,
     title: `${s.title} karaoke with lyrics${s.people[0] ? ` · ${s.people[0]}` : ''} | Lemody`,
@@ -243,12 +251,26 @@ for (const s of songs) {
 <p>Lemody plays ${esc(s.title)}${s.artist ? ` by ${esc(s.artist)}` : ''} with the vocals turned down, shows the lyrics as they come, and draws the original singer's melody on a moving graph. When you sing, your own line appears on top of it, so you can see where your pitch matches and where it drifts. After each take you get a score for pitch, timing and expression.</p>
 ${FEATURES}
 <p class="note">New here? Read <a href="/guides/how-to-read-the-pitch-graph">how to read the pitch graph</a>.</p>
+${vids.length ? `<h2>Watch: ${esc(s.title)} pitch graph on Lemody</h2>
+<p>The white line is the original singer's voice, note by note. Try to stay on it when you sing.</p>
+<div class="short"><iframe src="https://www.youtube-nocookie.com/embed/${vids[0].short}" title="${esc(s.title)} karaoke pitch graph · Lemody" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+<p class="note"><a href="https://www.youtube.com/shorts/${vids[0].short}" rel="noopener">Watch on YouTube</a> · more on <a href="https://www.youtube.com/@lemodysounds.online" rel="noopener">Lemody's channel</a></p>` : ''}
 ${same.length ? `<h2>More songs by ${esc(s.people[0])}</h2><ul class="songs">${same.map(songLink).join('')}</ul>` : ''}
 ${also.length ? `<h2>More ${esc(s.lang ?? '')} songs to sing</h2><ul class="songs">${also.map(songLink).join('')}</ul>` : ''}`,
     jsonld: [
       { '@type': 'MusicRecording', name: s.title, url: `${SITE}/sing/${s.slug}`, inLanguage: s.lang ?? undefined,
         byArtist: s.people.map((n) => ({ '@type': 'MusicGroup', name: n })) },
       crumbs(['Songs', '/songs'], ...(lp ? [[`${s.lang} karaoke`, lp]] : []), [s.title, `/sing/${s.slug}`]),
+      ...vids.slice(0, 1).map((v) => ({
+        '@type': 'VideoObject',
+        name: `${s.title} karaoke pitch graph${s.people[0] ? ` · ${s.people[0]}` : ''} | Lemody`,
+        description: `The melody of ${s.title}${s.artist ? ` by ${s.artist}` : ''} drawn as a live pitch graph with synced lyrics. Sing it yourself free on Lemody.`,
+        thumbnailUrl: `https://i.ytimg.com/vi/${v.short}/hqdefault.jpg`,
+        uploadDate: `${v.date}T12:00:00+05:30`,
+        contentUrl: `https://www.youtube.com/shorts/${v.short}`,
+        embedUrl: `https://www.youtube.com/embed/${v.short}`,
+        publisher: ORG,
+      })),
     ],
   }))
   map.push([`/sing/${s.slug}`, 'monthly', '0.8'])

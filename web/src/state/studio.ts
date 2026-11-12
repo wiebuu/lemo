@@ -164,6 +164,10 @@ export class Studio {
   private ghost: UserFrame[] = []
   private results = new Map<number, NoteResult>()
   private takeFrom: number | null = null
+  /** Where the current stretch of singing began (after a seek in a test, the seek point). */
+  private segFrom: number | null = null
+  /** A test is under way and has a take to splice into (seeking back re-sings from there). */
+  private sessionTake = false
   private nextScore = 0
   private live: LiveInfo = {
     time: 0, duration: 0, level: 0, state: 'idle', cents: null, midi: null, target: null, label: '', lastPass: null,
@@ -344,6 +348,8 @@ export class Studio {
       this.set({ session: false })
     }
     this.endTake()
+    this.sessionTake = false
+    this.recChunks = []
     if (e) {
       e.window = null
       e.loop = null
@@ -953,6 +959,7 @@ export class Studio {
     }
     if (e.playing) e.pause()
     this.endTake() // drop the practice line
+    this.sessionTake = false // a new test: nothing of an earlier one is spliced into it
     if (restartAt !== null) e.seek(restartAt)
     this.sessionEval = null
     this.set({ session: true, lastResult: null, resultsView: 'results', topRank: null, viewing: null })
@@ -986,6 +993,8 @@ export class Studio {
       e.pause()
     }
     this.endTake()
+    this.sessionTake = false
+    this.recChunks = []
     const ev = this.sessionEval
     this.sessionEval = null
     const st = this.snap.settings
@@ -1477,6 +1486,8 @@ export class Studio {
   // ---- takes & scoring -------------------------------------------------------
 
   private startTake(at: number) {
+    this.segFrom = at
+    if (this.snap.session && this.sessionTake && this.takeFrom === null) return this.spliceTake(at)
     this.takeFrom = at
     this.frames = []
     this.results.clear()
@@ -1489,7 +1500,40 @@ export class Studio {
     this.recLen = 0
     // Only a test records and scores; practice just shows your line.
     this.mic.setRecording(this.snap.session)
+    if (this.snap.session) this.sessionTake = true
     const notes = this.snap.track?.notes ?? []
+    this.nextScore = notes.findIndex((n) => n.startTime >= at)
+    if (this.nextScore < 0) this.nextScore = notes.length
+  }
+
+  /**
+   * A test carries on after a seek: everything sung before `at` stays exactly as it was
+   * (pitch line, note colours, recording); only what was sung from `at` onwards is dropped,
+   * to be sung again. Seeking forward keeps everything and leaves the skipped part unsung.
+   */
+  private spliceTake(at: number) {
+    const old = this.frames
+    const cut = old.findIndex((f) => f.t >= at)
+    const kept = cut < 0 ? old : old.slice(0, cut)
+    this.ghost = cut < 0 ? [] : old.slice(cut) // the part being replaced, shown faintly
+    this.frames = kept
+    this.takeFrom = kept.length ? Math.min(kept[0].t, at) : at
+    const notes = this.snap.track?.notes ?? []
+    for (const [i] of this.results) if (!notes[i] || notes[i].endTime > at) this.results.delete(i)
+    // The recording: keep the samples before `at` (sample N is song time recStart + N/sr·speed).
+    const sr = this.mic.sampleRate
+    const keep = this.recStart === null ? 0 : Math.round(((at - this.recStart) / this.snap.speed) * sr)
+    if (keep <= 0 || !this.recChunks.length) {
+      this.recChunks = []
+      this.recStart = null
+      this.recLen = 0
+    } else {
+      const all = this.recChunks.length === 1 ? this.recChunks[0] : concatChunks(this.recChunks)
+      const part = all.slice(0, Math.min(keep, all.length))
+      this.recChunks = [part]
+      this.recLen = part.length
+    }
+    this.mic.setRecording(true)
     this.nextScore = notes.findIndex((n) => n.startTime >= at)
     if (this.nextScore < 0) this.nextScore = notes.length
   }
@@ -1503,19 +1547,15 @@ export class Studio {
     this.ghost = this.frames
     this.mic.setRecording(false)
     if (!this.snap.session) return // practice: nothing is scored or kept
+    this.sessionEval = null // scored afresh below, from the whole take as it now stands
     if (track && to - from >= 1 && this.recStart !== null && this.recChunks.length) {
-      const len = this.recChunks.reduce((a, c) => a + c.length, 0)
-      const samples = new Float32Array(len)
-      let o = 0
-      for (const c of this.recChunks) {
-        samples.set(c, o)
-        o += c.length
-      }
+      const samples = concatChunks(this.recChunks)
       this.lastTake = {
         samples, sampleRate: this.mic.sampleRate, start: this.recStart, speed: this.snap.speed, transpose: this.snap.transpose,
         from, to, frames: this.frames,
       }
-      this.recChunks = []
+      // still in a test (a seek): keep the recording so singing on splices into it
+      this.recChunks = [samples]
       this.set({ canReplay: true })
     }
     if (!track || to - from < 1) return
@@ -1575,7 +1615,7 @@ export class Studio {
     const t = e.songTimeAtCtx(r.ctxTime) - this.latencySec * e.speed
     const last = this.frames[this.frames.length - 1]
     // Drop readings still in flight from before a seek.
-    if (t < this.takeFrom! - 0.25 || (last && t <= last.t)) return
+    if (t < this.segFrom! - 0.25 || (last && t <= last.t)) return
     this.frames.push({ t, midi: r.midi, clarity: r.clarity, level: db })
     const bucket = r.midi !== null ? this.voicedLevels : this.unvoicedLevels
     bucket.push(db)
@@ -1596,7 +1636,9 @@ export class Studio {
     // time recStart + N/sr·speed.
     const target = Math.round(((songT - this.recStart) / e.speed) * sr)
     if (target > this.recLen + 256) {
-      const gap = Math.min(target - this.recLen, sr * 5)
+      // a seek forward in a test leaves the skipped part silent, so the whole gap is padded
+      const gap = Math.min(target - this.recLen, Math.max(0, Studio.MAX_REC_SEC * sr - this.recLen))
+      if (!gap) return
       this.recChunks.push(new Float32Array(gap))
       this.recLen += gap
     } else if (target < this.recLen - 256) {
@@ -1904,4 +1946,14 @@ function viewChanged(a: GraphView | null, b: GraphView): boolean {
  */
 function lyricsKey(t: { title: string; artist?: string | null }): string {
   return `v3 · ${t.title} · ${t.artist ?? ''}`
+}
+
+function concatChunks(chunks: Float32Array[]): Float32Array {
+  const out = new Float32Array(chunks.reduce((a, c) => a + c.length, 0))
+  let o = 0
+  for (const c of chunks) {
+    out.set(c, o)
+    o += c.length
+  }
+  return out
 }

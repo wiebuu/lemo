@@ -16,6 +16,7 @@ const AnalyseChoice = lazy(() => import('./DeviceAnalysis').then((m) => ({ defau
 const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
 const TooWeak = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak })))
 import { FeaturedShelf } from './FeaturedShelf'
+import { shelfOrder, visitorHome } from '../lib/region'
 import { LikeButton } from './Like'
 import { Plays, PreviewButton, useLyricHits, usePreview, withLyricHits } from './SongSearch'
 import { SongSearch } from './SongSearch'
@@ -422,11 +423,11 @@ function forgetJob() {
   }
 }
 
-const GROUPS: { id: string; label: string }[] = [
-  { id: 'garhwali', label: 'garhwali' },
-  { id: 'hindi', label: 'hindi' },
-  { id: 'english', label: 'english' },
-]
+/** The visitor's own language (from their time zone): its shelf comes first, then english. */
+const HOME = visitorHome()
+/** at most this many songs on the visitor's own-language shelf, and at least this many to show it */
+const LOCAL_MAX = 20
+const LOCAL_MIN = 4
 const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : f.lang === 'hi' ? 'hindi' : 'english')
 
 /**
@@ -467,7 +468,13 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   // the language chips and the sort apply to featured, explore and liked (the sort is remembered on this device)
   const [{ lang, sort }, setView] = useState(savedView)
   const pick = (v: Partial<LibraryView>) => setView((was) => { const now = { ...was, ...v }; saveView(now); return now })
-  const langs = useMemo(() => languagesIn(catalog), [catalog])
+  // the visitor's own language and english lead the language chips too (India: as they are)
+  const langs = useMemo(() => {
+    const all = languagesIn(catalog)
+    if (HOME === 'india') return all
+    const lead = [HOME, 'en'].filter((c): c is string => !!c)
+    return [...lead.flatMap((c) => all.filter((l) => l.code === c)), ...all.filter((l) => !lead.includes(l.code))]
+  }, [catalog])
   const shownLang = lang && langs.some((l) => l.code === lang) ? lang : null // one with no songs (any more) isn't offered
   const { ids: likedIds } = useLikes()
   // Lemody's own order for explore: most results first, then the newest (as it always was)
@@ -485,6 +492,20 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
     }), sort),
     [featured, byId, shownLang, sort],
   )
+  // a shelf of the visitor's own language (Japanese in Japan…), from every song Lemody has in it
+  const localShelf = useMemo(() => {
+    if (!HOME || HOME === 'india' || (shownLang && shownLang !== HOME)) return []
+    const songs = sortSongs(catalog.filter((c) => c.lang === HOME), sort === 'lemody' ? 'popular' : sort).slice(0, LOCAL_MAX)
+    return songs.length < LOCAL_MIN ? [] : songs.map((c): FeaturedItem => ({
+      id: c.id, title: c.title, artist: c.artist ?? undefined, lang: c.lang ?? undefined, group: 'local',
+      duration: c.duration ?? null, ready: true, stage: null, progress: 1,
+    }))
+  }, [catalog, shownLang, sort])
+  const shelves = shelfOrder(HOME).map((id) => ({
+    id,
+    label: id === 'local' ? languageName(HOME!).toLowerCase() : id,
+    items: id === 'local' ? localShelf : featuredShown.filter((f) => groupOf(f) === id && !(localShelf.length && f.lang === HOME)),
+  }))
   const ownLyrics = useLyricHits(tab === 'mine' ? find : '')
   const ownShown: ((typeof own)[number] & { line?: string })[] = find.trim() ? withLyricHits(searchSongs(own, find, 500), own, ownLyrics.hits) : own
   // your songs, a page at a time: songs you asked for first (not while searching), then yours
@@ -545,13 +566,10 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
           <SkeletonRows />
         ) : show === 'featured' ? (
           <>
-            {GROUPS.map((g) => {
-              const items = featuredShown.filter((f) => groupOf(f) === g.id)
-              return items.length ? (
-                <FeaturedShelf key={g.id} label={g.label} items={items} counts={byId} opening={opening} preview={preview} onOpen={(id) => { preview.stop(); onOpen(id) }} />
-              ) : null
-            })}
-            {!featuredShown.length && shownLang && (
+            {shelves.map((g) => g.items.length ? (
+              <FeaturedShelf key={g.id} label={g.label} items={g.items} counts={byId} opening={opening} preview={preview} onOpen={(id) => { preview.stop(); onOpen(id) }} />
+            ) : null)}
+            {!featuredShown.length && !localShelf.length && shownLang && (
               <div className="text-xs text-sub py-2 px-2">
                 no featured {languageName(shownLang)} songs —{' '}
                 <button type="button" onClick={() => setTab('explore')} className="text-main underline underline-offset-2">see them all in explore</button>

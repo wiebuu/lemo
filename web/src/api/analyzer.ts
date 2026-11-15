@@ -158,8 +158,10 @@ export interface TopEntry {
   seconds: number
   at: number
   mine: boolean
-  /** the singer chose to let everyone hear it */
+  /** you can play their voice: shared with everyone, or your own kept private */
   hasVoice: boolean
+  /** the singer kept their voice for themselves */
+  voicePrivate?: boolean
   /** the difficulty it was sung (and scored) at */
   toleranceCents: number | null
   scoringMode: 'shape' | 'exact' | null
@@ -184,6 +186,8 @@ export interface TopTake {
   name: string
   photo: string | null
   hasVoice: boolean
+  voicePrivate?: boolean
+  mine?: boolean
   meta: { from: number; to: number; start: number; keyOffset: number | null; toleranceCents?: number; scoringMode?: 'shape' | 'exact' }
   /** the pitch line: time, midi (null: no voice), clarity, level */
   frames: { t: number[]; m: (number | null)[]; c: number[]; l?: (number | null)[] }
@@ -245,11 +249,11 @@ export const analyzer = {
     if (voice) fd.append('voice', voice, 'voice.wav')
     return fetch('/api/top/submit', { method: 'POST', body: fd }).then((r) => json<{ rank: number | null; id: string | null }>(r))
   },
-  /** the singer lets everyone hear their take */
-  topShareVoice(id: string, voice: Blob) {
+  /** the singer's voice for their take: everyone may hear it, or (private) only they can */
+  topShareVoice(id: string, voice: Blob, priv = false) {
     const fd = new FormData()
     fd.append('voice', voice, 'voice.wav')
-    return fetch(`/api/top/${id}/voice`, { method: 'POST', body: fd }).then((r) => json<{ ok: boolean }>(r))
+    return fetch(`/api/top/${id}/${priv ? 'private-voice' : 'voice'}`, { method: 'POST', body: fd }).then((r) => json<{ ok: boolean }>(r))
   },
   stats: () => fetch('/api/stats').then((r) => json<SiteStats>(r)),
   /** a test started, or finished after `seconds` of singing (for the stats page) */

@@ -82,16 +82,16 @@ export function TopCelebration() {
             <Crown size={16} /> #{top.rank} in today’s top!
           </div>
           <p className="text-[12px] sm:text-xs text-sub mt-1 leading-snug">
-            Everyone can see your score and pitch line. Let them hear your voice too?
+            Everyone can see your score and pitch line. Let them hear your voice too, or keep it private: only you can listen.
           </p>
           <div className="flex gap-2 mt-3">
-            <button type="button" onClick={() => studio.keepTopVoicePrivate()} disabled={top.voice === 'sending'}
+            <button type="button" onClick={() => void studio.keepTopVoicePrivate()} disabled={top.voice === 'sending'}
               className="flex-1 rounded-full surface text-text text-xs py-2 disabled:opacity-50">
-              no, keep it private
+              keep it private
             </button>
             <button type="button" onClick={() => void studio.shareTopVoice()} disabled={top.voice === 'sending'}
               className="flex-1 rounded-full bg-main text-bg text-xs font-medium py-2 flex items-center justify-center gap-1.5 disabled:opacity-70">
-              <MicVocal size={13} /> {top.voice === 'sending' ? 'sharing…' : 'share my voice'}
+              <MicVocal size={13} /> {top.voice === 'sending' ? 'saving…' : 'share my voice'}
             </button>
           </div>
         </div>

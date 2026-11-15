@@ -1,5 +1,6 @@
 """Today's top: each singer's best take of the day, the best 100 kept, so anyone can open
-the full result — and hear how they sang it, if the singer chose to share their voice.
+the full result — and hear how they sang it, if the singer shared their voice (a voice
+kept private is still saved: its singer can play it, and so can Lemody's admin panel).
 
 Storage stays small: a take that drops out of the 100 (or is from an earlier day) is
 deleted, files and all. A day runs midnight to midnight, India time."""
@@ -21,6 +22,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 MIN_SECONDS = 45  # at least 45 seconds of the song
 EASY_MIN_SCORE = 0.5  # on easy, a take needs at least 50
 VOICE = "voice.m4a"
+PRIVATE = "private"  # marker: the voice is kept for its singer only
 FRAMES = "frames.json.gz"
 
 
@@ -131,16 +133,39 @@ def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path | None = None) 
     return {"rank": rank, "id": take_id if rank else None}
 
 
-def add_voice(uid: str, take_id: str, voice_wav: Path) -> None:
-    """The singer chose to share their voice with a take that's on today's top."""
+def add_voice(uid: str, take_id: str, voice_wav: Path | None = None, private: bool = False) -> None:
+    """The singer's voice for their take on today's top: shared with everyone, or kept
+    private (then only they can play it). With no recording, only the choice changes."""
     d = take_dir(take_id)
     if userdata.top_owner(take_id) != uid or not d.exists():
         raise Rejected("this take is no longer in today's top")
-    _encode(voice_wav, d)
+    if voice_wav is not None:
+        _encode(voice_wav, d)
+    elif not (d / VOICE).exists():
+        raise Rejected("send the recording")
+    if private:
+        (d / PRIVATE).touch()
+    else:
+        (d / PRIVATE).unlink(missing_ok=True)
 
 
 def has_voice(take_id: str) -> bool:
-    return (take_dir(take_id) / VOICE).exists()
+    """A voice everyone may hear."""
+    d = take_dir(take_id)
+    return (d / VOICE).exists() and not (d / PRIVATE).exists()
+
+
+def voice_private(take_id: str) -> bool:
+    """A voice its singer kept for themselves."""
+    d = take_dir(take_id)
+    return (d / VOICE).exists() and (d / PRIVATE).exists()
+
+
+def can_hear(take_id: str, uid: str | None) -> bool:
+    """Everyone hears a shared voice; a private one only its singer (uid None: Lemody's admin)."""
+    if has_voice(take_id):
+        return True
+    return voice_private(take_id) and (uid is None or userdata.top_owner(take_id) == uid)
 
 
 def get(take_id: str) -> dict | None:
@@ -148,9 +173,10 @@ def get(take_id: str) -> dict | None:
     d = take_dir(take_id)
     if not e or not (d / FRAMES).exists():
         return None
-    return {**e, "hasVoice": has_voice(take_id), "frames": json.loads(gzip.decompress((d / FRAMES).read_bytes()))}
+    return {**e, "hasVoice": has_voice(take_id), "voicePrivate": voice_private(take_id), "frames": json.loads(gzip.decompress((d / FRAMES).read_bytes()))}
 
 
-def voice(take_id: str) -> Path | None:
+def voice(take_id: str, uid: str | None) -> Path | None:
+    """The voice file, for someone allowed to hear it (see can_hear)."""
     f = take_dir(take_id) / VOICE
-    return f if f.exists() else None
+    return f if f.exists() and can_hear(take_id, uid) else None

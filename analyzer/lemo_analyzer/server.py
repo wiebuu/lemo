@@ -1146,7 +1146,7 @@ def top_list(request: Request) -> dict:
     def run():
         top.tidy()
         uid = _uid(request)
-        entries = [{k: v for k, v in e.items() if k != "uid"} | {"mine": e["uid"] == uid, "hasVoice": top.has_voice(e["id"])}
+        entries = [{k: v for k, v in e.items() if k != "uid"} | _voice_info(e["id"], e["uid"] == uid)
                    for e in userdata.top_list(top.today())]
         return {"day": top.today(), "resetsAt": top.resets_at(), "minSeconds": top.MIN_SECONDS, "entries": entries}
 
@@ -1204,11 +1204,22 @@ async def top_submit(request: Request, frames: UploadFile, voice: UploadFile | N
             raise HTTPException(422, str(e)) from e
 
 
+def _voice_info(take_id: str, mine: bool) -> dict:
+    """hasVoice: this person can play the voice (a shared one, or their own private one);
+    voicePrivate: the singer kept it for themselves."""
+    private = top.voice_private(take_id)
+    return {"mine": mine, "hasVoice": top.has_voice(take_id) or (mine and private), "voicePrivate": private}
+
+
 @app.get("/api/top/{take_id}")
-def top_take(take_id: str) -> dict:
+def top_take(request: Request, take_id: str) -> dict:
     """One take from today's top: everything to show its full result."""
+    def run():
+        e = top.get(take_id)
+        return e and e | _voice_info(take_id, userdata.top_owner(take_id) == _uid(request))
+
     try:
-        e = _data(lambda: top.get(take_id))
+        e = _data(run)
     except top.Rejected as err:
         raise HTTPException(400, str(err)) from err
     if not e:
@@ -1216,22 +1227,33 @@ def top_take(take_id: str) -> dict:
     return e
 
 
-@app.post("/api/top/{take_id}/voice")
-async def top_share_voice(request: Request, take_id: str, voice: UploadFile) -> dict:
-    """The singer chose to let everyone hear their take."""
+async def _save_voice(request: Request, take_id: str, voice: UploadFile | None, private: bool) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
-        wav = await _wav_upload(voice, tmp)
+        wav = await _wav_upload(voice, tmp) if voice is not None else None
         try:
-            await run_in_threadpool(lambda: _data(lambda: top.add_voice(_uid(request), take_id, wav)))
+            await run_in_threadpool(lambda: _data(lambda: top.add_voice(_uid(request), take_id, wav, private)))
         except top.Rejected as e:
             raise HTTPException(422, str(e)) from e
-    return {"ok": True}
+    return {"ok": True, "private": private}
+
+
+@app.post("/api/top/{take_id}/voice")
+async def top_share_voice(request: Request, take_id: str, voice: UploadFile | None = None) -> dict:
+    """The singer lets everyone hear their take (without a recording: a private voice is shared)."""
+    return await _save_voice(request, take_id, voice, False)
+
+
+@app.post("/api/top/{take_id}/private-voice")
+async def top_private_voice(request: Request, take_id: str, voice: UploadFile | None = None) -> dict:
+    """The singer keeps their voice for themselves: saved, but only they can play it.
+    (Its own address, so a server without private voices refuses it instead of sharing it.)"""
+    return await _save_voice(request, take_id, voice, True)
 
 
 @app.get("/api/top/{take_id}/voice")
-def top_voice(take_id: str):
+def top_voice(request: Request, take_id: str):
     try:
-        f = top.voice(take_id)
+        f = _data(lambda: top.voice(take_id, _uid(request)))
     except top.Rejected as e:
         raise HTTPException(400, str(e)) from e
     if not f:

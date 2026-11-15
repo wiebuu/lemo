@@ -108,9 +108,9 @@ export interface Snapshot {
   /** guest: on it as "a guest singer"; seen: the guest closed the note about it */
   /** a friend's link: the score to beat on this song (0–100), until another song opens */
   challenge: number | null
-  topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'no'; guest?: boolean; seen?: boolean } | null
+  topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'private' | 'no'; guest?: boolean; seen?: boolean } | null
   /** The result shown is someone's take from today's top, not yours. */
-  viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean } | null
+  viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean; mine?: boolean; voicePrivate?: boolean } | null
 }
 
 /** The last take's voice, in memory (uploaded only when it makes today's top, and only if you share). */
@@ -1122,10 +1122,20 @@ export class Studio {
     }
   }
 
-  /** On today's top, without your voice (your score and pitch line still show). */
-  keepTopVoicePrivate() {
+  /** On today's top with your voice kept private: saved so you can play it back, heard by no one else. */
+  async keepTopVoicePrivate() {
+    const take = this.lastTake
     const top = this.snap.topRank
-    if (top) this.set({ topRank: { ...top, voice: 'no' } })
+    if (!take || !top?.id || top.voice === 'sending') return
+    this.set({ topRank: { ...top, voice: 'sending' } })
+    try {
+      await analyzer.topShareVoice(top.id, wavOf(take.samples, take.sampleRate), true)
+      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'private' } })
+      this.toast('kept private: only you can listen to it')
+    } catch (e) {
+      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'ask' } })
+      this.toast(`couldn't save your voice: ${(e as Error).message}`)
+    }
   }
 
   /** Open a take from today's top: its song, its full result, and the singer's voice to play (if shared). */
@@ -1161,7 +1171,7 @@ export class Studio {
       this.set({
         busy: null, canReplay: true, lastResult: this.topEval(take, track, mode), resultsView: 'results',
         resultMode: mode,
-        viewing: { id: t.id, name: t.name, photo: t.photo, rank: t.rank, hasVoice: t.hasVoice },
+        viewing: { id: t.id, name: t.name, photo: t.photo, rank: t.rank, hasVoice: t.hasVoice, mine: t.mine, voicePrivate: t.voicePrivate },
       })
       await this.enterReview()
       if (!t.hasVoice) {

@@ -111,6 +111,26 @@ class TopTests(unittest.TestCase):
         self.assertTrue(self.get("/api/top", who="b").json()["entries"][0]["hasVoice"])
         self.assertEqual(self.get(f"/api/top/{take}/voice", who="b").status_code, 200)
 
+    def test_a_private_voice_plays_only_for_its_singer(self):
+        take = self.submit(0.8, voice=False).json()["id"]
+        send = lambda who, private, voice=True: self.c.post(
+            f"/api/top/{take}/{'private-voice' if private == '1' else 'voice'}", headers={"Authorization": f"Bearer {who}"},
+            files={"voice": ("voice.wav", _wav(), "audio/wav")} if voice else None)
+        self.assertEqual(send("b", "1").status_code, 422)  # not their take
+        self.assertEqual(send("a", "1").status_code, 200)
+        mine, theirs = self.get("/api/top", who="a").json()["entries"][0], self.get("/api/top", who="b").json()["entries"][0]
+        self.assertEqual((mine["hasVoice"], mine["voicePrivate"]), (True, True))
+        self.assertEqual((theirs["hasVoice"], theirs["voicePrivate"]), (False, True))
+        self.assertTrue(self.get(f"/api/top/{take}", who="a").json()["hasVoice"])
+        self.assertFalse(self.get(f"/api/top/{take}", who="b").json()["hasVoice"])
+        self.assertEqual(self.get(f"/api/top/{take}/voice", who="a").status_code, 200)
+        self.assertEqual(self.get(f"/api/top/{take}/voice", who="b").status_code, 404)
+        self.assertEqual(self.c.get(f"/api/top/{take}/voice").status_code, 404)  # a guest
+        self.assertIsNotNone(top.voice(take, None))  # Lemody's admin
+        # later shared with everyone, without sending the recording again
+        self.assertEqual(send("a", "0", voice=False).status_code, 200)
+        self.assertEqual(self.get(f"/api/top/{take}/voice", who="b").status_code, 200)
+
     def test_easy_needs_at_least_50_and_the_level_is_shown(self):
         meta = {"songId": SONG, "score": 0.49, "seconds": 70.0, "from": 0, "to": 70, "start": 0, "toleranceCents": 100}
         post = lambda: self.c.post("/api/top/submit", headers={"Authorization": "Bearer a"}, data={"meta": json.dumps(meta)},

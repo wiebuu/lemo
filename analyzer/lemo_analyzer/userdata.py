@@ -61,7 +61,7 @@ ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS helper_uid text;
 -- when Lemody's owner was emailed about it (requests from before this count as told)
 ALTER TABLE lemo_requests ADD COLUMN IF NOT EXISTS told_at double precision DEFAULT 0;
 ALTER TABLE lemo_requests ALTER COLUMN told_at DROP DEFAULT;
--- today's top: each singer's best take of the day (only the best 100 are kept, with their voice)
+-- today's top: each singer's best take of each song today (only the best 100 are kept, with their voice)
 CREATE TABLE IF NOT EXISTS lemo_top (
   id         text PRIMARY KEY,
   day        text NOT NULL,
@@ -74,7 +74,9 @@ CREATE TABLE IF NOT EXISTS lemo_top (
   created_at double precision NOT NULL,
   meta       jsonb NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS lemo_top_day_uid ON lemo_top (day, uid);
+-- one place per singer per song (a singer can be on it with several songs)
+DROP INDEX IF EXISTS lemo_top_day_uid;
+CREATE UNIQUE INDEX IF NOT EXISTS lemo_top_day_uid_song ON lemo_top (day, uid, song_id);
 -- the stats page: tests started / finished and time sung, per day
 CREATE TABLE IF NOT EXISTS lemo_daily (
   day      text PRIMARY KEY,
@@ -376,29 +378,37 @@ TOP_SIZE = 100
 _RANKED = "SELECT id, uid, score, created_at, row_number() OVER (ORDER BY score DESC, created_at) AS rank FROM lemo_top WHERE day = %s"
 
 
-def top_rank(day: str, uid: str, score: float) -> dict:
-    """Where this score would land today. Each singer has one place: their best take."""
-    mine = _q("SELECT score FROM lemo_top WHERE day = %s AND uid = %s", (day, uid), one=True)
+def _same_place(uid: str, song_id: str | None) -> tuple[str, tuple]:
+    """The take a new one would replace: the singer's take of this song. A guest (known only by
+    their address) has one place in all, so nobody can fill the board without signing in."""
+    if uid.startswith(GUEST) or not song_id:
+        return "uid = %s", (uid,)
+    return "uid = %s AND song_id = %s", (uid, song_id)
+
+
+def top_rank(day: str, uid: str, score: float, song_id: str | None = None) -> dict:
+    """Where this score would land today. Each singer has one place per song: their best take
+    of it (other songs they sing can be on it too)."""
+    where, args = _same_place(uid, song_id)
+    mine = _q(f"SELECT score FROM lemo_top WHERE day = %s AND {where} ORDER BY score DESC LIMIT 1", (day, *args), one=True)
     if mine and mine["score"] >= score:
-        return {"rank": None, "reason": "you have a better take today"}
-    above = _q("SELECT COUNT(*) AS n FROM lemo_top WHERE day = %s AND uid <> %s AND score >= %s", (day, uid, score), one=True)["n"]
+        return {"rank": None, "reason": "you have a better take of this song today"}
+    above = _q(f"SELECT COUNT(*) AS n FROM lemo_top WHERE day = %s AND NOT ({where}) AND score >= %s", (day, *args, score), one=True)["n"]
     rank = int(above) + 1
     return {"rank": rank if rank <= TOP_SIZE else None, "reason": None if rank <= TOP_SIZE else "not in the top 100"}
 
 
 def top_add(entry: dict) -> tuple[int | None, list[str]]:
-    """Save a take (replacing the singer's earlier one today). Returns its rank and the ids
-    of takes that are no longer kept (their files are deleted by the caller)."""
+    """Save a take (replacing the singer's earlier take of this song today). Returns its rank
+    and the ids of takes that are no longer kept (their files are deleted by the caller)."""
     _ensure_user(entry["uid"])
-    old = _q("SELECT id FROM lemo_top WHERE day = %s AND uid = %s", (entry["day"], entry["uid"]), one=True)
-    _q("DELETE FROM lemo_top WHERE day = %s AND uid = %s", (entry["day"], entry["uid"]))
+    where, args = _same_place(entry["uid"], entry["songId"])
+    old = _q(f"DELETE FROM lemo_top WHERE day = %s AND {where} RETURNING id", (entry["day"], *args))
     _q("""INSERT INTO lemo_top (id, day, uid, song_id, title, artist, score, seconds, created_at, meta)
           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
        (entry["id"], entry["day"], entry["uid"], entry["songId"], entry.get("title"), entry.get("artist"),
         entry["score"], entry["seconds"], time.time(), _json(entry.get("meta") or {})))
-    gone = top_prune(entry["day"])
-    if old:
-        gone.append(old["id"])
+    gone = top_prune(entry["day"]) + [r["id"] for r in old]
     row = _q(f"SELECT rank FROM ({_RANKED}) r WHERE id = %s", (entry["day"], entry["id"]), one=True)
     return (int(row["rank"]) if row else None), gone
 

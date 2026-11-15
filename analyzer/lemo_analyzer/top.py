@@ -1,4 +1,4 @@
-"""Today's top: each singer's best take of the day, the best 100 kept, so anyone can open
+"""Today's top: each singer's best take of each song today, the best 100 kept, so anyone can open
 the full result — and hear how they sang it, if the singer shared their voice (a voice
 kept private is still saved: its singer can play it, and so can Lemody's admin panel).
 
@@ -72,8 +72,8 @@ def tidy() -> None:
             d.unlink(missing_ok=True)
 
 
-def check(uid: str, score: float) -> dict:
-    return userdata.top_rank(today(), uid, score)
+def check(uid: str, score: float, song_id: str | None = None) -> dict:
+    return userdata.top_rank(today(), uid, score, song_id)
 
 
 def _frames(raw: bytes) -> dict:
@@ -115,7 +115,9 @@ def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path | None = None) 
     if tol >= 100 and score < EASY_MIN_SCORE:
         raise Rejected(f"on easy, a take needs at least {round(EASY_MIN_SCORE * 100)} for today's top")
     day = today()
-    if userdata.top_rank(day, uid, float(score))["rank"] is None:
+    if not isinstance(meta.get("songId"), str) or not meta["songId"]:
+        raise Rejected("which song?")
+    if userdata.top_rank(day, uid, float(score), meta["songId"])["rank"] is None:
         return {"rank": None, "id": None}
     frames = _frames(frames_raw)
     take_id = secrets.token_hex(8)

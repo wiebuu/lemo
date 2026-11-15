@@ -1159,7 +1159,8 @@ def top_check(request: Request, body: dict = Body(...)) -> dict:
     score = body.get("score")
     if not isinstance(score, (int, float)) or not 0 <= score <= 1:
         raise HTTPException(400, "send {score: 0..1}")
-    return _data(lambda: top.check(_uid(request), float(score)))
+    song = body.get("songId")
+    return _data(lambda: top.check(_uid(request), float(score), song if isinstance(song, str) and song else None))
 
 
 async def _wav_upload(voice: UploadFile, tmp: str) -> Path:

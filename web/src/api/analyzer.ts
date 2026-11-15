@@ -145,7 +145,7 @@ export interface RequestBoard {
   added: { songId: string; target: string | null; title: string | null; artist: string | null; people: number; doneAt: number; names: string[]; helper: string | null }[]
 }
 
-/** One place in today's top: a singer's best take of the day. */
+/** One place in today's top: a singer's best take of one song today. */
 export interface TopEntry {
   id: string
   rank: number
@@ -238,8 +238,8 @@ export const analyzer = {
       return r.arrayBuffer()
     }),
   /** would this score make today's top? */
-  topCheck: (score: number) =>
-    fetch('/api/top/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) })
+  topCheck: (score: number, songId: string) =>
+    fetch('/api/top/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score, songId }) })
       .then((r) => json<{ rank: number | null; reason: string | null }>(r)),
   /** a take that makes today's top: its result and pitch line (the voice only if the singer shares it) */
   topSubmit(meta: Record<string, unknown>, frames: string, voice?: Blob) {

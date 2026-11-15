@@ -190,6 +190,25 @@ class TopTests(unittest.TestCase):
         self.assertEqual([round(e["score"], 2) for e in entries], [0.7])
         self.assertEqual(sorted(p.name for p in self.root.iterdir()), [entries[0]["id"]])  # the old take's files are gone
 
+    def test_one_place_per_singer_per_song_several_songs_allowed(self):
+        OTHER = "yt-zyxwvutsrqp"
+        check = lambda score, song: self.c.post("/api/top/check", headers={"Authorization": "Bearer a"},
+                                                json={"score": score, "songId": song}).json()["rank"]
+        self.assertEqual(self.submit(0.6).json()["rank"], 1)
+        self.assertEqual(self.submit(0.5, who="b").json()["rank"], 2)  # the same song, another singer: both stay
+        # another song of Alice's goes on too, even with a lower score than her first
+        self.assertEqual(check(0.4, OTHER), 3)
+        self.assertEqual(self.submit(0.4, song=OTHER).json()["rank"], 3)
+        # the same song again: only a better take replaces it
+        self.assertIsNone(check(0.55, SONG))
+        self.assertIsNone(self.submit(0.55).json()["rank"])
+        self.assertEqual(self.submit(0.45, song=OTHER).json()["rank"], 3)
+        board = self.get("/api/top").json()["entries"]
+        self.assertEqual([(e["name"], e["songId"], round(e["score"], 2)) for e in board],
+                         [("Alice", SONG, 0.6), ("Bob", SONG, 0.5), ("Alice", OTHER, 0.45)])
+        self.assertEqual(len(list(self.root.iterdir())), 3)  # the replaced take's files are gone
+        self.assertEqual(self.get("/api/stats").json()["singers"], 2)  # singers, not takes
+
     def test_only_the_best_100_are_kept_and_the_rest_deleted(self):
         self.fill(100)
         self.assertIsNone(self.c.post("/api/top/check", headers={"Authorization": "Bearer a"}, json={"score": 0.3}).json()["rank"])
@@ -228,8 +247,8 @@ class TopTests(unittest.TestCase):
         self.assertEqual(self.c.post("/api/top/1234abcd/voice", files={"voice": ("v.wav", _wav(), "audio/wav")}).status_code, 401)
         self.assertEqual(self.c.get("/api/me").status_code, 401)
 
-    def guest(self, score, ip, voice=False):
-        meta = {"songId": SONG, "title": "Song", "score": score, "seconds": 75.0, "from": 10.0, "to": 85.0, "start": 9.5, "keyOffset": 0}
+    def guest(self, score, ip, voice=False, song=SONG):
+        meta = {"songId": song, "title": "Song", "score": score, "seconds": 75.0, "from": 10.0, "to": 85.0, "start": 9.5, "keyOffset": 0}
         files = {"frames": ("frames.json", FRAMES, "application/json")}
         if voice:
             files["voice"] = ("voice.wav", _wav(), "audio/wav")
@@ -241,6 +260,7 @@ class TopTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text)
         self.assertEqual(r.json()["rank"], 1)
         self.assertEqual(self.guest(0.85, "1.2.3.4").json()["rank"], None)  # the same guest: their best stays
+        self.assertEqual(self.guest(0.85, "1.2.3.4", song="yt-zyxwvutsrqp").json()["rank"], None)  # one place in all, any song
         self.assertEqual(self.guest(0.7, "5.6.7.8").json()["rank"], 3)  # someone else
         self.assertEqual(self.guest(0.95, "9.9.9.9", voice=True).status_code, 401)  # a voice needs a sign-in
         board = self.c.get("/api/top", headers={"x-real-ip": "1.2.3.4"}).json()["entries"]

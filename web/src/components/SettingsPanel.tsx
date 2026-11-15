@@ -93,7 +93,7 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
             <Choice value={st.showOverall ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ showOverall: v === 'on' })}
               options={[{ value: 'on', label: 'show overall' }, { value: 'off', label: 'separate scores only' }]} />
           </Section>
-          <Section title="today's top" hint="Your best take of the day goes on today's top if it makes the best 100: your name, photo and result, for other singers to open. You're asked each time whether they may hear your voice too. Takes that drop out are deleted.">
+          <Section title="today's top" hint="Your best take of each song goes on today's top if it makes the best 100: your name, photo and result, for other singers to open. You're asked each time whether they may hear your voice too. Takes that drop out are deleted.">
             <Choice value={st.shareTop ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ shareTop: v === 'on' })}
               options={[{ value: 'on', label: 'take part' }, { value: 'off', label: 'don’t take part' }]} />
           </Section>

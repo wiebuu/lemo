@@ -1078,7 +1078,7 @@ export class Studio {
     if (score === null) return
     if (mode.toleranceCents >= 100 && score < TOP_EASY_MIN_SCORE) return // on easy, only 50 and up
     try {
-      const { rank } = await analyzer.topCheck(score)
+      const { rank } = await analyzer.topCheck(score, songId)
       if (!rank || this.lastTake !== take) return
       // a guest goes on it too, as "a guest singer" (their voice stays with them)
       const guest = !signedIn()

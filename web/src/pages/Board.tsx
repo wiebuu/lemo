@@ -48,7 +48,7 @@ function Avatar({ e }: { e: Pick<TopEntry, 'name' | 'photo'> }) {
   )
 }
 
-/** Today's top: each singer's best take of the day; open one to see and hear how they sang it. */
+/** Today's top: each singer's best take of each song today; open one to see and hear how they sang it. */
 export function TopPage() {
   const { data, error } = useLoad<TopBoard>(analyzer.top)
   const top = usePaged(data?.entries ?? [])
@@ -60,7 +60,7 @@ export function TopPage() {
     <>
       <p className="lead">The best takes sung today. Tap one to open the full result — and hear how they sang it, where the singer shared their voice (🎤).</p>
       <p>
-        Each singer’s best take of the day counts — at least {data?.minSeconds ?? 45} seconds of a song from the library,
+        Each singer’s best take of each song counts — at least {data?.minSeconds ?? 45} seconds of a song from the library,
         at normal speed and in the original key (on easy difficulty, with a score of 50 or more). The score is the one on the singer’s own result.
         {data && <> Starts again in {until(data.resetsAt)} (midnight, India time).</>}
       </p>

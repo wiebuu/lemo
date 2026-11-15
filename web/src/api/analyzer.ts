@@ -250,10 +250,22 @@ export const analyzer = {
     return fetch('/api/top/submit', { method: 'POST', body: fd }).then((r) => json<{ rank: number | null; id: string | null }>(r))
   },
   /** the singer's voice for their take: everyone may hear it, or (private) only they can */
-  topShareVoice(id: string, voice: Blob, priv = false) {
+  /** (no recording: the one already saved stays, only who may hear it changes) */
+  topShareVoice(id: string, voice: Blob | null, priv = false) {
     const fd = new FormData()
-    fd.append('voice', voice, 'voice.wav')
+    if (voice) fd.append('voice', voice, 'voice.wav')
     return fetch(`/api/top/${id}/${priv ? 'private-voice' : 'voice'}`, { method: 'POST', body: fd }).then((r) => json<{ ok: boolean }>(r))
+  },
+  /** the singer's cover: the whole song, with their voice where they sang (theirs only) */
+  async topCover(id: string): Promise<{ blob: Blob; name: string }> {
+    const r = await fetch(`/api/top/${id}/cover`)
+    if (!r.ok) {
+      const detail = await r.json().then((j) => j?.detail as string | undefined).catch(() => undefined)
+      throw new ApiError(detail ?? `Couldn’t make the cover (${r.status})`, r.status)
+    }
+    const cd = r.headers.get('Content-Disposition') ?? ''
+    const m = /filename\*=utf-8''([^;]+)/i.exec(cd) ?? /filename="?([^";]+)"?/i.exec(cd)
+    return { blob: await r.blob(), name: m ? decodeURIComponent(m[1]) : 'my Lemody cover.m4a' }
   },
   stats: () => fetch('/api/stats').then((r) => json<SiteStats>(r)),
   /** a test started, or finished after `seconds` of singing (for the stats page) */

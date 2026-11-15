@@ -23,6 +23,7 @@ MIN_SECONDS = 45  # at least 45 seconds of the song
 EASY_MIN_SCORE = 0.5  # on easy, a take needs at least 50
 VOICE = "voice.m4a"
 PRIVATE = "private"  # marker: the voice is kept for its singer only
+COVER = "cover.m4a"  # the whole song with the singer's voice in it (made on first download)
 FRAMES = "frames.json.gz"
 
 
@@ -97,6 +98,7 @@ def _encode(voice_wav: Path, d: Path) -> None:
         tmp.unlink(missing_ok=True)
         raise Rejected("the recording couldn't be read")
     tmp.replace(d / VOICE)
+    (d / COVER).unlink(missing_ok=True)  # made again from the new voice
 
 
 def add(uid: str, meta: dict, frames_raw: bytes, voice_wav: Path | None = None) -> dict:
@@ -180,3 +182,70 @@ def voice(take_id: str, uid: str | None) -> Path | None:
     """The voice file, for someone allowed to hear it (see can_hear)."""
     f = take_dir(take_id) / VOICE
     return f if f.exists() and can_hear(take_id, uid) else None
+
+
+FADE = 0.6  # seconds: the original singer fades out where the take starts, and back in after
+
+
+def _num(v, default: float) -> float:
+    return float(v) if isinstance(v, (int, float)) else default
+
+
+def cover(take_id: str, uid: str | None, backing: Path, vocals: Path) -> Path | None:
+    """The singer's cover, for someone allowed to hear their voice: the WHOLE song, not just
+    the stretch they sang. The original plays before and after; where they sang, the
+    original singer fades out and their voice comes in over the music. Made once, kept
+    with the take (and deleted with it)."""
+    f = voice(take_id, uid)
+    e = userdata.top_get(take_id)
+    if not f or not e:
+        return None
+    out = take_dir(take_id) / COVER
+    if out.exists() and out.stat().st_mtime >= f.stat().st_mtime:
+        return out
+    m = e.get("meta") or {}
+    start = _num(m.get("start"), 0.0)  # song time of the voice's first sample
+    a = _num(m.get("from"), start)
+    b = _num(m.get("to"), a + _num(e.get("seconds"), 0.0))
+    F = FADE
+    # the original singer: silent while the take is sung (with fades), the voice the opposite
+    orig = f"max(clip(({a:.3f}-t)/{F},0,1),clip((t-{b:.3f})/{F},0,1))"
+    mine = f"clip(min((t-{a - F:.3f})/{F},({b + F:.3f}-t)/{F}),0,1)"
+    if start >= 0:
+        place = f"adelay={round(start * 1000)}:all=1"
+    else:  # the recording began before the song: drop that part
+        place = f"atrim=start={-start:.3f},asetpts=PTS-STARTPTS"
+    fmt = "aformat=sample_rates=44100:channel_layouts=stereo"
+    graph = (
+        f"[0:a]{fmt}[bk];"
+        f"[1:a]{fmt},volume='{orig}':eval=frame[ov];"
+        f"[2:a]highpass=f=80,acompressor=threshold=0.1:ratio=3:attack=10:release=200,"
+        f"loudnorm=I=-14:TP=-2,{fmt},aecho=0.8:0.5:70:0.18,{place},volume='{mine}':eval=frame[vo];"  # as loud as a vocal stem
+        f"[bk][ov][vo]amix=inputs=3:duration=first:normalize=0,volume=0.7,alimiter=limit=0.63:level=0[out]"  # headroom: no clipping after AAC
+    )
+    tmp = out.with_suffix(".tmp.m4a")
+    r = subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(backing), "-i", str(vocals), "-i", str(f),
+                        "-filter_complex", graph, "-map", "[out]", "-c:a", "aac", "-b:a", "192k",
+                        "-movflags", "+faststart", str(tmp)], capture_output=True, timeout=300)
+    if r.returncode != 0 or not tmp.exists():
+        tmp.unlink(missing_ok=True)
+        raise Rejected(f"the cover couldn't be made: {r.stderr.decode(errors='replace').strip()[-200:]}")
+    tmp.replace(out)
+    return out
+
+
+def cover_file(take_id: str, uid: str | None) -> Path | None:
+    """cover(), with the song's music found here (fetched back from the song store if needed).
+    uid None: Lemody's admin panel."""
+    from . import audio, jobs, remote
+
+    e = userdata.top_get(take_id)
+    if not e or not voice(take_id, uid):
+        return None
+    d = jobs.song_dir(e["songId"])
+    if (audio.stem_file(d, "backing") is None or audio.stem_file(d, "vocals") is None) and not remote.pull(d):
+        raise Rejected("this song's music isn't available right now")
+    backing, vocals = audio.stem_file(d, "backing"), audio.stem_file(d, "vocals")
+    if backing is None or vocals is None:
+        raise Rejected("this song's music isn't available right now")
+    return cover(take_id, uid, backing, vocals)

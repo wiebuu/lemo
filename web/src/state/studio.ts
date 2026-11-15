@@ -111,6 +111,8 @@ export interface Snapshot {
   topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'private' | 'no'; guest?: boolean; seen?: boolean } | null
   /** The result shown is someone's take from today's top, not yours. */
   viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean; mine?: boolean; voicePrivate?: boolean } | null
+  /** Your cover is being made for download. */
+  coverMaking: boolean
 }
 
 /** The last take's voice, in memory (uploaded only when it makes today's top, and only if you share). */
@@ -212,7 +214,7 @@ export class Studio {
     phrases: [], phrase: -1, breaths: [], lyrics: [], lyricPos: { line: -1, word: -1 }, mic: 'off', micError: null,
     muted: false, voiceIssue: null, settings: persist.settings(), attempts: [], lastResult: null, challenge: null, offsetMs: 0, error: null,
     canReplay: false, replay: false, listenSource: 'me', voiceFx: NO_FX, voiceFxBusy: false, session: false, lyricsShown: [], lyricsStatus: null, lyricsNote: null, toast: null, reviewAspect: 'pitch', resultsView: 'results', focus: null, resultMode: null,
-    topRank: null, viewing: null,
+    topRank: null, viewing: null, coverMaking: false,
   }
 
   // ---- subscription ---------------------------------------------------------
@@ -1088,6 +1090,9 @@ export class Studio {
         toleranceCents: mode.toleranceCents, scoringMode: mode.scoringMode,
       }
       const res = await analyzer.topSubmit(meta, JSON.stringify(packFrames(take.frames)))
+      // a signed-in singer's voice is saved at once, kept private: they can always play it
+      // back and download their cover, even if they never answer the share question
+      if (res.rank && res.id && !guest) this.saveTopVoice(res.id, take)
       if (this.lastTake !== take) return
       this.set({ topRank: res.rank ? { rank: res.rank, id: res.id, saving: false, voice: guest ? 'no' : 'ask', guest } : null })
     } catch {
@@ -1107,6 +1112,20 @@ export class Studio {
     if (top) this.set({ topRank: { ...top, seen: true } })
   }
 
+  /** The voice for today's top, saved privately as soon as the take makes it. */
+  private topVoice: { id: string; saved: Promise<boolean> } | null = null
+
+  private saveTopVoice(id: string, take: RecordedTake) {
+    const saved = analyzer.topShareVoice(id, wavOf(take.samples, take.sampleRate), true).then(() => true, () => false)
+    this.topVoice = { id, saved }
+  }
+
+  /** The recording to send for this take: none when it's already saved on the server. */
+  private async topVoiceToSend(id: string, take: RecordedTake): Promise<Blob | null> {
+    if (this.topVoice?.id === id && (await this.topVoice.saved)) return null
+    return wavOf(take.samples, take.sampleRate)
+  }
+
   /** On today's top: let everyone hear your take. */
   async shareTopVoice() {
     const take = this.lastTake
@@ -1114,7 +1133,7 @@ export class Studio {
     if (!take || !top?.id || top.voice === 'sending') return
     this.set({ topRank: { ...top, voice: 'sending' } })
     try {
-      await analyzer.topShareVoice(top.id, wavOf(take.samples, take.sampleRate))
+      await analyzer.topShareVoice(top.id, await this.topVoiceToSend(top.id, take))
       if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'shared' } })
     } catch (e) {
       if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'ask' } })
@@ -1129,12 +1148,35 @@ export class Studio {
     if (!take || !top?.id || top.voice === 'sending') return
     this.set({ topRank: { ...top, voice: 'sending' } })
     try {
-      await analyzer.topShareVoice(top.id, wavOf(take.samples, take.sampleRate), true)
+      const voice = await this.topVoiceToSend(top.id, take)
+      if (voice) await analyzer.topShareVoice(top.id, voice, true)
       if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'private' } })
       this.toast('kept private: only you can listen to it')
     } catch (e) {
       if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'ask' } })
       this.toast(`couldn't save your voice: ${(e as Error).message}`)
+    }
+  }
+
+  /** Download your cover of a take on today's top: the whole song, your voice where you sang. */
+  async downloadCover(id: string) {
+    if (this.snap.coverMaking) return
+    this.set({ coverMaking: true })
+    try {
+      if (this.topVoice?.id === id) await this.topVoice.saved // just sung: its voice may still be uploading
+      const { blob, name } = await analyzer.topCover(id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (e) {
+      this.toast(`couldn't download your cover: ${(e as Error).message}`)
+    } finally {
+      this.set({ coverMaking: false })
     }
   }
 

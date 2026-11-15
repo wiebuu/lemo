@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ViewControls } from './ViewControls'
 import { lazy, Suspense, useState } from 'react'
-import { Crown, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, X } from 'lucide-react'
+import { Crown, Download, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, X } from 'lucide-react'
 const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel })))
 import { ChallengeBadge } from './Challenge'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
@@ -231,6 +231,9 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
   const notes = s.track?.notes ?? []
   const list = reviewNotes(r, notes, aspect, s.settings.toleranceCents, s.settings.scoringMode === 'exact')
   const bad = list.filter((n) => n.severity !== null && n.severity > 0.02).sort((a, b) => b.severity! - a.severity!)
+  // your own take on today's top (just sung, or opened from the board): yours to download
+  const coverId = s.viewing ? (s.viewing.mine && s.viewing.hasVoice ? s.viewing.id : null)
+    : s.topRank?.id && !s.topRank.guest && !s.topRank.saving ? s.topRank.id : null
   const word = (i: number) => {
     const n = notes[i]
     if (n?.lyric?.trim()) return n.lyric.trim()
@@ -254,6 +257,15 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
         <Tip tip={s.topRank.saving ? 'Saving your take to today’s top…' : s.topRank.guest ? 'Your take is on today’s top as a guest singer — sign in to show your name next time.' : s.topRank.saving ? 'Saving your take to today’s top…' : s.topRank.voice === 'shared' ? 'Your take is on today’s top — others can open it and hear you.' : 'Your take is on today’s top — others can see your result and pitch line. Your voice is private: only you can listen.'}>
           <button type="button" onClick={() => navigate('/top')} className={cx('flex items-center gap-1 px-2 py-0.5 rounded-full bg-main text-bg', s.topRank.saving && 'opacity-60')}>
             <Crown size={12} /> #{s.topRank.rank} in today’s top{s.topRank.saving ? '…' : ''}
+          </button>
+        </Tip>
+      )}
+      {coverId && (
+        <Tip tip="Download your cover: the whole song, with your voice where you sang (the original singer before and after).">
+          <button type="button" onClick={() => void studio.downloadCover(coverId)} disabled={s.coverMaking}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full surface text-text disabled:opacity-60">
+            {s.coverMaking ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+            {s.coverMaking ? 'making your cover…' : 'download my cover'}
           </button>
         </Tip>
       )}

@@ -93,7 +93,7 @@ ${faqHtml(HELP_FAQ)}
 <p>Lemody (lemodysounds.online) is run by Wiecodes. Contact: ${mail}.</p>
 
 <h2>Your voice</h2>
-<p>Your microphone is processed in your browser to draw your pitch and work out your scores. Your last take stays in your device’s memory so you can listen back. It’s gone when you close the page. Your voice is uploaded only if a take makes today’s top 100 and you choose to share it (see below).</p>
+<p>Your microphone is processed in your browser to draw your pitch and work out your scores. Your last take stays in your device’s memory so you can listen back. It’s gone when you close the page. Your voice is uploaded only if you’re signed in and a take makes today’s top 100. It’s kept private, for you alone to play back and download, unless you choose to share it (see below).</p>
 
 <h2>Your account</h2>
 <p>You can use Lemody without an account. If you sign in with Google (through Firebase Authentication, a Google service), we receive your name, email address, profile picture and a Google account ID. We use them to sign you in and show who’s signed in.</p>
@@ -109,7 +109,7 @@ ${faqHtml(HELP_FAQ)}
 <p>When you ask Lemody to add a song, it’s listed on <a href="/coming">coming soon</a> for signed-in singers: the song, its link, when it was asked for, and the first name of everyone who asked. If someone adds it by analysing it on their own device, their first name is shown with it. Cancel a request and your name comes off the list.</p>
 
 <h2>Today’s top</h2>
-<p>If a take scores among the best 100 of the day, it is shown on <a href="/top">today’s top</a> with your Google name and photo, the song, your result and your pitch line. You’re asked whether others may also hear your voice; only if you say yes is that recording stored. Takes are deleted when they drop out of the 100, and all takes are deleted at the end of the day (midnight, India time). To stay off the board, choose Settings → scoring → today’s top → don’t share.</p>
+<p>If a take scores among the best 100 of the day, it is shown on <a href="/top">today’s top</a> with your Google name and photo, the song, your result and your pitch line. Your recording of that take is stored too, so you can play it back and download your cover; it stays private (only you, and Lemody’s administrator reviewing today’s top, can hear it) unless you choose to let others hear it. Takes are deleted when they drop out of the 100, and all takes are deleted at the end of the day (midnight, India time). To stay off the board, choose Settings → scoring → today’s top → don’t share.</p>
 
 <h2>Songs</h2>
 <p>A song added by YouTube link is analysed once and the result is stored, so it opens instantly for everyone. Others can find it in search but can’t see who added it. An audio file you upload is stored for you only, and deleted when you remove it from your list.</p>

@@ -1261,6 +1261,27 @@ def top_voice(request: Request, take_id: str):
     return FileResponse(f, media_type="audio/mp4", headers={"Cache-Control": "private, max-age=86400"})
 
 
+@app.get("/api/top/{take_id}/cover")
+def top_cover(request: Request, take_id: str):
+    """The singer's cover to download: the whole song, their voice where they sang. Only
+    for the singer themselves (voice shared or private)."""
+    uid = _uid(request)
+
+    def run():
+        if userdata.top_owner(take_id) != uid:
+            return None, None
+        return top.cover_file(take_id, uid), userdata.top_get(take_id)
+
+    try:
+        f, e = _data(run)
+    except top.Rejected as err:
+        raise HTTPException(422, str(err)) from err
+    if not f:
+        raise HTTPException(404, "only the singer can download their cover, while the take is on today's top")
+    name = re.sub(r"[^\w\- ]+", "", f"{(e or {}).get('title') or 'song'} - my Lemody cover").strip() or "Lemody cover"
+    return FileResponse(f, media_type="audio/mp4", filename=f"{name}.m4a", headers={"Cache-Control": "private, no-cache"})
+
+
 @app.post("/api/stats/test")
 def stats_test(body: dict = Body(...)) -> dict:
     """A test started, or finished (with how long was sung)."""

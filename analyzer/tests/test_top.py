@@ -131,6 +131,37 @@ class TopTests(unittest.TestCase):
         self.assertEqual(send("a", "0", voice=False).status_code, 200)
         self.assertEqual(self.get(f"/api/top/{take}/voice", who="b").status_code, 200)
 
+    def test_the_singer_downloads_their_cover_as_the_whole_song(self):
+        import re
+        import subprocess
+
+        from lemo_analyzer import jobs
+        from lemo_analyzer.config import FFMPEG
+
+        songs = self.root / "songs"
+        d = songs / SONG
+        d.mkdir(parents=True)
+        for stem, hz in (("backing", 220), ("vocals", 440)):  # a 90-second song
+            subprocess.run([FFMPEG, "-v", "error", "-f", "lavfi", "-i", f"sine=frequency={hz}:duration=90",
+                            "-c:a", "aac", str(d / f"{stem}.m4a")], check=True)
+        with mock.patch.object(jobs, "song_dir", side_effect=lambda sid: songs / sid):
+            take = self.submit(0.8, seconds=50.0, voice=False).json()["id"]
+            self.assertEqual(self.get(f"/api/top/{take}/cover", who="a").status_code, 404)  # no voice yet
+            self.c.post(f"/api/top/{take}/private-voice", headers={"Authorization": "Bearer a"},
+                        files={"voice": ("voice.wav", _wav(), "audio/wav")})
+            self.assertEqual(self.get(f"/api/top/{take}/cover", who="b").status_code, 404)  # not their take
+            self.assertEqual(self.c.get(f"/api/top/{take}/cover").status_code, 401)  # a guest
+            r = self.get(f"/api/top/{take}/cover", who="a")
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertIn("attachment", r.headers["content-disposition"])
+            self.assertIn("Song%20-%20my%20Lemody%20cover.m4a", r.headers["content-disposition"])
+            got = self.root / "got.m4a"
+            got.write_bytes(r.content)
+            info = subprocess.run([FFMPEG, "-i", str(got)], capture_output=True, text=True).stderr
+            h, m, s = re.search(r"Duration: (\d+):(\d+):([\d.]+)", info).groups()
+            self.assertAlmostEqual(int(h) * 3600 + int(m) * 60 + float(s), 90.0, delta=0.5)  # the whole song
+            self.assertIsNotNone(top.cover_file(take, None))  # Lemody's admin
+
     def test_easy_needs_at_least_50_and_the_level_is_shown(self):
         meta = {"songId": SONG, "score": 0.49, "seconds": 70.0, "from": 0, "to": 70, "start": 0, "toleranceCents": 100}
         post = lambda: self.c.post("/api/top/submit", headers={"Authorization": "Bearer a"}, data={"meta": json.dumps(meta)},

@@ -112,7 +112,7 @@
   {"title": "Tere Bina", "artist": "A.R. Rahman, Chinmayi", "lang": "hi", "hidden": true, "videoId": "Fi3GovijpWA"},
   {"title": "Heeriye", "artist": "Jasleen Royal, Arijit Singh", "lang": "hi", "hidden": true, "videoId": "4VwtfInG-LU"},
   {"title": "Ranjha", "artist": "B Praak, Jasleen Royal, Romy", "lang": "hi", "hidden": true, "videoId": "amWKXh9_EQE"},
-  {"title": "Phir Aur Kya Chahiye", "artist": "Arijit Singh", "lang": "hi", "hidden": true, "videoId": "9bDYGM9AcEw"},
+  {"title": "Phir Aur Kya Chahiye", "artist": "Arijit Singh", "lang": "hi", "videoId": "9bDYGM9AcEw"},
   {"title": "Satranga", "artist": "Arijit Singh", "lang": "hi", "hidden": true, "videoId": "YCwP7X42wfw"},
   {"title": "O Maahi", "artist": "Arijit Singh", "lang": "hi", "videoId": "qnQCd_nZn_g"},
   {"title": "Chaleya", "artist": "Arijit Singh, Shilpa Rao", "lang": "hi", "videoId": "V_jp5_VAzXk"},
@@ -841,5 +841,6 @@
   {"title": "Kaiju no Hanauta", "artist": "Vaundy", "lang": "ja", "videoId": "ENQANfv2ANQ"},
   {"title": "Gunjou", "artist": "YOASOBI", "lang": "ja", "videoId": "dGZqpVCJP3k"},
   {"title": "Je l'aime a mourir", "artist": "Francis Cabrel", "lang": "fr", "videoId": "bMZVtFCU0ZQ"},
-  {"title": "Cheap Thrills", "artist": "Sia", "lang": "en", "videoId": "K_idN3P5_yk"}
+  {"title": "Cheap Thrills", "artist": "Sia", "lang": "en", "videoId": "K_idN3P5_yk"},
+  {"title": "Gangsta's Paradise", "artist": "Coolio", "lang": "en", "videoId": "V79D8__4W9g"}
 ]

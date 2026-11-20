@@ -122,13 +122,13 @@
     <script>
       /*
        * The loading wave. A pen draws the Lemody line with a round tip, leaving a small ripple
-       * behind it; when it stops, the line rings once like a plucked string and settles into
+       * behind it that fades as the pen slows, so the line comes to rest exactly as
        * the logo; then the tail sweeps it away and it starts again.
        * It runs in a worker on its own canvas, so the page loading its scripts can't make it
        * stutter (it falls back to the page itself where workers can't draw).
        */
       function lemoWave(canvas, color, dpr, still, drawn) {
-        var DRAW = 0.78, RING = 0.78, ERASE0 = 1.42, ERASE1 = 2.08, CYCLE = 2.24
+        var DRAW = 0.78, ERASE0 = 1.42, ERASE1 = 2.08, CYCLE = 2.24
         var g = canvas.getContext('2d')
         canvas.width = 112 * dpr; canvas.height = 56 * dpr
         // the logo's path (M2 14 C7 14 8 5 13 5 S20 19 26 19 S33 8 38 8 S44 13 46 13), sampled evenly
@@ -152,17 +152,16 @@
         function draw(now) {
           if (!t0) t0 = now
           var t = still ? DRAW + 2 : ((now - t0) / 1000) % CYCLE
-          if (!told && (still || (now - t0) / 1000 > DRAW + 0.22)) { told = true; drawn && drawn() } // drawn in, rung once
+          if (!told && (still || (now - t0) / 1000 > DRAW + 0.15)) { told = true; drawn && drawn() } // drawn in
           var head = sine(t / DRAW), tail = ease((t - ERASE0) / (ERASE1 - ERASE0))
           var vh = sineSpeed(t / DRAW), vt = speed((t - ERASE0) / (ERASE1 - ERASE0))
-          var r = t - RING, ring = r > 0 && t < ERASE1 ? 0.13 * Math.exp(-r / 0.2) * Math.sin(r * 2 * Math.PI / 0.27) : 0
           g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, canvas.width, canvas.height)
           if (head - tail < 0.002) { if (on) raf = frame(draw); return }
           g.setTransform(2 * dpr, 0, 0, 2 * dpr, 8 * dpr, 4 * dpr)
           g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = color
           // how far a point at u (0..1 along the line) sits from the logo's shape right now
           function bend(u) {
-            var k = ring * Math.sin(Math.PI * u)
+            var k = 0
             var dh = head - u; if (dh >= 0 && vh > 0) k += 0.3 * vh * Math.exp(-dh / 0.09) * Math.sin(dh * 30)
             var dt = u - tail; if (dt >= 0 && vt > 0) k += 0.22 * vt * Math.exp(-dt / 0.09) * Math.sin(dt * 30)
             return 1 + k

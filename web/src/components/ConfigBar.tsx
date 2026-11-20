@@ -89,7 +89,7 @@ export function ConfigBar() {
           </IconToggle>
         </span>
         <Divider />
-        <Menu tip="Lyrics script — English letters, Hindi or Urdu" active={st.lyricsScript !== 'original'}
+        <Menu tip="Lyrics script — English, Hindi or Urdu" active={st.lyricsScript !== 'original'}
           button={<span className="flex items-center gap-1"><Languages size={15} /><span className="text-[11px]">{SCRIPTS.find((x) => x.id === st.lyricsScript)!.short}</span></span>}>
           {(close) => (
             <>
@@ -105,7 +105,7 @@ export function ConfigBar() {
         {/* phones: just the lyrics script (no metronome or breath marks) */}
         <span className="contents sm:hidden">
           <Divider />
-          <Menu tip="Lyrics script — as found, English letters, Hindi or Urdu" active={st.lyricsScript !== 'original'} button={<Languages size={16} />}>
+          <Menu tip="Lyrics script — as found, English, Hindi or Urdu" active={st.lyricsScript !== 'original'} button={<Languages size={16} />}>
             {(close) => (
               <>
                 <MenuLabel>show lyrics in</MenuLabel>
@@ -162,7 +162,7 @@ export function ConfigBar() {
 
 const SCRIPTS: { id: LyricsScript; label: string; short: string; sample: string; tip: string }[] = [
   { id: 'original', label: 'as found', short: 'Aa', sample: '—', tip: 'Whatever script the lyrics came in.' },
-  { id: 'latin', label: 'English letters', short: 'En', sample: 'abc', tip: 'Any language written in English letters, as it sounds — not translated: "tum hi ho", "kimi no namae".' },
+  { id: 'latin', label: 'English', short: 'En', sample: 'abc', tip: 'Any language written in English letters, as it sounds — not translated: "tum hi ho", "kimi no namae".' },
   { id: 'deva', label: 'हिंदी', short: 'हि', sample: 'तुम', tip: 'Devanagari script.' },
   { id: 'urdu', label: 'اردو', short: 'ار', sample: 'تم', tip: 'Urdu (Nastaliq) script, right to left.' },
 ]

@@ -1090,9 +1090,10 @@ export class Studio {
         toleranceCents: mode.toleranceCents, scoringMode: mode.scoringMode,
       }
       const res = await analyzer.topSubmit(meta, JSON.stringify(packFrames(take.frames)))
-      // a signed-in singer's voice is saved at once, kept private: they can always play it
-      // back and download their cover, even if they never answer the share question
-      if (res.rank && res.id && !guest) this.saveTopVoice(res.id, take)
+      // the voice is saved at once, kept private: a signed-in singer can always play it back
+      // and download their cover, even if they never answer the share question; a guest's
+      // stays private (only Lemody's admin, reviewing today's top, can hear it)
+      if (res.rank && res.id) this.saveTopVoice(res.id, take)
       if (this.lastTake !== take) return
       this.set({ topRank: res.rank ? { rank: res.rank, id: res.id, saving: false, voice: guest ? 'no' : 'ask', guest } : null })
     } catch {

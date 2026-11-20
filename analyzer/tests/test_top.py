@@ -267,6 +267,19 @@ class TopTests(unittest.TestCase):
         self.assertEqual([(e["name"], e["mine"]) for e in board], [("a guest singer", True), ("Alice", False), ("a guest singer", False)])
         self.assertEqual(self.get("/api/stats").json()["singers"], 1)  # guests aren't counted as singers
 
+    def test_a_guests_voice_is_kept_private_for_the_admin(self):
+        take = self.guest(0.9, "1.2.3.4").json()["id"]
+        wav = lambda: {"voice": ("v.wav", _wav(), "audio/wav")}
+        # another address isn't the singer; the singer can't share it without signing in
+        self.assertEqual(self.c.post(f"/api/top/{take}/private-voice", headers={"x-real-ip": "5.6.7.8"}, files=wav()).status_code, 422)
+        self.assertEqual(self.c.post(f"/api/top/{take}/voice", headers={"x-real-ip": "1.2.3.4"}, files=wav()).status_code, 401)
+        r = self.c.post(f"/api/top/{take}/private-voice", headers={"x-real-ip": "1.2.3.4"}, files=wav())
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertTrue(top.voice_private(take))
+        self.assertIsNotNone(top.voice(take, None))  # Lemody's admin hears it
+        self.assertEqual(self.c.get(f"/api/top/{take}/voice", headers={"x-real-ip": "5.6.7.8"}).status_code, 404)  # no one else
+        self.assertEqual(self.get(f"/api/top/{take}/voice").status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

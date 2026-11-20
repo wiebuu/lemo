@@ -17,7 +17,15 @@ let volume = 0.6
 let unlocked = false
 let blocked: () => boolean = () => false
 let tickCtx: AudioContext | null = null
-let lastTick = 0
+let lastInput = -Infinity
+let lastCue = -Infinity
+
+/** Sounds that answer something you did; news (a notification, a result, an error) plays anyway. */
+const REACTIONS = new Set<CueName>([
+  'press', 'release', 'select', 'deselect', 'toggle-on', 'toggle-off', 'check', 'uncheck', 'delete', 'cancel',
+  'open', 'close', 'back', 'forward', 'expand', 'collapse', 'snap', 'play', 'pause', 'seek', 'connect', 'disconnect',
+  'reaction', 'volume-change', 'typing', 'copy', 'paste', 'drop',
+])
 
 function get(): UISFXPlayer {
   if (!player) player = createUISFX({ pack, volume, enabled, maxVoices: 6, cooldownMs: 35 })
@@ -61,35 +69,49 @@ export const sfx = {
     }
   },
 
-  /** The plain tap sound for buttons and links: one short, soft tick (not a uisfx cue). */
+  /** The plain tap sound for buttons and links: one soft, low "tok" (not a uisfx cue). */
   tick(level = 1) {
     if (!enabled || !unlocked || !tickCtx || blocked() || document.hidden) return
-    const now = performance.now()
-    if (now - lastTick < 30) return
-    lastTick = now
     try {
       const c = tickCtx
       if (c.state === 'suspended') void c.resume()
       const t = c.currentTime
       const o = c.createOscillator()
+      const lp = c.createBiquadFilter()
       const g = c.createGain()
       o.type = 'sine'
-      o.frequency.setValueAtTime(1500, t)
-      o.frequency.exponentialRampToValueAtTime(1000, t + 0.025)
+      o.frequency.setValueAtTime(520, t)
+      o.frequency.exponentialRampToValueAtTime(330, t + 0.05)
+      lp.type = 'lowpass'
+      lp.frequency.value = 1200
       g.gain.setValueAtTime(0.0001, t)
-      g.gain.exponentialRampToValueAtTime(0.09 * volume * level, t + 0.002)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035)
-      o.connect(g).connect(c.destination)
+      g.gain.exponentialRampToValueAtTime(0.06 * volume * level, t + 0.005)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07)
+      o.connect(lp).connect(g).connect(c.destination)
       o.start(t)
-      o.stop(t + 0.045)
+      o.stop(t + 0.08)
     } catch {
       /* a nicety */
     }
   },
 
+  /** A real tap or key press just happened (reaction sounds only follow one of these). */
+  noteInput() {
+    lastInput = performance.now()
+  },
+
+  /** When the last cue (not a tick) started, to give each action just one sound. */
+  lastCueAt() {
+    return lastCue
+  },
+
   /** Play a cue. Returns a handle (loops: stop it), or null when nothing played. */
   play(cue: CueName, o: PlayOpts = {}): PlayingSFX | null {
     if (!enabled || !unlocked || blocked() || document.hidden) return null
+    // a control's reaction (a toggle, a menu opening …) only right after you did something:
+    // never for changes that happen by themselves (settings syncing, a song ending …)
+    if (REACTIONS.has(cue) && performance.now() - lastInput > 1500) return null
+    lastCue = performance.now()
     try {
       return get().play(cue, { volume: getCue(cue).defaultVolume * (o.volume ?? 1), cooldownMs: o.cooldownMs, loop: o.loop, retrigger: o.loop ? 'ignore' : 'restart' })
     } catch {

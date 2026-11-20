@@ -119,21 +119,36 @@ function onStudio(p: Snapshot, s: Snapshot) {
 
 // ---- small tactile cues anywhere on the page ------------------------------------------------
 
-const PRESSABLE = 'button, a[href], [role="button"], [role="tab"], [role="menuitem"], summary, label, select, input[type="checkbox"], input[type="radio"]'
+const PRESSABLE = 'button, a[href], [role="button"], [role="tab"], [role="menuitem"], summary, input[type="checkbox"], input[type="radio"]'
 const TEXT = 'input:not([type]), input[type="text"], input[type="search"], input[type="url"], input[type="email"], textarea, [contenteditable="true"]'
 
 function installDom() {
   const unlock = () => sfx.unlock()
 
-  // a tap on anything pressable: one soft tick (no sound on hover)
-  window.addEventListener('pointerdown', (e) => {
+  // A real click on something pressable: one soft tick, unless the click makes a sound of its
+  // own (a menu opening, play, a like …): then only that one. Waiting a moment tells them apart.
+  // (Clicks, not presses: a finger that starts a scroll on a button isn't a tap.)
+  let tickTimer: ReturnType<typeof setTimeout> | undefined
+  window.addEventListener('pointerdown', () => {
     unlock()
-    const el = (e.target as Element | null)?.closest?.(PRESSABLE) as HTMLButtonElement | null
-    if (el && !el.disabled && el.getAttribute('aria-disabled') !== 'true') sfx.tick()
+    sfx.noteInput()
+  }, true)
+  window.addEventListener('click', (e) => {
+    sfx.noteInput()
+    const target = e.target as Element | null
+    const el = target?.closest?.(PRESSABLE) as HTMLButtonElement | null
+    if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true' || el.closest('[data-sfx="own"]')) return
+    if (target?.closest?.('input[type="range"], label:has(input[type="range"])')) return // a slider has its own
+    const at = performance.now()
+    clearTimeout(tickTimer)
+    tickTimer = setTimeout(() => {
+      if (sfx.lastCueAt() < at) sfx.tick()
+    }, 60)
   }, true)
 
   window.addEventListener('keydown', (e) => {
     unlock()
+    sfx.noteInput()
     const el = e.target as Element | null
     if (!el?.closest?.(TEXT) || e.metaKey || e.ctrlKey || e.altKey) return
     if (e.key === 'Backspace' || e.key === 'Delete') sfx.play('typing', { volume: 0.6, cooldownMs: 25 })
@@ -144,9 +159,6 @@ function installDom() {
   window.addEventListener('input', (e) => {
     if ((e.target as HTMLInputElement | null)?.type === 'range') sfx.play('volume-change', { volume: 0.8, cooldownMs: 90 })
   }, true)
-  window.addEventListener('focusin', (e) => {
-    if ((e.target as Element | null)?.closest?.(TEXT)) sfx.play('focus', { volume: 0.7, cooldownMs: 150 })
-  })
   window.addEventListener('copy', () => sfx.play('copy'))
   window.addEventListener('paste', () => sfx.play('paste'))
   // a file dropped onto the page (a song)

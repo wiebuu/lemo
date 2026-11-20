@@ -131,6 +131,7 @@ export function PlayerBar() {
             type="button"
             onClick={() => studio.togglePlay()}
             disabled={disabled}
+            data-sfx="own"
             aria-label={s.buffering ? 'loading — tap to pause' : 'play / pause (space)'}
             className="mx-1 w-12 h-12 rounded-full flex items-center justify-center bg-main text-bg hover:brightness-110 active:scale-95 transition-all disabled:opacity-35"
           >
@@ -141,6 +142,7 @@ export function PlayerBar() {
               type="button"
               onClick={() => studio.toggleTest()}
               disabled={disabled}
+              data-sfx="own"
               aria-label={s.session ? 'end test' : 'start test'}
               className={cx(
                 'mr-1 w-11 h-11 rounded-full flex items-center justify-center ring-1 transition-colors',
@@ -170,6 +172,7 @@ export function PlayerBar() {
             <button
               type="button"
               onClick={() => (s.mic === 'on' ? studio.toggleMute() : studio.toggleMic())}
+              data-sfx="own"
               onContextMenu={(e) => {
                 e.preventDefault()
                 if (s.mic === 'on') studio.toggleMic()

@@ -32,7 +32,7 @@ export function VoiceFxPanel({ onClose }: { onClose: () => void }) {
       )}
     >
       <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0">
-        <button type="button" onClick={() => void studio.togglePlay()} aria-label={s.playing ? 'pause' : 'play'}
+        <button type="button" data-sfx="own" onClick={() => void studio.togglePlay()} aria-label={s.playing ? 'pause' : 'play'}
           className="w-8 h-8 rounded-full bg-main text-bg flex items-center justify-center shrink-0">
           {s.playing ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
         </button>

@@ -186,24 +186,23 @@ function installAccount() {
       if (a.status === 'signed-in') {
         notifications.setOwner(a.user.uid)
         if (was === 'signed-out') sfx.play('unlock')
-        const first = (a.user.displayName ?? '').trim().split(/\s+/)[0]
-        notifications.notify({
-          key: 'welcome',
-          kind: 'welcome',
-          title: first ? `Welcome to Lemody, ${first}` : 'Welcome to Lemody',
-          body: 'Your scores, songs and settings now follow you to any device. News shows up here — like when a song you asked for is ready.',
-        })
+        // a welcome once, right after someone signs up (their account is minutes old) —
+        // not for every sign-in, refresh or new device
+        const born = Date.parse(a.user.metadata.creationTime ?? '')
+        if (born && Date.now() - born < 15 * 60_000) {
+          const first = (a.user.displayName ?? '').trim().split(/\s+/)[0]
+          notifications.notify({
+            key: 'welcome',
+            kind: 'welcome',
+            title: first ? `Welcome to Lemody, ${first}` : 'Welcome to Lemody',
+            body: 'Your scores, songs and settings now follow you to any device. News shows up here — like when a song you asked for is ready.',
+          })
+        }
         setTimeout(() => void checkRequests(), 4000) // after your song list has loaded
         pollTimer = setInterval(() => void checkRequests(), 120_000)
       } else if (a.status === 'signed-out' || a.status === 'unconfigured') {
         if (was === 'signed-in') sfx.play('lock')
-        notifications.setOwner(null)
-        notifications.notify({
-          key: 'welcome',
-          kind: 'welcome',
-          title: 'Welcome to Lemody',
-          body: 'Pick a song, sing along and see your voice next to the singer’s. Sign in to get news here when a song you asked for is added.',
-        })
+        notifications.setOwner(null) // no welcome for guests: it's for when someone signs up
       }
     }
     subscribeAuth(apply)

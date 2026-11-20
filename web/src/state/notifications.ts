@@ -48,7 +48,10 @@ const SOUND: Record<NoteKind, CueName> = {
 
 const MAX = 60
 let owner = 'guest'
+let given = new Set<string>()
 let notes: Note[] = load(owner)
+given = loadGiven(owner)
+for (const n of notes) if (n.key) given.add(n.key)
 /** the newest arrival this visit, shown as a card for a few seconds */
 let popup: Note | null = null
 let snapshot: { notes: Note[]; popup: Note | null; unread: number } = { notes, popup, unread: count(notes) }
@@ -56,6 +59,30 @@ const listeners = new Set<() => void>()
 
 function storageKey(who: string) {
   return `lemo.notes.${who}`
+}
+
+// Keys already given, kept apart from the list: clearing or removing notifications never
+// brings a one-time one (the welcome, "your song is ready") back on the next visit.
+function givenKey(who: string) {
+  return `lemo.notes.given.${who}`
+}
+
+function loadGiven(who: string): Set<string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(givenKey(who)) ?? '[]')
+    return new Set(Array.isArray(v) ? (v as string[]) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function remember(key: string) {
+  given.add(key)
+  try {
+    localStorage.setItem(givenKey(owner), JSON.stringify([...given].slice(-500)))
+  } catch {
+    /* storage blocked: remembered for this visit */
+  }
 }
 
 function load(who: string): Note[] {
@@ -93,12 +120,16 @@ export const notifications = {
     if (next === owner) return
     owner = next
     popup = null
-    commit(load(owner), false)
+    const list = load(owner)
+    given = loadGiven(owner)
+    for (const n of list) if (n.key) given.add(n.key) // lists from before this was kept
+    commit(list, false)
   },
 
   /** A new notification (skipped if one with the same key was already given). */
   notify(n: Omit<Note, 'id' | 'at' | 'read'>, opts: { quiet?: boolean } = {}): Note | null {
-    if (n.key && notes.some((x) => x.key === n.key)) return null
+    if (n.key && (given.has(n.key) || notes.some((x) => x.key === n.key))) return null
+    if (n.key) remember(n.key)
     const note: Note = { ...n, id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, at: Date.now(), read: false }
     if (!opts.quiet) {
       popup = note
@@ -135,7 +166,7 @@ export const notifications = {
   },
 
   has(key: string) {
-    return notes.some((n) => n.key === key)
+    return given.has(key) || notes.some((n) => n.key === key)
   },
 }
 

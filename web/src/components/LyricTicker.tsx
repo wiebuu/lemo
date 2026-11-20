@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { itemAt, lyricRows, rowAt } from '../lib/lyricTiming'
+import { dashesLeft, gapDashes, itemAt, lyricRows, rowAt } from '../lib/lyricTiming'
 import { studio } from '../state/studio'
 import { Languages } from 'lucide-react'
 import { cx, Eq, Tip, usePhone, useStudio } from './ui'
@@ -52,6 +52,7 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         if (!el) return
         const frac = Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start)))
         el.style.setProperty('--p', frac.toFixed(3))
+        if (it.kind === 'gap') litDashes(el, dashesLeft(it.end - it.start, it.end - t))
         x = el.offsetLeft + (rtl ? 1 - frac : frac) * el.offsetWidth
       }
       // Short lines stay centred as a whole; long lines glide to keep the sung word centred.
@@ -101,9 +102,9 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
             style={{ fontSize: `${z.mid}rem` }}>
             {items.map((it, k) =>
               it.kind === 'gap' ? (
-                <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-gap"
-                  style={{ width: Math.max(28, Math.min(260, (it.end - it.start) * 56)) * z.scale }}>
-                  <span />
+                // a pause: dashes that go out one by one until the next word ("--" for a short one)
+                <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-gap" aria-label="pause">
+                  {Array.from({ length: gapDashes(it.end - it.start) }, (_, d) => <span key={d} className="lyric-dash" />)}
                 </span>
               ) : (
                 <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-word">{it.text}</span>
@@ -126,6 +127,14 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
       </div>
     </div>
   )
+}
+
+/** Light the last `lit` dashes of a pause (the ones nearest the next word); only touches the page when the count changes. */
+function litDashes(el: HTMLElement, lit: number) {
+  if (el.dataset.lit === String(lit)) return
+  el.dataset.lit = String(lit)
+  const dashes = el.children
+  for (let d = 0; d < dashes.length; d++) (dashes[d] as HTMLElement).toggleAttribute('data-on', d >= dashes.length - lit)
 }
 
 /** The ticker's edges fade over this many pixels (the sung word always sits clear of it). */

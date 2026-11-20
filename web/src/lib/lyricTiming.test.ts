@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateWords, itemAt, lyricGate, lyricRows, retextLine, rowAt, syllables, tickerItems, withWordTiming } from './lyricTiming'
+import { dashesLeft, estimateWords, gapDashes, itemAt, lyricGate, lyricRows, retextLine, rowAt, syllables, tickerItems, withWordTiming } from './lyricTiming'
 import type { LyricLine, ReferenceNote } from './types'
 
 const line = (start: number | null, text: string, end: number | null = null): LyricLine => ({ id: text, start, end, text, verified: false })
@@ -91,8 +91,13 @@ describe('three-row lyric lines', () => {
     { ...line(9, 'now'), words: [{ start: 9, end: 9.5, text: 'now' }] },
   ]
   const rows = lyricRows(lines)
-  it('switches lines when the previous ends or 1.5 s before the next, whichever is later', () => {
-    expect(rows.map((r) => r.switchAt)).toEqual([0, 6.5, 8.8])
+  it('brings the next line up just after the previous ends (break) or 1.5 s before it, never before the previous ends', () => {
+    // 3.5 + 0.6 hold (a 4.5 s break: the next line waits with its countdown) · 9 − 1.5 < 8.8 → 8.8
+    expect(rows.map((r) => r.switchAt)).toEqual([0, 4.1, 8.8])
+  })
+  it('counts the intro and a break down to the next line with a pause', () => {
+    expect(rows[0].items[0]).toEqual({ kind: 'gap', start: 0, end: 2 }) // the whole intro
+    expect(rows[1].items[0]).toEqual({ kind: 'gap', start: 4.1, end: 8 }) // the break
   })
   it('adds a lead-in pause line and pauses inside a line', () => {
     expect(rows[0].items.map((i) => i.kind)).toEqual(['gap', 'word', 'gap', 'word'])
@@ -121,5 +126,31 @@ describe('retextLine (lyrics in another script)', () => {
     expect(r.words![0].start).toBe(1)
     expect(r.words![1].end).toBeCloseTo(3)
     expect(r.wordsSource).toBe('estimated')
+  })
+})
+
+describe('pause dashes', () => {
+  it('draws one dash per second, at least two ("--") and at most eight', () => {
+    expect(gapDashes(0.4)).toBe(2)
+    expect(gapDashes(3)).toBe(3)
+    expect(gapDashes(3.2)).toBe(4)
+    expect(gapDashes(30)).toBe(8)
+  })
+  it('counts down: one dash goes out per second, the last as the word starts', () => {
+    expect(dashesLeft(4, 4)).toBe(4)
+    expect(dashesLeft(4, 3.5)).toBe(4)
+    expect(dashesLeft(4, 2.9)).toBe(3)
+    expect(dashesLeft(4, 0.4)).toBe(1)
+    expect(dashesLeft(4, 0)).toBe(0)
+  })
+  it('keeps all eight lit in a long break until its last eight seconds', () => {
+    expect(dashesLeft(30, 20)).toBe(8)
+    expect(dashesLeft(30, 7.5)).toBe(8)
+    expect(dashesLeft(30, 6.5)).toBe(7)
+    expect(dashesLeft(30, 1)).toBe(1)
+  })
+  it('splits a short pause evenly between its two dashes', () => {
+    expect(dashesLeft(0.5, 0.5)).toBe(2)
+    expect(dashesLeft(0.5, 0.2)).toBe(1)
   })
 })

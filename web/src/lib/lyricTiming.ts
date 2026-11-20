@@ -162,11 +162,14 @@ export interface LyricRow {
 }
 
 /**
- * Lines for the three-row view. A line becomes current when the previous one
- * has finished, or 1.5 s before its first word — whichever is later — and
- * waits with a pause line that fills up until the first word.
+ * Lines for the three-row view. The first line is current from the very start: the
+ * intro is its lead-in. After that a line becomes current `hold` seconds after the
+ * previous one finished, or `leadIn` seconds before its first word if that's later,
+ * never before the previous line has finished. Until its first word it waits with a
+ * pause (dashes counting down), so in an instrumental break the singer sees the next
+ * line coming and how soon.
  */
-export function lyricRows(lines: LyricLine[], minGap = 0.35, leadIn = 1.5): LyricRow[] {
+export function lyricRows(lines: LyricLine[], minGap = 0.35, leadIn = 1.5, hold = 0.6): LyricRow[] {
   const timed = lines
     .map((l, i) => ({ l, i }))
     .filter(({ l }) => l.start !== null && l.words && l.words.length)
@@ -176,7 +179,7 @@ export function lyricRows(lines: LyricLine[], minGap = 0.35, leadIn = 1.5): Lyri
   timed.forEach(({ l, i }, k) => {
     const words = l.words!
     const first = words[0].start
-    const switchAt = k === 0 ? Math.max(0, first - 6) : Math.max(prevEnd, first - leadIn)
+    const switchAt = k === 0 ? 0 : Math.max(prevEnd, Math.min(prevEnd + hold, first - leadIn))
     const items: TickerItem[] = []
     if (first - switchAt >= minGap) items.push({ kind: 'gap', start: switchAt, end: first })
     words.forEach((w, j) => {
@@ -188,6 +191,27 @@ export function lyricRows(lines: LyricLine[], minGap = 0.35, leadIn = 1.5): Lyri
     prevEnd = Math.max(prevEnd, words[words.length - 1].end)
   })
   return rows
+}
+
+/** A pause is drawn as this many dashes at most: one per second over its last seconds. */
+export const MAX_DASHES = 8
+
+/** How many dashes a pause of `dur` seconds shows (at least two: "--"). */
+export function gapDashes(dur: number): number {
+  return Math.max(2, Math.min(MAX_DASHES, Math.ceil(dur - 1e-6)))
+}
+
+/**
+ * Dashes still lit `left` seconds before a pause of `dur` seconds ends: a countdown.
+ * Each dash is one second (shorter pauses: an equal share), so the last ones go out
+ * one by one and the final dash goes out as the next word starts. A long pause keeps
+ * all of them until its last seconds.
+ */
+export function dashesLeft(dur: number, left: number): number {
+  const n = gapDashes(dur)
+  if (left <= 0) return 0
+  const per = Math.min(1, dur / n)
+  return Math.min(n, Math.ceil(left / per - 1e-6))
 }
 
 /** Index of the current row at time t (-1 before the first one becomes current). */

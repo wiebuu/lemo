@@ -347,28 +347,32 @@ textarea:focus-visible {
   -webkit-background-clip: text;
   background-clip: text;
 }
-/* a pause: a straight line as long as the pause, filling up as it passes */
+/* a pause: a row of dashes, one per second of its last seconds ("--" for a short one).
+   While it plays, the dashes go out one by one towards the next word: a countdown. */
 .lyric-gap {
-  display: inline-block;
-  height: 3px;
-  margin: 0 0.45em;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--sub) 45%, transparent);
-  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  margin: 0 0.4em;
   flex: none;
 }
-.lyric-gap > span {
-  display: block;
-  height: 100%;
-  width: 0;
-  background: var(--grad);
+.lyric-dash {
+  width: 0.42em;
+  height: max(3px, 0.09em);
+  border-radius: 2px;
+  background: var(--sub);
+  opacity: 0.5;
+  transition: opacity 0.25s ease, background-color 0.25s ease;
 }
-.lyric-gap[data-state='now'] > span {
-  width: calc(var(--p, 0) * 100%);
+.lyric-gap[data-state='now'] .lyric-dash {
+  opacity: 0.15;
 }
-.lyric-gap[data-state='past'] > span {
-  width: 100%;
-  opacity: 0.55;
+.lyric-gap[data-state='now'] .lyric-dash[data-on] {
+  background: var(--main);
+  opacity: 1;
+}
+.lyric-gap[data-state='past'] .lyric-dash {
+  opacity: 0.15;
 }
 
 /* dialog content fades out at the bottom edge so it reads as scrollable */
@@ -559,9 +563,6 @@ button:disabled {
     linear-gradient(var(--sub), var(--sub));
   -webkit-background-clip: text;
   background-clip: text;
-}
-[dir='rtl'] .lyric-gap > span {
-  margin-left: auto;
 }
 
 /* rows that scroll sideways on small screens fade at the right edge, so it's clear there's more */

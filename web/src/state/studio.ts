@@ -20,6 +20,7 @@ import { parseMidi } from '../lib/parsers/midi'
 import { applyChart, parseUltraStar } from '../lib/parsers/ultrastar'
 import { buildPhrases, lyricLineAt, phraseAt, phraseForNav, PHRASE_LEAD_IN, plainTextToLines, suggestBreaths } from '../lib/phrases'
 import { lineEnd, lyricGate, retextLine, withWordTiming } from '../lib/lyricTiming'
+import { alignToVoice, voicedSpans } from '../lib/voiceAlign'
 import { CoachState, voiceIssue, type VoiceIssue } from '../lib/voiceCoach'
 import { reviewNotes, type NoteReview, type ReviewAspect } from '../lib/review'
 import { chordAt, clashesWith, DEFAULT_EVAL, evaluate, liveGuidance, type EvalSettings, type Evaluation, type LiveGuidance } from '../lib/evaluation'
@@ -559,9 +560,13 @@ export class Studio {
         ...t,
         notes: t.notes.map((n) => ({ ...n, startTime: n.startTime + off, endTime: n.endTime + off })),
         contour: t.contour ? { ...t.contour, t0: t.contour.t0 + off } : undefined,
+        loudness: t.loudness ? { ...t.loudness, t0: t.loudness.t0 + off } : undefined,
       }
     }
-    const lyrics = withWordTiming(this.prefs.lyrics ?? t.lyrics, t.notes)
+    // Words fitted to where the separated vocal is actually sounding (analysed songs:
+    // charts and the demo are exact). Songs without a vocal envelope stay as they were.
+    const timedWords = withWordTiming(this.prefs.lyrics ?? t.lyrics, t.notes)
+    const lyrics = this.prefs.chart ? timedWords : alignToVoice(timedWords, voicedSpans(t.loudness ?? t.contour))
     // Analysed melodies only (charts and the demo are exact): use the lyrics as a gentle
     // hint and hide "vocal" notes that sit well away from any sung line.
     if (!this.prefs.chart && t.contour) {

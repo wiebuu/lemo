@@ -6,7 +6,7 @@
 // that sits a little early or late moves onto the voice, a word's silent edges are
 // trimmed off, and a word that lands on silence moves into the singing next to it.
 // So a word is never shown as "being sung" while the vocal is silent, and the
-// silences become pauses in the lyric view (drawn as dashes counting down).
+// silences become pauses in the lyric view (a line running down into the next word).
 //
 // Done in the browser, not on the server: every analysed song already carries this
 // envelope, so old songs get it without re-analysis, and it re-runs whenever the

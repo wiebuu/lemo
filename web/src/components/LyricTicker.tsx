@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { dashesLeft, gapDashes, itemAt, lyricRows, rowAt } from '../lib/lyricTiming'
+import { itemAt, lyricRows, rowAt } from '../lib/lyricTiming'
 import { studio } from '../state/studio'
 import { Languages } from 'lucide-react'
 import { cx, Eq, Tip, usePhone, useStudio } from './ui'
@@ -52,7 +52,6 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         if (!el) return
         const frac = Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start)))
         el.style.setProperty('--p', frac.toFixed(3))
-        if (it.kind === 'gap') litDashes(el, dashesLeft(it.end - it.start, it.end - t), it.end - t)
         x = el.offsetLeft + (rtl ? 1 - frac : frac) * el.offsetWidth
       }
       // Short lines stay centred as a whole; long lines glide to keep the sung word centred.
@@ -102,10 +101,11 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
             style={{ fontSize: `${z.mid}rem` }}>
             {items.map((it, k) =>
               it.kind === 'gap' ? (
-                // a pause: dashes that go out one by one until the next word ("--" for a short one)
-                <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-gap" aria-label="pause">
-                  {it.end - it.start >= COUNT_FROM && <span className="lyric-count" />}
-                  {Array.from({ length: gapDashes(it.end - it.start) }, (_, d) => <span key={d} className="lyric-dash" />)}
+                // a pause: one line, as long as the pause, that runs down into the next word —
+                // when it's gone, sing
+                <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-gap" aria-label="pause"
+                  style={{ width: Math.max(28, Math.min(300, (it.end - it.start) * 60)) * z.scale }}>
+                  <span />
                 </span>
               ) : (
                 <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-word">{it.text}</span>
@@ -129,21 +129,6 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
     </div>
   )
 }
-
-/** Light the last `lit` dashes of a pause (the ones nearest the next word); only touches the page when the count changes. */
-function litDashes(el: HTMLElement, lit: number, left: number) {
-  // a long pause also shows the seconds left, so the singer knows exactly when
-  const count = el.querySelector<HTMLElement>('.lyric-count')
-  const secs = String(Math.ceil(left))
-  if (count && count.textContent !== secs) count.textContent = secs
-  if (el.dataset.lit === String(lit)) return
-  el.dataset.lit = String(lit)
-  const dashes = el.querySelectorAll<HTMLElement>('.lyric-dash')
-  dashes.forEach((d, k) => d.toggleAttribute('data-on', k >= dashes.length - lit))
-}
-
-/** Pauses at least this long (s) show the seconds left beside their dashes. */
-const COUNT_FROM = 4
 
 /** The ticker's edges fade over this many pixels (the sung word always sits clear of it). */
 const EDGE_FADE = 24

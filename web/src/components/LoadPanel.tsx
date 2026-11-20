@@ -450,12 +450,12 @@ const LOCAL_MAX = 20
 const LOCAL_MIN = 4
 /** a featured song's shelf; songs in other languages (Japanese, French …) have none of these three, so they never land on english */
 const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : f.lang === 'hi' ? 'hindi' : f.lang === 'en' || !f.lang ? 'english' : `lang:${f.lang}`)
-/** Explore shows only the most sung songs (of the language picked); a search still finds every song */
+/** Explore: 15 songs to a page, the most sung first (of the language picked); the page buttons go further */
 const EXPLORE_TOP = 15
 
 /**
  * Featured songs live on the server for everyone, in short lists: garhwali,
- * hindi, english. Explore has the 15 most sung (a search there finds every song). "your songs" are the ones you added
+ * hindi, english. Explore has every song, 15 to a page, the most sung first. "your songs" are the ones you added
  * (kept in your account; the songs themselves live on Lemody's server).
  */
 function SongList({ featured, catalog, online, canPrepare, requests, onCancelRequest, fill, opening, loading, onOpen, onFetch, onPrepare, onRemove }: {
@@ -503,8 +503,8 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   // Lemody's own order for explore: most results first, then the newest (as it always was)
   const exploreBase = useMemo(() => [...catalog].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0)), [catalog])
   const exploreAll = useMemo(() => inLanguage(exploreBase, shownLang), [exploreBase, shownLang])
-  // the top 15 sung on Lemody (most views break ties), shown in the order picked
-  const exploreTop = useMemo(() => sortSongs(sortSongs(exploreAll, 'sung').slice(0, EXPLORE_TOP), sort), [exploreAll, sort])
+  // every song, in the order picked (the most sung first by default), 15 to a page
+  const exploreSorted = useMemo(() => sortSongs(exploreAll, sort), [exploreAll, sort])
   const likedSongs = useMemo(
     () => sortSongs(inLanguage(likedIds.flatMap((id) => byId.get(id) ?? []), shownLang), sort),
     [likedIds, byId, shownLang, sort],
@@ -574,7 +574,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
       )}
       <div className={cx('overflow-y-auto -mx-2 px-2', fill ? 'flex-1 min-h-0' : 'max-h-[42vh]')}>
         {show === 'explore' ? (
-          <Explore songs={find.trim() ? sortSongs(exploreAll, sort) : exploreTop} loading={!catalog.length} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
+          <Explore songs={exploreSorted} loading={!catalog.length} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
         ) : show === 'liked' ? (
           likedSongs.length || find ? (
             <Explore songs={likedSongs} loading={false} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
@@ -688,7 +688,7 @@ function Explore({ songs: list, loading, find, lang, sort, opening, online, onOp
   // like the big search box: names first, then songs found by a line of their lyrics
   const lyrics = useLyricHits(find)
   const ranked = useMemo<(CatalogItem & { line?: string })[]>(() => (q ? withLyricHits(searchSongs(list, q, list.length), list, lyrics.hits) : list), [list, q, lyrics.hits])
-  const page = usePaged(ranked, [find, lang, sort])
+  const page = usePaged(ranked, [find, lang, sort], EXPLORE_TOP)
   if (loading) return <SkeletonRows />
   if (!ranked.length && lyrics.pending) return <LyricsLooking />
   if (!ranked.length) return (

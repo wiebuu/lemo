@@ -154,7 +154,8 @@ export interface LyricSizes { scale: number; mid: number; side: number; midRow: 
  */
 export function lyricSizes(mode: 'normal' | 'big' | 'focus', phone: boolean, scale: number): LyricSizes {
   const [mid, side] =
-    mode === 'focus' ? (phone ? [2.4, 1.1] : [3.6, 1.45]) : mode === 'big' ? (phone ? [1.7, 0.95] : [1.875, 1]) : phone ? [1.5, 0.875] : [1.7, 0.875]
+    // phones: the line being sung is clearly the biggest, but not oversized next to the others
+    mode === 'focus' ? (phone ? [1.85, 1.1] : [3.6, 1.45]) : mode === 'big' ? (phone ? [1.4, 0.95] : [1.875, 1]) : phone ? [1.25, 0.875] : [1.7, 0.875]
   return {
     scale,
     mid: mid * scale,

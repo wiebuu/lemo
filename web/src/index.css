@@ -612,14 +612,12 @@ button:disabled {
 }
 
 /* ---- loading screen: the wave sweeps in and out like a breath ------------------ */
-/* Only transforms move, so the GPU runs it and it stays smooth while scripts load.
-   A soft-edged window (.wave-reveal) slides right over the wave while the wave inside
+/* Crisp edge, no fade. Only transforms move, so the GPU runs it and it stays smooth while scripts load.
+   A window (.wave-reveal) slides right over the wave while the wave inside
    slides back by the same amount, so the wave stays still and is uncovered left to right.
-   The window is 16px wider on each side so the fade never touches the wave itself. */
+   The window is 16px wider on each side so it fully hides and fully shows the wave. */
 .wave-reveal {
   display: block; overflow: hidden; width: 128px; height: 48px;
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
-  mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
   animation: wave-window 1.9s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
   will-change: transform;
 }

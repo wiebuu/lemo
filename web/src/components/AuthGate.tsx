@@ -2,29 +2,34 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useAuth } from '../auth/firebase'
 import { startCloud, stopCloud } from '../state/cloud'
 import { SiteFooter } from '../pages/Footer'
-import { Splash, Wordmark } from './Brand'
+import { boot, Splash, Wordmark } from './Brand'
 
-const SPLASH_MS = 2000
 
 /** Lemody opens for everyone: a guest can find, open and sing any song. Signing in with
  * Google (the header's button) keeps your settings, songs and scores in your account. */
 export function AuthGate({ children }: { children: ReactNode }) {
   const a = useAuth()
   const uid = a.status === 'signed-in' ? a.user.uid : null
-  // the loading screen always plays through once (until the wave has fully swept in, at 1.9 s), even when sign-in is instant
-  const [shown, setShown] = useState(() => performance.now() >= SPLASH_MS)
+  // the loading screen always plays through once: until its wave has drawn itself in
+  const [shown, setShown] = useState(false)
   useEffect(() => {
-    if (shown) return
-    const t = setTimeout(() => setShown(true), SPLASH_MS - performance.now())
+    const b = boot()
+    if (b) return b.whenReady(() => setShown(true))
+    const t = setTimeout(() => setShown(true), 1100)
     return () => clearTimeout(t)
-  }, [shown])
+  }, [])
+  const loading = a.status === 'loading' || !shown
+  useEffect(() => {
+    if (loading) boot()?.show()
+    else boot()?.hide()
+  }, [loading])
   // your settings, song list and scores sync with your account while you're signed in
   useEffect(() => {
     if (!uid) return
     void startCloud(uid)
     return () => stopCloud()
   }, [uid])
-  if (a.status === 'loading' || !shown) return <Splash />
+  if (loading) return <Splash />
   if (a.status === 'signed-in' || a.status === 'signed-out') return <>{children}</>
   // unconfigured: Firebase isn't set up (a developer's copy)
   return (

@@ -79,47 +79,34 @@
     </script>
   </head>
   <body>
-    <!-- Loading screen before any script runs (React's own <Splash> takes over, same look). -->
-    <div id="root">
-      <div id="boot">
-        <span class="w"><span><svg viewBox="0 0 48 24" aria-hidden="true"><path d="M2 14 C7 14 8 5 13 5 S20 19 26 19 S33 8 38 8 S44 13 46 13" /></svg></span></span>
-        <div class="name">lemody</div>
-        <div class="bar"><i></i></div>
-        <div class="by"><b>Wiecodes</b></div>
-      </div>
-    </div>
+    <div id="root"></div>
     <noscript>
       <h1>Lemody: free online karaoke with lyrics and live pitch</h1>
       <p>Sing along to Hindi, Punjabi and English songs, see your pitch on the original melody and get a score. Lemody needs JavaScript and a microphone.</p>
       <p><a href="/songs">Songs</a> · <a href="/guides">Singing guides</a> · <a href="/karaoke-online">Karaoke online</a> · <a href="/pitch-checker">Pitch checker</a> · <a href="/about">About</a> · <a href="/privacy">Privacy</a> · <a href="/contact">Contact</a></p>
     </noscript>
+    <!-- The loading screen. It stays outside React: the app shows and hides it (window.__boot),
+         so there's never a hand-over and the wave never restarts or jumps. -->
+    <div id="boot" role="status" aria-label="Loading Lemody">
+      <canvas width="112" height="56" aria-hidden="true"></canvas>
+      <div class="name">lemody</div>
+      <div class="bar"><i></i></div>
+      <div class="by"><b>Wiecodes</b></div>
+    </div>
     <style>
       #boot { --bg: #111111; --main: #f0f0f0; --text: #eeeeee; --sub: #7a7a7a; --track: #1a1a1a;
-        position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center;
-        font-family: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
-      #boot svg { width: 96px; height: 48px; overflow: visible; }
-      #boot path { fill: none; stroke: var(--main); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-      #boot .w { display: block; overflow: hidden; width: 128px; height: 48px; will-change: transform;
-        animation: boot-window 1.9s cubic-bezier(.37,0,.63,1) infinite alternate; }
-      #boot .w > span { display: block; padding: 0 16px; height: 100%; will-change: transform; animation: boot-inner 1.9s cubic-bezier(.37,0,.63,1) infinite alternate; }
-      #boot svg { display: block; }
+        position: fixed; inset: 0; z-index: 60; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center;
+        font-family: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; transition: opacity .28s ease; }
+      #boot canvas { display: block; width: 112px; height: 56px; margin: -4px -8px; }
       #boot .name { margin-top: 20px; color: var(--text); font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
       #boot .bar { margin-top: 24px; width: 112px; height: 2px; border-radius: 2px; background: var(--track); overflow: hidden; }
       #boot .bar i { display: block; width: 33%; height: 100%; border-radius: 2px; background: var(--main); animation: boot-slide 1.1s cubic-bezier(.45,0,.55,1) infinite; }
       #boot .by { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); color: var(--sub); font-size: 11px; }
       #boot .by b { color: var(--text); opacity: .8; font-weight: 600; letter-spacing: .025em; }
-      @keyframes boot-window { from { transform: translateX(-128px) } to { transform: translateX(0) } }
-      @keyframes boot-inner { from { transform: translateX(128px) } to { transform: translateX(0) } }
       @keyframes boot-slide { from { transform: translateX(-100%) } to { transform: translateX(300%) } }
     </style>
     <script>
       // match the saved theme's colours, so the loading screen doesn't flash a different background
-      // run the animations on a clock that starts when the page opens; React's loading screen
-      // uses the same clock, so the wave carries straight on when it takes over
-      try {
-        var d = '-' + Math.round(performance.now()) + 'ms'
-        ;[].forEach.call(document.querySelectorAll('#boot .w, #boot .w > span, #boot .bar i'), function (e) { e.style.animationDelay = d })
-      } catch (e) {}
       try {
         var s = JSON.parse(localStorage.getItem('lemo.settings') || '{}') || {}
         var t = s.themePicked ? s.theme : 'mono'
@@ -131,6 +118,110 @@
           document.querySelector('meta[name=theme-color]').setAttribute('content', c[0])
         }
       } catch (e) {}
+    </script>
+    <script>
+      /*
+       * The loading wave. A pen draws the Lemody line with a round tip, leaving a small ripple
+       * behind it; when it stops, the line rings once like a plucked string and settles into
+       * the logo; then the tail sweeps it away and it starts again.
+       * It runs in a worker on its own canvas, so the page loading its scripts can't make it
+       * stutter (it falls back to the page itself where workers can't draw).
+       */
+      function lemoWave(canvas, color, dpr, still, drawn) {
+        var DRAW = 0.78, RING = 0.78, ERASE0 = 1.42, ERASE1 = 2.08, CYCLE = 2.24
+        var g = canvas.getContext('2d')
+        canvas.width = 112 * dpr; canvas.height = 56 * dpr
+        // the logo's path (M2 14 C7 14 8 5 13 5 S20 19 26 19 S33 8 38 8 S44 13 46 13), sampled evenly
+        var segs = [[2, 14, 7, 14, 8, 5, 13, 5], [13, 5, 18, 5, 20, 19, 26, 19], [26, 19, 32, 19, 33, 8, 38, 8], [38, 8, 43, 8, 44, 13, 46, 13]]
+        var X = [], Y = [], L = [0]
+        segs.forEach(function (q, n) {
+          for (var i = n ? 1 : 0; i <= 80; i++) {
+            var t = i / 80, u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t
+            X.push(a * q[0] + b * q[2] + c * q[4] + d * q[6]); Y.push(a * q[1] + b * q[3] + c * q[5] + d * q[7])
+          }
+        })
+        for (var i = 1; i < X.length; i++) L.push(L[i - 1] + Math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]))
+        for (i = 0; i < L.length; i++) L[i] /= L[L.length - 1]
+        var ease = function (x) { return x < 0 ? 0 : x > 1 ? 1 : x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2 }
+        var speed = function (x) { return x <= 0 || x >= 1 ? 0 : (x < .5 ? 12 * x * x : 3 * Math.pow(-2 * x + 2, 2)) / 3 } // 0..1
+        var sine = function (x) { return x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.cos(Math.PI * x)) / 2 }
+        var sineSpeed = function (x) { return x <= 0 || x >= 1 ? 0 : Math.sin(Math.PI * x) }
+        var t0 = 0, raf = 0, on = false, told = false
+        var frame = self.requestAnimationFrame ? self.requestAnimationFrame.bind(self) : function (f) { return setTimeout(function () { f(performance.now()) }, 16) }
+        var cancel = self.cancelAnimationFrame ? self.cancelAnimationFrame.bind(self) : clearTimeout
+        function draw(now) {
+          if (!t0) t0 = now
+          var t = still ? DRAW + 2 : ((now - t0) / 1000) % CYCLE
+          if (!told && (still || (now - t0) / 1000 > DRAW + 0.22)) { told = true; drawn && drawn() } // drawn in, rung once
+          var head = sine(t / DRAW), tail = ease((t - ERASE0) / (ERASE1 - ERASE0))
+          var vh = sineSpeed(t / DRAW), vt = speed((t - ERASE0) / (ERASE1 - ERASE0))
+          var r = t - RING, ring = r > 0 && t < ERASE1 ? 0.13 * Math.exp(-r / 0.2) * Math.sin(r * 2 * Math.PI / 0.27) : 0
+          g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, canvas.width, canvas.height)
+          if (head - tail < 0.002) { if (on) raf = frame(draw); return }
+          g.setTransform(2 * dpr, 0, 0, 2 * dpr, 8 * dpr, 4 * dpr)
+          g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = color
+          // how far a point at u (0..1 along the line) sits from the logo's shape right now
+          function bend(u) {
+            var k = ring * Math.sin(Math.PI * u)
+            var dh = head - u; if (dh >= 0 && vh > 0) k += 0.3 * vh * Math.exp(-dh / 0.09) * Math.sin(dh * 30)
+            var dt = u - tail; if (dt >= 0 && vt > 0) k += 0.22 * vt * Math.exp(-dt / 0.09) * Math.sin(dt * 30)
+            return 1 + k
+          }
+          function at(f) { // a point at f along the line, between samples, so both ends glide
+            var j = 1; while (j < L.length - 1 && L[j] < f) j++
+            var w = (f - L[j - 1]) / ((L[j] - L[j - 1]) || 1)
+            return [X[j - 1] + (X[j] - X[j - 1]) * w, Y[j - 1] + (Y[j] - Y[j - 1]) * w]
+          }
+          g.beginPath()
+          var p = at(tail); g.moveTo(p[0], 12 + (p[1] - 12) * bend(tail))
+          for (var i = 0; i < L.length; i++) if (L[i] > tail && L[i] < head) g.lineTo(X[i], 12 + (Y[i] - 12) * bend(L[i]))
+          p = at(head); g.lineTo(p[0], 12 + (p[1] - 12) * bend(head))
+          g.stroke()
+          if (on && !still) raf = frame(draw)
+        }
+        return {
+          start: function () { if (on) return; on = true; t0 = 0; told = true; raf = frame(draw) },
+          stop: function () { on = false; cancel(raf) },
+          first: function () { on = true; t0 = 0; raf = frame(draw) },
+        }
+      }
+      ;(function () {
+        var boot = document.getElementById('boot'), cv = boot.querySelector('canvas'), ctl, timer
+        // the app waits for the wave to draw itself in once (never longer than 2.6 s, whatever happens)
+        var isReady = false, waiting = []
+        function ready() { if (isReady) return; isReady = true; waiting.splice(0).forEach(function (f) { f() }) }
+        setTimeout(ready, 2600)
+        var color = getComputedStyle(boot).getPropertyValue('--main').trim() || '#f0f0f0'
+        var dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1))
+        var still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)
+        function here() { // draw on the page itself, on a fresh canvas
+          var n = document.createElement('canvas'); n.setAttribute('aria-hidden', 'true'); cv.replaceWith(n); cv = n
+          ctl = lemoWave(n, color, dpr, still, ready); ctl.first()
+        }
+        try {
+          if (!cv.transferControlToOffscreen || !window.Worker || !window.Blob) throw 0
+          var off = cv.transferControlToOffscreen()
+          var src = 'var lemoWave = ' + lemoWave + '\n;var w; onmessage = function (e) { var d = e.data;' +
+            ' if (d.canvas) { if (!self.requestAnimationFrame) return postMessage("no-frames"); w = lemoWave(d.canvas, d.color, d.dpr, d.still, function () { postMessage("drawn") }); w.first() }' +
+            ' else if (w) d.run ? w.start() : w.stop() }'
+          var wk = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })))
+          var fallen = false, fall = function () { if (fallen) return; fallen = true; wk.terminate(); here() }
+          wk.onerror = fall; wk.onmessage = function (e) { if (e.data === 'no-frames') fall(); else if (e.data === 'drawn') ready() }
+          wk.postMessage({ canvas: off, color: color, dpr: dpr, still: still }, [off])
+          // here() replaces ctl with the page's own controller if the worker can't draw
+          ctl = { start: function () { wk.postMessage({ run: true }) }, stop: function () { wk.postMessage({ run: false }) } }
+        } catch (e) { here() }
+        // the app shows the loading screen while it gets ready and hides it (with a short fade) when it's done
+        var shown = true
+        window.__boot = {
+          whenReady: function (f) { isReady ? f() : waiting.push(f) },
+          show: function () { clearTimeout(timer); boot.style.display = ''; boot.style.opacity = '1'; if (!shown) { shown = true; ctl.start() } },
+          hide: function () {
+            if (!shown) return; shown = false; boot.style.opacity = '0'
+            timer = setTimeout(function () { boot.style.display = 'none'; ctl.stop() }, 300)
+          },
+        }
+      })()
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

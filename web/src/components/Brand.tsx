@@ -3,25 +3,11 @@ import { cx } from './ui'
 /** The mark: a sung line — nothing else. */
 export const WAVE_PATH = 'M2 14 C7 14 8 5 13 5 S20 19 26 19 S33 8 38 8 S44 13 46 13'
 
-/**
- * Every loading animation runs on one clock that starts when the page opens (index.html's
- * loading screen does the same), so React taking over never makes the wave jump.
- * Worked out once: a new delay on a re-render would restart the animation mid-sweep.
- */
-let delay: string | null = null
-const loadingDelay = () => (delay ??= `-${Math.round(performance.now())}ms`)
-
-export function Wave({ className, draw }: { className?: string; /** sweeps in and out (loading) */ draw?: boolean }) {
-  const svg = (
-    <svg viewBox="0 0 48 24" className={cx('overflow-visible', draw ? undefined : className)} aria-hidden>
+export function Wave({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 24" className={cx('overflow-visible', className)} aria-hidden>
       <path d={WAVE_PATH} fill="none" stroke="var(--main)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  )
-  if (!draw) return svg
-  return (
-    <span className="wave-reveal" style={{ animationDelay: loadingDelay() }}>
-      <span>{svg}</span>
-    </span>
   )
 }
 
@@ -36,24 +22,14 @@ export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
 }
 
 /**
- * The loading screen: the wave draws itself while Lemody gets ready.
- * index.html shows the same thing (plain HTML) before any script has loaded, so
- * the hand-over is seamless.
+ * The loading screen lives in index.html (#boot): it's on screen before any script loads, and
+ * its wave is drawn in a worker so loading can't make it stutter. The app shows and hides it
+ * through window.__boot; there's no second copy, so nothing ever jumps or restarts.
  */
-export function Splash({ label }: { label?: string }) {
-  return (
-    <div className="h-dvh flex flex-col items-center justify-center px-6" role="status" aria-live="polite">
-      <div className="flex flex-col items-center">
-        <Wave draw />
-        <div className="mt-5 text-[28px] font-semibold tracking-[-0.03em] leading-none text-text">lemody</div>
-        <div className="mt-6 h-[2px] w-28 rounded-full bg-sub-alt overflow-hidden">
-          <div className="busy-indeterminate h-full w-1/3 rounded-full bg-main" style={{ animationDelay: loadingDelay() }} />
-        </div>
-        <div className="mt-3 h-4 text-[11px] text-sub">{label ?? ''}</div>
-      </div>
-      <div className="fixed bottom-0 inset-x-0 flex justify-center pb-[max(1.25rem,env(safe-area-inset-bottom))] text-[11px] text-sub">
-        <span className="font-semibold tracking-wide text-text/80">Wiecodes</span>
-      </div>
-    </div>
-  )
+type Boot = { whenReady(f: () => void): void; show(): void; hide(): void }
+export const boot = (): Boot | undefined => (window as unknown as { __boot?: Boot }).__boot
+
+/** Room for the loading screen while it's up (it covers the page from index.html). */
+export function Splash() {
+  return <div className="h-dvh bg-bg" />
 }

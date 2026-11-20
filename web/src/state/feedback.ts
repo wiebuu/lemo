@@ -123,22 +123,12 @@ const TEXT = 'input:not([type]), input[type="text"], input[type="search"], input
 
 function installDom() {
   const unlock = () => sfx.unlock()
-  let lastHover: Element | null = null
-  const fine = matchMedia('(pointer: fine)')
 
+  // a tap on anything pressable: one soft tick (no sound on hover)
   window.addEventListener('pointerdown', (e) => {
     unlock()
     const el = (e.target as Element | null)?.closest?.(PRESSABLE) as HTMLButtonElement | null
-    if (el && !el.disabled && el.getAttribute('aria-disabled') !== 'true') sfx.play('press', { volume: 0.8, cooldownMs: 30 })
-    else if ((e.target as Element | null)?.closest?.('button:disabled')) sfx.play('blocked', { volume: 0.7, cooldownMs: 200 })
-  }, true)
-
-  window.addEventListener('pointerover', (e) => {
-    if (!fine.matches || e.pointerType !== 'mouse') return
-    const el = (e.target as Element | null)?.closest?.('button:not(:disabled), a[href], [role="tab"]') ?? null
-    if (el === lastHover) return
-    lastHover = el
-    if (el) sfx.play('hover', { volume: 0.7, cooldownMs: 70 })
+    if (el && !el.disabled && el.getAttribute('aria-disabled') !== 'true') sfx.tick()
   }, true)
 
   window.addEventListener('keydown', (e) => {

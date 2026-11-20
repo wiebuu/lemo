@@ -16,6 +16,8 @@ let pack: SfxPack = 'studio'
 let volume = 0.6
 let unlocked = false
 let blocked: () => boolean = () => false
+let tickCtx: AudioContext | null = null
+let lastTick = 0
 
 function get(): UISFXPlayer {
   if (!player) player = createUISFX({ pack, volume, enabled, maxVoices: 6, cooldownMs: 35 })
@@ -52,6 +54,37 @@ export const sfx = {
     if (unlocked) return
     unlocked = true
     void get().unlock()
+    try {
+      tickCtx = new AudioContext()
+    } catch {
+      /* no Web Audio: no ticks */
+    }
+  },
+
+  /** The plain tap sound for buttons and links: one short, soft tick (not a uisfx cue). */
+  tick(level = 1) {
+    if (!enabled || !unlocked || !tickCtx || blocked() || document.hidden) return
+    const now = performance.now()
+    if (now - lastTick < 30) return
+    lastTick = now
+    try {
+      const c = tickCtx
+      if (c.state === 'suspended') void c.resume()
+      const t = c.currentTime
+      const o = c.createOscillator()
+      const g = c.createGain()
+      o.type = 'sine'
+      o.frequency.setValueAtTime(1500, t)
+      o.frequency.exponentialRampToValueAtTime(1000, t + 0.025)
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(0.09 * volume * level, t + 0.002)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035)
+      o.connect(g).connect(c.destination)
+      o.start(t)
+      o.stop(t + 0.045)
+    } catch {
+      /* a nicety */
+    }
   },
 
   /** Play a cue. Returns a handle (loops: stop it), or null when nothing played. */

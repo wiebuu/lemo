@@ -737,13 +737,6 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
     transform: translateY(-12px) scale(0.98);
   }
 }
-.note-timer {
-  animation: note-timer 6s linear forwards;
-}
-@keyframes note-timer {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
-}
 .bell-ring {
   transform-origin: 50% 2px;
   animation: bell-ring 0.7s ease-in-out;

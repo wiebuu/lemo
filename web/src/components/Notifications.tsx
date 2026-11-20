@@ -159,29 +159,31 @@ export function NotificationBell({ className }: { className?: string }) {
   )
 }
 
-/** A notification as it arrives: a small card at the top for a few seconds. */
+/** A notification as it arrives: a small strip at the top for a few seconds. Tap it to put it away. */
 export function NotificationPopup() {
   const { popup } = useNotifications()
   if (!popup) return null
   const n = popup
   const go = n.songId || n.href
+  const away = () => {
+    notifications.markRead(n.id)
+    notifications.dismissPopup(n.id)
+  }
   return (
     <div role="status" aria-live="polite" key={n.id}
-      className="note-in fixed z-[80] top-[max(0.75rem,env(safe-area-inset-top))] left-3 right-3 sm:left-auto sm:right-5 sm:w-[22rem] modal-card rounded-2xl shadow-2xl border border-line">
-      <div className="flex gap-3 p-3.5">
-        <button type="button" disabled={!go} onClick={() => { act(n); notifications.dismissPopup(n.id) }}
-          className="flex-1 min-w-0 flex gap-3 text-left disabled:cursor-default">
-          <NoteIcon kind={n.kind} />
-          <span className="flex-1 min-w-0">
-            <span className="block text-[13px] font-medium text-text leading-snug">{n.title}</span>
-            {n.body && <span className="block text-[11px] text-sub leading-snug mt-0.5">{n.body}</span>}
-            {go && <span className="block text-[11px] text-main mt-1.5">{n.songId ? 'sing it now →' : 'have a look →'}</span>}
-          </span>
+      className="note-in fixed z-[80] top-[max(0.75rem,env(safe-area-inset-top))] inset-x-0 mx-auto w-max max-w-[min(28rem,calc(100vw-1.5rem))]
+        flex items-center rounded-full modal-card border border-line shadow-lg text-[12px]">
+      <button type="button" onClick={away} aria-label={`${n.title}. Tap to dismiss`}
+        className="min-w-0 flex items-center gap-2 pl-3 pr-3 py-1.5 text-left">
+        <span className={cx('shrink-0', BAD.includes(n.kind) ? 'text-error' : 'text-main')}>{ICON[n.kind](13)}</span>
+        <span className="truncate text-text">{n.title}</span>
+      </button>
+      {go && (
+        <button type="button" onClick={() => { act(n); notifications.dismissPopup(n.id) }}
+          className="shrink-0 pr-3 pl-2 py-1.5 border-l border-line text-main font-medium">
+          {n.songId ? 'sing' : 'open'}
         </button>
-        <button type="button" aria-label="dismiss" onClick={() => { notifications.markRead(n.id); notifications.dismissPopup(n.id) }}
-          className="self-start p-1 -m-1 rounded-md text-sub hover:text-text"><X size={14} /></button>
-      </div>
-      <span className="note-timer block h-0.5 mx-3.5 mb-2 rounded-full bg-main/40 origin-left" />
+      )}
     </div>
   )
 }

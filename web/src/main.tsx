@@ -5,7 +5,7 @@ import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { persist } from './state/persist'
 import { installGuards } from './guards'
-import { installStaleBuildReload } from './lib/staleBuild'
+import { installStaleBuildReload, early, fetchPartsEarly } from './lib/staleBuild'
 import { startAuth } from './auth/firebase'
 import { AuthGate } from './components/AuthGate'
 import { rememberLinkedSong } from './lib/linkedSong'
@@ -16,10 +16,11 @@ import { installFeedback } from './state/feedback'
 document.documentElement.dataset.theme = persist.settings().theme
 installGuards()
 installStaleBuildReload()
+fetchPartsEarly()
 startAuth()
 installFeedback()
 
-const SitePage = lazy(() => import('./pages/Pages').then((m) => ({ default: m.SitePage })))
+const SitePage = lazy(early(() => import('./pages/Pages').then((m) => ({ default: m.SitePage }))))
 
 /** About, Help, Privacy … open over the app (readable signed in or not); loaded when first opened. */
 function Pages() {

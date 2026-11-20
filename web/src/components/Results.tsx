@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
+import { early, prefetch } from '../lib/staleBuild'
 import { ViewControls } from './ViewControls'
 import { lazy, Suspense, useState } from 'react'
 import { Crown, Download, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, X } from 'lucide-react'
-const VoiceFxPanel = lazy(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel })))
+const loadShareCard = prefetch(() => import('../lib/shareCard'))
+const VoiceFxPanel = lazy(early(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel }))))
 import { ChallengeBadge } from './Challenge'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
 import { formatTime } from '../lib/music'
@@ -173,7 +175,7 @@ function ShareButton({ compact }: { compact?: boolean }) {
     if (!info) return
     setBusy(true)
     try {
-      const { challengeLink, drawCard, shareText } = await import('../lib/shareCard')
+      const { challengeLink, drawCard, shareText } = await loadShareCard()
       const link = challengeLink(info.songId, info.score)
       const text = `${shareText(info)} ${link}`
       const file = new File([await drawCard(info)], 'lemody-score.png', { type: 'image/png' })

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { early } from './lib/staleBuild'
 import { detectOutput, onOutputChange } from './audio/output'
 import { SiteFooter } from './pages/Footer'
 import { ConfigBar } from './components/ConfigBar'
@@ -21,13 +22,13 @@ import { PhoneSongName } from './components/SongCounts'
 import { NotificationPopup } from './components/Notifications'
 
 // Opened now and then: each loads the first time it's needed, not with the app.
-const HeadphoneNote = lazy(() => import('./components/HeadphoneNote').then((m) => ({ default: m.HeadphoneNote })))
-const Calibration = lazy(() => import('./components/Calibration').then((m) => ({ default: m.Calibration })))
-const LyricsEditor = lazy(() => import('./components/LyricsEditor').then((m) => ({ default: m.LyricsEditor })))
-const FixLyrics = lazy(() => import('./components/FixLyrics').then((m) => ({ default: m.FixLyrics })))
-const SettingsPanel = lazy(() => import('./components/SettingsPanel').then((m) => ({ default: m.SettingsPanel })))
-const Disco = lazy(() => import('./components/Disco').then((m) => ({ default: m.Disco })))
-const Tutorial = lazy(() => import('./components/Tutorial').then((m) => ({ default: m.Tutorial })))
+const HeadphoneNote = lazy(early(() => import('./components/HeadphoneNote').then((m) => ({ default: m.HeadphoneNote }))))
+const Calibration = lazy(early(() => import('./components/Calibration').then((m) => ({ default: m.Calibration }))))
+const LyricsEditor = lazy(early(() => import('./components/LyricsEditor').then((m) => ({ default: m.LyricsEditor }))))
+const FixLyrics = lazy(early(() => import('./components/FixLyrics').then((m) => ({ default: m.FixLyrics }))))
+const SettingsPanel = lazy(early(() => import('./components/SettingsPanel').then((m) => ({ default: m.SettingsPanel }))))
+const Disco = lazy(early(() => import('./components/Disco').then((m) => ({ default: m.Disco }))))
+const Tutorial = lazy(early(() => import('./components/Tutorial').then((m) => ({ default: m.Tutorial }))))
 
 export default function App() {
   const s = useStudio()

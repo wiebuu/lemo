@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { early } from '../lib/staleBuild'
 import { ExternalLink, Laptop, Link2, Play, Plus, Upload, X } from 'lucide-react'
 import { analyzer, type RequestBoard } from '../api/analyzer'
 import { useAuth } from '../auth/firebase'
@@ -9,7 +10,7 @@ import { cx, Pager, usePaged } from '../components/ui'
 import { navigate } from './router'
 import { noteRequested, notifications } from '../state/notifications'
 
-const DeviceRun = lazy(() => import('../components/DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
+const DeviceRun = lazy(early(() => import('../components/DeviceAnalysis').then((m) => ({ default: m.DeviceRun }))))
 
 function ago(at: number): string {
   const s = Math.max(0, Date.now() / 1000 - at)

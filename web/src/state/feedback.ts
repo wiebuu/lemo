@@ -7,6 +7,7 @@
 import { analyzer } from '../api/analyzer'
 import { authState, subscribeAuth } from '../auth/firebase'
 import { sfx, type CueName } from '../lib/sfx'
+import { setKeepPage } from '../lib/staleBuild'
 import { cloudSongs, cloudStatus, refreshCloudSongs, subscribeCloud } from './cloud'
 import { notifications, recordScore, settleRequests } from './notifications'
 import { studio, type Snapshot } from './studio'
@@ -244,6 +245,11 @@ export function installFeedback() {
     prev = s
     onStudio(p, s)
   })
+  // a new version deployed while a song is open: never reload it away (results, a take, edits)
+  setKeepPage(
+    () => !!studio.snap.track,
+    () => studio.toast('Lemody was just updated. Reload the page to use this.', 5000),
+  )
   installDom()
   installAccount()
 }

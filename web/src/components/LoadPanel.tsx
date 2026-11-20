@@ -1,4 +1,5 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { early } from '../lib/staleBuild'
 import { ArrowDownWideNarrow, Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
 import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
 import { signedIn, signInWithGoogle } from '../auth/firebase'
@@ -14,9 +15,9 @@ import { go } from '../pages/router'
 import { studio } from '../state/studio'
 import { forgetRequest, noteRequested, notifications } from '../state/notifications'
 import { sfx } from '../lib/sfx'
-const AnalyseChoice = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.AnalyseChoice })))
-const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
-const TooWeak = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak })))
+const AnalyseChoice = lazy(early(() => import('./DeviceAnalysis').then((m) => ({ default: m.AnalyseChoice }))))
+const DeviceRun = lazy(early(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun }))))
+const TooWeak = lazy(early(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak }))))
 import { FeaturedShelf } from './FeaturedShelf'
 import { shelfOrder, visitorHome } from '../lib/region'
 import { LikeButton } from './Like'
@@ -447,11 +448,14 @@ const HOME = visitorHome()
 /** at most this many songs on the visitor's own-language shelf, and at least this many to show it */
 const LOCAL_MAX = 20
 const LOCAL_MIN = 4
-const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : f.lang === 'hi' ? 'hindi' : 'english')
+/** a featured song's shelf; songs in other languages (Japanese, French …) have none of these three, so they never land on english */
+const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : f.lang === 'hi' ? 'hindi' : f.lang === 'en' || !f.lang ? 'english' : `lang:${f.lang}`)
+/** Explore shows only the most sung songs (of the language picked); a search still finds every song */
+const EXPLORE_TOP = 15
 
 /**
  * Featured songs live on the server for everyone, in short lists: garhwali,
- * hindi, english. Explore has every song, most played first. "your songs" are the ones you added
+ * hindi, english. Explore has the 15 most sung (a search there finds every song). "your songs" are the ones you added
  * (kept in your account; the songs themselves live on Lemody's server).
  */
 function SongList({ featured, catalog, online, canPrepare, requests, onCancelRequest, fill, opening, loading, onOpen, onFetch, onPrepare, onRemove }: {
@@ -498,7 +502,9 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   const { ids: likedIds } = useLikes()
   // Lemody's own order for explore: most results first, then the newest (as it always was)
   const exploreBase = useMemo(() => [...catalog].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0) || (b.addedAt ?? 0) - (a.addedAt ?? 0)), [catalog])
-  const exploreSongs = useMemo(() => sortSongs(inLanguage(exploreBase, shownLang), sort), [exploreBase, shownLang, sort])
+  const exploreAll = useMemo(() => inLanguage(exploreBase, shownLang), [exploreBase, shownLang])
+  // the top 15 sung on Lemody (most views break ties), shown in the order picked
+  const exploreTop = useMemo(() => sortSongs(sortSongs(exploreAll, 'sung').slice(0, EXPLORE_TOP), sort), [exploreAll, sort])
   const likedSongs = useMemo(
     () => sortSongs(inLanguage(likedIds.flatMap((id) => byId.get(id) ?? []), shownLang), sort),
     [likedIds, byId, shownLang, sort],
@@ -520,9 +526,11 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
       duration: c.duration ?? null, ready: true, stage: null, progress: 1,
     }))
   }, [catalog, shownLang, sort])
-  const shelves = shelfOrder(HOME).map((id) => ({
+  // a language picked that has no shelf of its own (Japanese, French … outside their country): its own shelf
+  const pickedShelf = shownLang && !['en', 'hi', 'gw'].includes(shownLang) && !localShelf.length ? [`lang:${shownLang}`] : []
+  const shelves = [...shelfOrder(HOME), ...pickedShelf].map((id) => ({
     id,
-    label: id === 'local' ? languageName(HOME!).toLowerCase() : id,
+    label: id === 'local' ? languageName(HOME!).toLowerCase() : id.startsWith('lang:') ? languageName(id.slice(5)).toLowerCase() : id,
     items: id === 'local' ? localShelf : featuredShown.filter((f) => groupOf(f) === id && !(localShelf.length && f.lang === HOME)),
   }))
   const ownLyrics = useLyricHits(tab === 'mine' ? find : '')
@@ -566,7 +574,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
       )}
       <div className={cx('overflow-y-auto -mx-2 px-2', fill ? 'flex-1 min-h-0' : 'max-h-[42vh]')}>
         {show === 'explore' ? (
-          <Explore songs={exploreSongs} loading={!catalog.length} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
+          <Explore songs={find.trim() ? sortSongs(exploreAll, sort) : exploreTop} loading={!catalog.length} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
         ) : show === 'liked' ? (
           likedSongs.length || find ? (
             <Explore songs={likedSongs} loading={false} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
@@ -591,7 +599,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
             {!featuredShown.length && !localShelf.length && shownLang && (
               <div className="text-xs text-sub py-2 px-2">
                 no featured {languageName(shownLang)} songs —{' '}
-                <button type="button" onClick={() => setTab('explore')} className="text-main underline underline-offset-2">see them all in explore</button>
+                <button type="button" onClick={() => setTab('explore')} className="text-main underline underline-offset-2">see the most sung in explore</button>
               </div>
             )}
             {online && canPrepare && idle && (

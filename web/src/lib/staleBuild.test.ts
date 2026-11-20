@@ -9,3 +9,20 @@ describe('stale build detection', () => {
   })
   it('leaves other errors alone', () => expect(isStaleChunkError(new Error('Cannot read properties of undefined'))).toBe(false))
 })
+
+describe('early', () => {
+  it('keeps an open song: a missing part stays unopened and a note shows, no reload', async () => {
+    const { early, setKeepPage } = await import('./staleBuild')
+    let noted = 0
+    setKeepPage(() => true, () => noted++)
+    const load = early(() => Promise.reject(new TypeError('Failed to fetch dynamically imported module: /assets/VoiceFxPanel-x.js')))
+    const settled = await Promise.race([load().then(() => 'loaded', () => 'threw'), new Promise((r) => setTimeout(() => r('waiting'), 20))])
+    expect(settled).toBe('waiting')
+    expect(noted).toBe(1)
+  })
+  it('passes other errors on', async () => {
+    const { early, setKeepPage } = await import('./staleBuild')
+    setKeepPage(() => true, () => {})
+    await expect(early(() => Promise.reject(new Error('boom')))()).rejects.toThrow('boom')
+  })
+})

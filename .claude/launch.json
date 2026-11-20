@@ -86,6 +86,17 @@
         "cd /Users/vishwassingh/Desktop/lemo/web && npx vite --port 5176 --strictPort"
       ],
       "port": 5176
+    },
+    {
+      "name": "web-live-data",
+      "runtimeExecutable": "/usr/bin/env",
+      "runtimeArgs": [
+        "LEMO_ANALYZER_URL=https://api.lemodysounds.online",
+        "sh",
+        "-c",
+        "cd /Users/vishwassingh/Desktop/lemo/web && npx vite --port 5176 --strictPort"
+      ],
+      "port": 5176
     }
   ]
 }

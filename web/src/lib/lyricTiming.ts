@@ -264,21 +264,22 @@ export function beatPulse(t: number, tempo: number | undefined, firstBeat = 0): 
  * The full-screen pause line as an SVG path in a w×h box (px): a gentle wave that
  * travels one wavelength per beat and swells a little on each beat, settling flat at
  * both ends. Small on purpose. `at` null: a straight line. Paused = t stands still =
- * the wave holds still.
+ * the wave holds still. `to`: draw only up to there (the filled part, on the same curve).
  */
-export function wavePath(w: number, h: number, at: { t: number; tempo?: number; firstBeat?: number } | null): string {
+export function wavePath(w: number, h: number, at: { t: number; tempo?: number; firstBeat?: number } | null, to = w): string {
   const mid = h / 2
-  if (!at || w <= 0) return `M0 ${mid.toFixed(1)}H${w.toFixed(1)}`
+  const end = Math.max(0, Math.min(w, to))
+  if (!at || w <= 0) return `M0 ${mid.toFixed(1)}H${end.toFixed(1)}`
   const beats = at.tempo ? ((at.t - (at.firstBeat ?? 0)) * at.tempo) / 60 : at.t * 1.2
   const swell = at.tempo ? 0.55 + 0.45 * beatPulse(at.t, at.tempo, at.firstBeat) : 0.7
   const amp = h * 0.22 * swell
   const wave = Math.max(24, h * 2.4) // wavelength
   const pts: string[] = []
-  for (let x = 0; ; x = Math.min(w, x + 3)) {
+  for (let x = 0; ; x = Math.min(end, x + 3)) {
     const env = Math.sqrt(Math.sin((Math.PI * x) / w)) // flat at both ends
     const y = mid + amp * env * Math.sin((2 * Math.PI * x) / wave - 2 * Math.PI * beats)
     pts.push(`${x.toFixed(1)} ${y.toFixed(1)}`)
-    if (x >= w) break
+    if (x >= end) break
   }
   return 'M' + pts.join('L')
 }

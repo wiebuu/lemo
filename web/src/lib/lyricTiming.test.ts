@@ -183,6 +183,14 @@ describe('the full-screen pause wave', () => {
     expect(wavePath(200, 20, { t: 3.1, tempo: 90 })).toBe(wavePath(200, 20, { t: 3.1, tempo: 90 }))
     expect(wavePath(200, 20, { t: 3.2, tempo: 90 })).not.toBe(wavePath(200, 20, { t: 3.1, tempo: 90 }))
   })
+  it('draws the filled part on the same curve, stopping exactly at its tip', () => {
+    const full = wavePath(200, 20, { t: 3.1, tempo: 90 })
+    const part = wavePath(200, 20, { t: 3.1, tempo: 90 }, 101)
+    const xs = part.slice(1).split('L').map((p) => Number(p.split(' ')[0]))
+    expect(xs[xs.length - 1]).toBe(101)
+    expect(full.startsWith(part.slice(0, part.lastIndexOf('L')))).toBe(true) // same points up to the tip
+    expect(wavePath(200, 20, null, 50)).toBe('M0 10.0H50.0')
+  })
   it('is a straight line when it isn’t the pause being waited out', () => {
     expect(wavePath(200, 20, null)).toBe('M0 10.0H200.0')
   })

@@ -389,23 +389,21 @@ textarea:focus-visible {
 .lyric-wave path {
   fill: none;
   stroke-width: max(3px, 0.09em);
-  stroke-linecap: round;
+  stroke-linecap: round; /* the filled part ends in a round pen tip, like the loading wave */
   stroke-linejoin: round;
+}
+.lyric-wave .wave-base {
   stroke: color-mix(in srgb, var(--sub) 45%, transparent);
 }
-.lyric-gap.lyric-wave > span {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  overflow: hidden;
-  border-radius: 0;
-  background: none;
-}
-.lyric-wave[data-state='now'] > span path {
+.lyric-wave .wave-on {
   stroke: var(--main);
 }
-.lyric-wave[data-state='past'] > span path {
+.lyric-wave[data-state='past'] .wave-on {
   stroke: color-mix(in srgb, var(--text) 55%, transparent);
+}
+/* Urdu runs right to left: so does the line */
+[dir='rtl'] .lyric-wave svg {
+  transform: scaleX(-1);
 }
 
 /* dialog content fades out at the bottom edge so it reads as scrollable */

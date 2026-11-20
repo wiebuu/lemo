@@ -46,7 +46,8 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
           if (el.dataset.state !== state) el.dataset.state = state
           if (k !== i) {
             el.style.removeProperty('--p')
-            if (focus && items[k]?.kind === 'gap') drawWave(el, null) // only the pause being waited out waves
+            // only the pause being waited out waves; one already waited out stays filled
+            if (focus && items[k]?.kind === 'gap') drawWave(el, null, k < i ? Infinity : 0)
           }
         })
         shown.current = i
@@ -56,17 +57,19 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         const el = els.current[i]
         if (!el) return
         el.style.setProperty('--p', Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start))).toFixed(3))
-        // full-screen lyrics: the pause line waves gently, swelling a little on each beat
-        if (focus && it.kind === 'gap') {
-          const tr = studio.snap.track
-          drawWave(el, reducedMotion() ? null : { t, tempo: tr?.tempo, firstBeat: tr?.firstBeat })
-        }
       }
       // The point being sung always sits in the centre. It moves steadily from one item's
       // start to the next one's (word, space and pause alike), so it never jumps between them.
       const edge = (el: HTMLSpanElement | null, end: boolean) => (el ? el.offsetLeft + (rtl !== end ? el.offsetWidth : 0) : 0)
       const starts = items.map((_, k) => edge(els.current[k], false))
       const x = sungPoint(items, starts, edge(els.current[items.length - 1], true), r < 0 ? -1 : t)
+      // full-screen lyrics: the pause line waves gently, swelling a little on each beat, and
+      // fills like a pen drawing it — its round tip right at the centre, where the singing is
+      if (focus && i >= 0 && items[i].kind === 'gap') {
+        const el = els.current[i]!
+        const tr = studio.snap.track
+        drawWave(el, reducedMotion() ? null : { t, tempo: tr?.tempo, firstBeat: tr?.firstBeat }, rtl ? el.offsetLeft + el.offsetWidth - x : x - el.offsetLeft)
+      }
       const target = wrap.current.clientWidth / 2 - x
       // Eased towards the target, so a seek or a slow frame glides instead of jumping;
       // a new line starts in place (it slides in on its own).
@@ -127,10 +130,7 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
                 <span key={k} ref={(el) => void (els.current[k] = el)} className={cx('lyric-gap', focus && 'lyric-wave')} aria-label="pause"
                   style={{ width: gapWidth(it.end - it.start, z.scale) }}>
                   {focus ? (
-                    <>
-                      <svg aria-hidden><path /></svg>
-                      <span><svg aria-hidden style={{ width: gapWidth(it.end - it.start, z.scale) }}><path /></svg></span>
-                    </>
+                    <svg aria-hidden><path className="wave-base" /><path className="wave-on" /></svg>
                   ) : (
                     <span />
                   )}
@@ -161,12 +161,19 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
 /** A pause line's length (px): about 60 px a second, 28–300 px, scaled with the lyrics. */
 const gapWidth = (dur: number, scale: number) => Math.max(28, Math.min(300, dur * 60)) * scale
 
-/** Draw a full-screen pause line: waving at time t, or flat (null). Both its paths (grey, and the filled part). */
-function drawWave(el: HTMLElement, at: { t: number; tempo?: number; firstBeat?: number } | null) {
-  if (!at && el.dataset.wave === 'flat') return
-  const d = wavePath(el.offsetWidth, el.offsetHeight, at)
-  el.dataset.wave = at ? 'on' : 'flat'
-  el.querySelectorAll('path').forEach((p) => p.setAttribute('d', d))
+/**
+ * Draw a full-screen pause line: waving at time t, or still (null); filled from its start
+ * up to `to` px (0: not yet, Infinity: all), ending in a round pen tip.
+ */
+function drawWave(el: HTMLElement, at: { t: number; tempo?: number; firstBeat?: number } | null, to: number) {
+  const w = el.offsetWidth, h = el.offsetHeight
+  const upto = Math.max(0, Math.min(w, to))
+  const key = at ? '' : `still:${upto}`
+  if (key && el.dataset.wave === key) return
+  el.dataset.wave = key
+  const [base, on] = el.querySelectorAll('path')
+  base?.setAttribute('d', wavePath(w, h, at))
+  on?.setAttribute('d', upto > 0 ? wavePath(w, h, at, upto) : '')
 }
 let reduced: MediaQueryList | null = null
 const reducedMotion = () => (reduced ??= matchMedia('(prefers-reduced-motion: reduce)')).matches

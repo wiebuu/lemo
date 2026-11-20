@@ -57,7 +57,7 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         if (!el) return
         el.style.setProperty('--p', Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start))).toFixed(3))
         // a pause line gives a small bump on each beat of the song, then settles
-        if (it.kind === 'gap') el.style.setProperty('--beat', beatPulse(t).toFixed(3))
+        if (it.kind === 'gap') el.style.setProperty('--beat', livePulse(t).toFixed(3))
       }
       // The point being sung always sits in the centre. It moves steadily from one item's
       // start to the next one's (word, space and pause alike), so it never jumps between them.
@@ -149,15 +149,18 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
 }
 
 /**
- * 1 right on a beat of the song, easing to 0 before the next one (0 when the tempo is
- * unknown, while paused, or when the system asks for less motion).
+ * 1 right on a beat of the song, 0 between beats (0 when the tempo is unknown, while
+ * paused, or when the system asks for less motion). A smooth rise and fall — no snap
+ * on the beat — so the line bobs with the music instead of twitching.
  */
-function beatPulse(t: number): number {
+export function beatPulse(t: number, tempo: number | undefined, firstBeat = 0): number {
+  if (!tempo) return 0
+  const phase = ((((t - firstBeat) * tempo) / 60) % 1 + 1) % 1
+  return ((1 + Math.cos(2 * Math.PI * phase)) / 2) ** 4
+}
+const livePulse = (t: number) => {
   const tr = studio.snap.track
-  if (!tr?.tempo || !studio.snap.playing || reducedMotion()) return 0
-  const beat = 60 / tr.tempo
-  const since = (((t - (tr.firstBeat ?? 0)) % beat) + beat) % beat
-  return Math.exp(-since / Math.min(0.14, beat * 0.3))
+  return studio.snap.playing && !reducedMotion() ? beatPulse(t, tr?.tempo, tr?.firstBeat) : 0
 }
 let reduced: MediaQueryList | null = null
 const reducedMotion = () => (reduced ??= matchMedia('(prefers-reduced-motion: reduce)')).matches

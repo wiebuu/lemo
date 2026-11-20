@@ -44,7 +44,10 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
           if (!el) return
           const state = k < i ? 'past' : k === i ? 'now' : 'next'
           if (el.dataset.state !== state) el.dataset.state = state
-          if (k !== i) el.style.removeProperty('--p')
+          if (k !== i) {
+            el.style.removeProperty('--p')
+            el.style.removeProperty('--beat')
+          }
         })
         shown.current = i
       }
@@ -53,6 +56,8 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         const el = els.current[i]
         if (!el) return
         el.style.setProperty('--p', Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start))).toFixed(3))
+        // a pause line gives a small bump on each beat of the song, then settles
+        if (it.kind === 'gap') el.style.setProperty('--beat', beatPulse(t).toFixed(3))
       }
       // The point being sung always sits in the centre. It moves steadily from one item's
       // start to the next one's (word, space and pause alike), so it never jumps between them.
@@ -142,6 +147,20 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
     </div>
   )
 }
+
+/**
+ * 1 right on a beat of the song, easing to 0 before the next one (0 when the tempo is
+ * unknown, while paused, or when the system asks for less motion).
+ */
+function beatPulse(t: number): number {
+  const tr = studio.snap.track
+  if (!tr?.tempo || !studio.snap.playing || reducedMotion()) return 0
+  const beat = 60 / tr.tempo
+  const since = (((t - (tr.firstBeat ?? 0)) % beat) + beat) % beat
+  return Math.exp(-since / Math.min(0.14, beat * 0.3))
+}
+let reduced: MediaQueryList | null = null
+const reducedMotion = () => (reduced ??= matchMedia('(prefers-reduced-motion: reduce)')).matches
 
 /** How quickly the line glides to keep the sung point centred (s; smaller = tighter). */
 const EASE = 0.07

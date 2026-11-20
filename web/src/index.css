@@ -347,29 +347,32 @@ textarea:focus-visible {
   -webkit-background-clip: text;
   background-clip: text;
 }
-/* a pause: one line as long as the pause. While it plays it runs down into the next
-   word at a steady pace, so the moment it's gone is the moment to start singing. */
+/* a pause: one line as long as the pause. It fills from the start like a sung word, so
+   the moment it's full is the moment to sing; on each beat of the song it gives a small
+   lift, then settles (--beat: 1 on the beat, easing to 0). */
 .lyric-gap {
   display: inline-block;
+  position: relative;
   height: max(3px, 0.09em);
   margin: 0 0.45em;
-  border-radius: 2px;
+  border-radius: 999px;
   flex: none;
+  background: color-mix(in srgb, var(--sub) 45%, transparent);
+  transform: translateY(calc(var(--beat, 0) * -0.1em)) scaleY(calc(1 + var(--beat, 0) * 0.5));
 }
 .lyric-gap > span {
   display: block;
   height: 100%;
-  width: 100%;
-  margin-inline-start: auto; /* shrinks towards the next word (right to left in Urdu) */
+  width: 0;
   border-radius: inherit;
-  background: color-mix(in srgb, var(--sub) 50%, transparent);
 }
 .lyric-gap[data-state='now'] > span {
-  width: calc((1 - var(--p, 0)) * 100%);
+  width: calc(var(--p, 0) * 100%);
   background: var(--grad);
 }
 .lyric-gap[data-state='past'] > span {
-  width: 0;
+  width: 100%;
+  background: color-mix(in srgb, var(--text) 55%, transparent);
 }
 
 /* dialog content fades out at the bottom edge so it reads as scrollable */

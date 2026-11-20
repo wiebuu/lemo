@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { Crown, LogIn, MicVocal } from 'lucide-react'
+import { Crown, Globe, Lock, LogIn, Pause, Play, X } from 'lucide-react'
 import { studio } from '../state/studio'
-import { useStudio } from './ui'
+import { cx, Tip, useStudio } from './ui'
 
 const COLORS = ['var(--main)', '#60a5fa', '#f472b6', '#facc15', '#34d399', '#f8fafc']
 
@@ -41,8 +41,10 @@ function burst(layer: HTMLElement) {
 }
 
 /**
- * Your take made today's top: confetti, and the choice whether everyone may hear your
- * voice (your score and pitch line are shown either way).
+ * Your take made today's top: confetti, then a slim bar — your rank, ▶ to hear yourself,
+ * and whether everyone may hear your voice (private until you say so; your score and
+ * pitch line show either way). Everything saves in the background; ✕ tucks it away
+ * (the rank stays in the results line).
  */
 export function TopCelebration() {
   const s = useStudio()
@@ -52,50 +54,68 @@ export function TopCelebration() {
   useEffect(() => {
     if (id && layer.current) burst(layer.current)
   }, [id])
+  const show = !!top?.id && !top.seen && (top.guest || top.voice !== 'no')
+  const hearing = s.playing && s.replay && s.listenSource === 'me'
   return (
     <>
       <div ref={layer} className="fixed inset-0 z-[60] pointer-events-none overflow-hidden" aria-hidden />
-      {top?.guest && top.id && !top.seen && (
-        <div role="dialog" aria-label="You made today's top"
-          className="toast-in fixed z-50 left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 w-[min(22rem,calc(100vw-2rem))] rounded-2xl bg-sub-alt shadow-xl px-4 py-3.5 text-center">
-          <div className="flex items-center justify-center gap-1.5 text-main font-semibold text-sm sm:text-base">
-            <Crown size={16} /> #{top.rank} in today’s top!
-          </div>
-          <p className="text-[12px] sm:text-xs text-sub mt-1 leading-snug">
-            You’re on it as a guest singer. Sign in to show your name next time, and keep your scores on any device.
-          </p>
-          <div className="flex gap-2 mt-3">
-            <button type="button" onClick={() => studio.skipTop()} className="flex-1 rounded-full surface text-text text-xs py-2">
-              nice
+      {show && top && (
+        <div role="status" aria-label={`#${top.rank} in today's top`}
+          className="toast-in fixed z-50 left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 max-w-[calc(100vw-2rem)] flex items-center gap-1.5 sm:gap-2 rounded-full surface shadow-lg pl-3 pr-1.5 py-1.5 text-xs whitespace-nowrap">
+          <Crown size={14} className="text-main shrink-0" />
+          <span className="font-medium text-text">#{top.rank} today</span>
+          {top.guest ? (
+            <>
+              <span className="text-sub hidden sm:inline">· as a guest singer</span>
+              <Tip tip="Sign in to show your name next time, and keep your scores on any device.">
+                <button type="button" onClick={() => void studio.signInFromTop()}
+                  className="ml-1 flex items-center gap-1 rounded-full bg-main text-bg font-medium px-2.5 py-1">
+                  <LogIn size={12} /> sign in
+                </button>
+              </Tip>
+            </>
+          ) : (
+            <>
+              {s.canReplay && (
+                <Tip tip={hearing ? 'Pause' : 'Hear yourself: your voice with the music'}>
+                  <button type="button" onClick={() => void studio.hearMyTake()} aria-label={hearing ? 'pause' : 'hear yourself'}
+                    className="ml-0.5 flex items-center gap-1 rounded-full bg-sub-alt text-text px-2 py-1 hover:brightness-110">
+                    {hearing ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+                    <span className="hidden sm:inline">hear yourself</span>
+                  </button>
+                </Tip>
+              )}
+              <VoiceSwitchPill shared={top.voice === 'shared'} />
+            </>
+          )}
+          <Tip tip="Close (you stay on today's top)">
+            <button type="button" onClick={() => studio.skipTop()} aria-label="close"
+              className="w-6 h-6 rounded-full flex items-center justify-center text-sub hover:text-text">
+              <X size={13} />
             </button>
-            <button type="button" onClick={() => void studio.signInFromTop()}
-              className="flex-1 rounded-full bg-main text-bg text-xs font-medium py-2 flex items-center justify-center gap-1.5">
-              <LogIn size={13} /> sign in
-            </button>
-          </div>
-        </div>
-      )}
-      {top?.id && (top.voice === 'ask' || top.voice === 'sending') && (
-        <div role="dialog" aria-label="You made today's top"
-          className="toast-in fixed z-50 left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 w-[min(22rem,calc(100vw-2rem))] rounded-2xl bg-sub-alt shadow-xl px-4 py-3.5 text-center">
-          <div className="flex items-center justify-center gap-1.5 text-main font-semibold text-sm sm:text-base">
-            <Crown size={16} /> #{top.rank} in today’s top!
-          </div>
-          <p className="text-[12px] sm:text-xs text-sub mt-1 leading-snug">
-            Everyone can see your score and pitch line. Let them hear your voice too, or keep it private: only you can listen.
-          </p>
-          <div className="flex gap-2 mt-3">
-            <button type="button" onClick={() => void studio.keepTopVoicePrivate()} disabled={top.voice === 'sending'}
-              className="flex-1 rounded-full surface text-text text-xs py-2 disabled:opacity-50">
-              keep it private
-            </button>
-            <button type="button" onClick={() => void studio.shareTopVoice()} disabled={top.voice === 'sending'}
-              className="flex-1 rounded-full bg-main text-bg text-xs font-medium py-2 flex items-center justify-center gap-1.5 disabled:opacity-70">
-              <MicVocal size={13} /> {top.voice === 'sending' ? 'saving…' : 'share my voice'}
-            </button>
-          </div>
+          </Tip>
         </div>
       )}
     </>
+  )
+}
+
+/** Private | public: who may hear your voice. Changes at once (saved in the background). */
+function VoiceSwitchPill({ shared }: { shared: boolean }) {
+  const opt = (pub: boolean, Icon: typeof Lock, label: string, tip: string) => (
+    <Tip tip={tip}>
+      <button type="button" aria-pressed={shared === pub} onClick={() => studio.setTopVoicePublic(pub)}
+        className={cx('relative z-10 w-[4.5rem] flex items-center justify-center gap-1 rounded-full py-0.5 transition-colors', shared === pub ? 'text-bg' : 'text-sub hover:text-text')}>
+        <Icon size={11} /> {label}
+      </button>
+    </Tip>
+  )
+  return (
+    <div className="relative flex items-center bg-bg/60 rounded-full p-0.5">
+      <span aria-hidden className="absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full bg-main transition-transform duration-300 ease-out"
+        style={{ transform: shared ? 'translateX(100%)' : 'translateX(0)' }} />
+      {opt(false, Lock, 'private', 'Only you can listen to your voice')}
+      {opt(true, Globe, 'public', 'Everyone who opens your take can hear you')}
+    </div>
   )
 }

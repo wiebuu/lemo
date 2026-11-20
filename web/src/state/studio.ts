@@ -1158,35 +1158,50 @@ export class Studio {
     return wavOf(take.samples, take.sampleRate)
   }
 
-  /** On today's top: let everyone hear your take. */
-  async shareTopVoice() {
+  /**
+   * On today's top: who may hear your voice — everyone (public) or only you (private).
+   * Switches at once; the server is told in the background (in order, the last choice
+   * wins), and only a failure is ever shown. The voice itself is already saved privately.
+   */
+  private voiceChoice: Promise<unknown> = Promise.resolve()
+
+  setTopVoicePublic(share: boolean) {
     const take = this.lastTake
     const top = this.snap.topRank
-    if (!take || !top?.id || top.voice === 'sending') return
-    this.set({ topRank: { ...top, voice: 'sending' } })
-    try {
-      await analyzer.topShareVoice(top.id, await this.topVoiceToSend(top.id, take))
-      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'shared' } })
-    } catch (e) {
-      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'ask' } })
-      this.toast(`couldn't share your voice: ${(e as Error).message}`)
-    }
+    if (!take || !top?.id || top.guest) return
+    const id = top.id
+    this.set({ topRank: { ...top, voice: share ? 'shared' : 'private' } })
+    this.voiceChoice = this.voiceChoice.then(async () => {
+      try {
+        // the recording only if the background save didn't get through
+        await analyzer.topShareVoice(id, await this.topVoiceToSend(id, take), !share)
+      } catch (e) {
+        const now = this.snap.topRank
+        if (now?.id === id) this.set({ topRank: { ...now, voice: 'ask' } })
+        this.toast(`couldn't ${share ? 'make your voice public' : 'keep your voice private'} — try again (${(e as Error).message})`)
+      }
+    })
+  }
+
+  /** On today's top: let everyone hear your take. */
+  shareTopVoice() {
+    this.setTopVoicePublic(true)
   }
 
   /** On today's top with your voice kept private: saved so you can play it back, heard by no one else. */
-  async keepTopVoicePrivate() {
-    const take = this.lastTake
-    const top = this.snap.topRank
-    if (!take || !top?.id || top.voice === 'sending') return
-    this.set({ topRank: { ...top, voice: 'sending' } })
-    try {
-      const voice = await this.topVoiceToSend(top.id, take)
-      if (voice) await analyzer.topShareVoice(top.id, voice, true)
-      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'private' } })
-      this.toast('kept private: only you can listen to it')
-    } catch (e) {
-      if (this.snap.topRank?.id === top.id) this.set({ topRank: { ...top, voice: 'ask' } })
-      this.toast(`couldn't save your voice: ${(e as Error).message}`)
+  keepTopVoicePrivate() {
+    this.setTopVoicePublic(false)
+  }
+
+  /** The results of a take: hear yourself — your voice with the music, from where you started singing. Again: pause. */
+  async hearMyTake() {
+    const e = this.engine
+    if (!e || !this.snap.replay) return
+    if (e.playing && this.snap.listenSource === 'me') return this.togglePlay()
+    this.setListenSource('me')
+    if (!e.playing) {
+      this.goToBeginning()
+      await e.play()
     }
   }
 

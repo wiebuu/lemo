@@ -326,7 +326,7 @@ export const analyzer = {
     fetch(`/api/lyrics?${new URLSearchParams({ title, artist, duration: String(Math.round(duration)), videoId: videoId ?? '', songId: songId ?? '' })}`).then((r) =>
       json<LyricsResult>(r),
     ),
-  /** Lines in another script: latin (Hinglish) | deva (Hindi) | urdu. null = can't be converted. */
+  /** Lines in another script: latin (English letters, any language) | deva (Hindi) | urdu. null = can't be converted. */
   script: (lines: string[], to: 'latin' | 'deva' | 'urdu') =>
     fetch('/api/lyrics/script', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lines, to }) }).then((r) =>
       json<{ lines: (string | null)[] }>(r),

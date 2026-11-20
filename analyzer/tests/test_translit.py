@@ -2,6 +2,9 @@
 
 import unittest
 
+from unittest import mock
+
+from lemo_analyzer import translit
 from lemo_analyzer.translit import convert_line, deva_to_latin, script_of
 
 
@@ -43,9 +46,16 @@ class TranslitTests(unittest.TestCase):
         self.assertEqual(convert_line("तुम ही हो tum hi ho", "latin"), "tum hi ho")
         self.assertEqual(convert_line("तुम ही हो tum hi ho", "deva"), "तुम ही हो")
 
-    def test_urdu_only_is_not_guessed(self):
-        self.assertIsNone(convert_line("ایسا دیکھا نہیں", "latin"))
+    def test_urdu_only_is_not_guessed_into_hindi_script(self):
         self.assertIsNone(convert_line("ایسا دیکھا نہیں", "deva"))
+
+    def test_any_script_in_english_letters(self):
+        # romanised as it sounds (Google's romanisation; stood in for here), never translated
+        with mock.patch.object(translit, "romanise", side_effect=lambda t: {"ایسا دیکھا نہیں": "aisa dekha nahin", "君の名前": "Kimi no namae"}[t]):
+            self.assertEqual(convert_line("ایسا دیکھا نہیں", "latin"), "aisa dekha nahin")
+            self.assertEqual(convert_line("君の名前", "latin"), "Kimi no namae")
+            self.assertIsNone(convert_line("君の名前", "deva"))  # Japanese in Hindi script: not guessed
+            self.assertEqual(script_of("君の名前"), "other")
 
     def test_same_script_is_unchanged(self):
         self.assertEqual(convert_line("tum hi ho", "latin"), "tum hi ho")

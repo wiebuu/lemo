@@ -167,7 +167,7 @@ export function SideLine({ text, z, lines, align, next }: { text?: string; z: Ly
 }
 
 /**
- * When lyrics (or some lines) can't be shown in the chosen script — Hinglish, Hindi or
+ * When lyrics (or some lines) can't be shown in the chosen script — English letters, Hindi or
  * Urdu — a small, plain note says so, so lines in another script never look like a glitch.
  */
 export function ScriptNotice() {

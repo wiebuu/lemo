@@ -52,7 +52,7 @@ export interface Settings {
   showHistory: boolean
   /** Draw breath marks on the graph. */
   showBreaths: boolean
-  /** Lyrics script: as found, Hinglish (latin), Hindi (deva) or Urdu. */
+  /** Lyrics script: as found, English letters (latin: any language, as it sounds), Hindi (deva) or Urdu. */
   lyricsScript: LyricsScript
   /** Lyrics only: the graph steps aside (it keeps running) and the lyrics sit big in the centre. */
   lyricsOnly: boolean

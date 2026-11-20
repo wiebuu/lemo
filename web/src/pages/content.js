@@ -58,7 +58,7 @@ export const ARTICLES = [
 <ul>
 <li>Change the key or slow the song down without changing its pitch.</li>
 <li>Loop a single phrase until it sits right.</li>
-<li>Synced lyrics in English, Hindi, Hinglish or Urdu script.</li>
+<li>Synced lyrics in their own script, in Hindi or Urdu script, or written in English letters for any language (Hinglish, romaji, …).</li>
 <li>A live coach that tells you when the mic can’t hear you, the room is noisy, or you’re too loud.</li>
 <li>Sing in any key or octave: by default only the shape of the melody counts.</li>
 </ul>
@@ -224,7 +224,7 @@ ${tryIt('Sing karaoke now')}
 <h2>What makes it different</h2>
 <ul>
 <li><b>You see your pitch.</b> The singer’s melody scrolls past as a line. Your voice appears on top, so you see where you’re sharp or flat.</li>
-<li><b>Synced lyrics.</b> Words light up as they’re sung, in English, Hindi, Hinglish or Urdu script.</li>
+<li><b>Synced lyrics.</b> Words light up as they’re sung, in Hindi or Urdu script, or in English letters for any language (Hinglish, romaji, …).</li>
 <li><b>An honest score.</b> Separate marks for melody, rhythm, stability and dynamics, not one random number.</li>
 <li><b>Any key.</b> Sing higher or lower than the original. Only the shape of the melody counts.</li>
 <li><b>Practice tools.</b> Slow the song down, change the key, loop one line.</li>

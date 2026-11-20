@@ -26,14 +26,21 @@ from .config import CONFIG
 
 DEVA = re.compile(r"[ऀ-ॿ]")
 URDU = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
-LATIN = re.compile(r"[A-Za-z]")
+LATIN = re.compile(r"[A-Za-zÀ-ɏ]")  # English letters, and accented ones (French, Spanish …)
+
+
+def _other_letters(text: str) -> int:
+    """Letters in any other script: Japanese, Korean, Russian, Georgian, Tamil, Arabic …"""
+    return sum(1 for ch in text if unicodedata.category(ch).startswith("L") and not (DEVA.match(ch) or URDU.match(ch) or LATIN.match(ch)))
 
 
 def script_of(text: str) -> str:
-    d, u, l = len(DEVA.findall(text)), len(URDU.findall(text)), len(LATIN.findall(text))
-    if max(d, u, l) == 0:
+    """'deva' | 'urdu' | 'latin' | 'other' (any other script) | 'none' (no letters)."""
+    d, u, l, o = len(DEVA.findall(text)), len(URDU.findall(text)), len(LATIN.findall(text)), _other_letters(text)
+    if max(d, u, l, o) == 0:
         return "none"
-    return "deva" if d >= max(u, l) else "urdu" if u >= l else "latin"
+    best = max(d, u, l, o)
+    return "deva" if d == best else "urdu" if u == best else "latin" if l == best else "other"
 
 
 def word_script(w: str) -> str:
@@ -150,6 +157,29 @@ def _save_cache() -> None:
         _cache_file().write_text(json.dumps(_load_cache(), ensure_ascii=False))
 
 
+def romanise(text: str) -> str | None:
+    """Any script in English letters, as it sounds — not translated ("君の名前" → "Kimi no
+    namae"). Google Translate's free romanisation (cached on disk); accents dropped so
+    it's easy to sing from. None if it can't."""
+    key = f"rm|{text}"
+    cache = _load_cache()
+    if key in cache:
+        return cache[key]
+    q = urllib.parse.urlencode({"client": "gtx", "sl": "auto", "tl": "en", "dt": "rm", "q": text})
+    req = urllib.request.Request(f"https://translate.googleapis.com/translate_a/single?{q}", headers={"User-Agent": "lemo/0.1"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        data = json.loads(r.read().decode())
+    parts = [x[3] for x in (data[0] or []) if isinstance(x, list) and len(x) > 3 and x[3]]
+    if not parts:
+        return None
+    out = unicodedata.normalize("NFKD", " ".join(parts))
+    out = "".join(ch for ch in out if not unicodedata.combining(ch))
+    out = " ".join(w.capitalize() if len(w) > 1 and w.isupper() else w for w in out.split())  # "YA tebya" → "Ya tebya"
+    with _cache_lock:
+        cache[key] = out
+    return out
+
+
 def _google(text: str, lang: str) -> str | None:
     key = f"{lang}|{text}"
     cache = _load_cache()
@@ -245,7 +275,11 @@ def _convert_single(text: str, src: str, to: str) -> str | None:
     if src == to or src == "none":
         return text
     if to == "latin":
-        return deva_to_latin(text) if src == "deva" else None
+        # Hindi script: our own rules (natural Hinglish spellings); any other script
+        # (Urdu, Japanese, Korean, Russian, Tamil …): romanised as it sounds
+        return deva_to_latin(text) if src == "deva" else romanise(text)
+    if src == "other":
+        return None  # Japanese in Hindi script, say: not something to guess
     latin = text if src == "latin" else deva_to_latin(text) if src == "deva" else None
     if latin is None:
         return None

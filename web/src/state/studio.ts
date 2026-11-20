@@ -789,7 +789,7 @@ export class Studio {
     }
   }
 
-  // ---- lyrics script (Hinglish / Hindi / Urdu) ---------------------------------
+  // ---- lyrics script (English letters / Hindi / Urdu) ---------------------------
 
   /** converted line text per "script\0original text"; null = can't be converted */
   private scriptCache = new Map<string, string | null>()
@@ -826,13 +826,15 @@ export class Studio {
     if (todo.length) void this.convertScript(to, todo)
     // Lines that stay as written get a plain note (shown under the lyrics), so it never
     // looks like a glitch: "script:<short>|<why>"
-    const name = to === 'latin' ? 'Hinglish' : to === 'deva' ? 'Hindi script' : 'Urdu script'
+    const name = to === 'latin' ? 'English letters' : to === 'deva' ? 'Hindi script' : 'Urdu script'
     const total = lines.filter((l) => l.text.trim()).length
     const miss = failed + offline
-    const short = !miss ? '' : miss >= total ? `${name} isn't available for these lyrics — shown as written` : `${miss} of ${total} lines aren't in ${name} — shown as written`
+    const short = !miss ? '' : miss >= total ? `can't show these lyrics in ${name} — shown as written` : `${miss} of ${total} lines can't be shown in ${name} — shown as written`
     const why = offline && !failed
       ? 'Converting needs the Lemody server, which couldn\'t be reached just now. Pick the script again in a moment to retry.'
-      : `These lines are written in a script that can't be turned into ${name} reliably (Urdu script leaves out most vowels), so they're shown as they are.`
+      : to === 'latin'
+        ? 'These lines couldn\'t be written in English letters right now, so they\'re shown as they are.'
+        : `These lines are in a script that can't be turned into ${name} reliably (Urdu script leaves out most vowels; other languages aren't written in it), so they're shown as they are.`
     const note = miss ? `script:${short}|${why}` : null
     if (note !== this.snap.lyricsNote && (note || this.snap.lyricsNote?.startsWith('script:'))) this.snap = { ...this.snap, lyricsNote: note }
     return out

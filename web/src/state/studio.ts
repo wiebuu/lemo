@@ -2,7 +2,7 @@
 // scoring, and drives the per-frame render loop. React subscribes to a small
 // snapshot that only changes on user-visible state changes (not per frame).
 
-import { analyzer } from '../api/analyzer'
+import { analyzer, ApiError } from '../api/analyzer'
 import { signedIn, signInWithGoogle } from '../auth/firebase'
 import { levelTake } from '../lib/level'
 import { demoSource, demoTrack } from '../audio/demo'
@@ -1125,7 +1125,30 @@ export class Studio {
   private topVoice: { id: string; saved: Promise<boolean> } | null = null
 
   private saveTopVoice(id: string, take: RecordedTake) {
-    const saved = analyzer.topShareVoice(id, wavOf(take.samples, take.sampleRate), true).then(() => true, () => false)
+    const wav = wavOf(take.samples, take.sampleRate)
+    const song = this.snap.track?.title ?? ''
+    // A weak phone connection, or the server restarting for a moment, used to lose the
+    // voice silently. Tried again for about two minutes; if it still can't be saved, the
+    // reason goes to the server's log, so a missing voice is never a mystery.
+    const saved = (async () => {
+      let why = ''
+      for (const wait of [0, 3_000, 10_000, 30_000, 60_000]) {
+        if (wait) await new Promise((r) => setTimeout(r, wait))
+        try {
+          await analyzer.topShareVoice(id, wav, true)
+          return true
+        } catch (e) {
+          why = (e as Error).message
+          // refused for good (take gone, too big, not allowed): trying again won't help
+          if (e instanceof ApiError && [400, 401, 403, 404, 413, 422].includes(e.status)) break
+        }
+      }
+      void fetch('/api/songs/device/report', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'top voice', stage: 'upload', message: `voice for take ${id} (${(wav.size / 1048576).toFixed(1)} MB) not saved: ${why}`, song, ua: navigator.userAgent }),
+      }).catch(() => {})
+      return false
+    })()
     this.topVoice = { id, saved }
   }
 

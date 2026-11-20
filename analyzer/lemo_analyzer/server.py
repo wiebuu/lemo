@@ -43,7 +43,7 @@ GUEST_READS = re.compile(
 )
 # counted; a guest's take can go on today's top (as "a guest singer"; its voice kept private);
 # and a guest can read the lyrics in Hinglish, Hindi or Urdu script
-GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|top/(check|submit|[\w-]+/private-voice)|stats/test|lyrics/script)")
+GUEST_POSTS = re.compile(r"/api/(songs/[\w-]+/played|songs/device/report|top/(check|submit|[\w-]+/private-voice)|stats/test|lyrics/script)")
 
 
 @app.middleware("http")

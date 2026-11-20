@@ -249,3 +249,36 @@ export function retextLine(line: LyricLine, text: string): LyricLine {
     }),
   }
 }
+
+/**
+ * 1 right on a beat of the song, 0 halfway between beats: a smooth rise and fall,
+ * never a snap. 0 when the tempo is unknown.
+ */
+export function beatPulse(t: number, tempo: number | undefined, firstBeat = 0): number {
+  if (!tempo) return 0
+  const phase = ((((t - firstBeat) * tempo) / 60) % 1 + 1) % 1
+  return ((1 + Math.cos(2 * Math.PI * phase)) / 2) ** 4
+}
+
+/**
+ * The full-screen pause line as an SVG path in a w×h box (px): a gentle wave that
+ * travels one wavelength per beat and swells a little on each beat, settling flat at
+ * both ends. Small on purpose. `at` null: a straight line. Paused = t stands still =
+ * the wave holds still.
+ */
+export function wavePath(w: number, h: number, at: { t: number; tempo?: number; firstBeat?: number } | null): string {
+  const mid = h / 2
+  if (!at || w <= 0) return `M0 ${mid.toFixed(1)}H${w.toFixed(1)}`
+  const beats = at.tempo ? ((at.t - (at.firstBeat ?? 0)) * at.tempo) / 60 : at.t * 1.2
+  const swell = at.tempo ? 0.55 + 0.45 * beatPulse(at.t, at.tempo, at.firstBeat) : 0.7
+  const amp = h * 0.22 * swell
+  const wave = Math.max(24, h * 2.4) // wavelength
+  const pts: string[] = []
+  for (let x = 0; ; x = Math.min(w, x + 3)) {
+    const env = Math.sqrt(Math.sin((Math.PI * x) / w)) // flat at both ends
+    const y = mid + amp * env * Math.sin((2 * Math.PI * x) / wave - 2 * Math.PI * beats)
+    pts.push(`${x.toFixed(1)} ${y.toFixed(1)}`)
+    if (x >= w) break
+  }
+  return 'M' + pts.join('L')
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateWords, itemAt, sungPoint, lyricGate, lyricRows, retextLine, rowAt, syllables, tickerItems, withWordTiming } from './lyricTiming'
+import { beatPulse, estimateWords, itemAt, sungPoint, wavePath, lyricGate, lyricRows, retextLine, rowAt, syllables, tickerItems, withWordTiming } from './lyricTiming'
 import type { LyricLine, ReferenceNote } from './types'
 
 const line = (start: number | null, text: string, end: number | null = null): LyricLine => ({ id: text, start, end, text, verified: false })
@@ -156,5 +156,34 @@ describe('sungPoint (the point kept in the centre)', () => {
       expect(x - last).toBeLessThan(0.3) // at most ~0.23 px per ms here
       last = x
     }
+  })
+})
+
+describe('the full-screen pause wave', () => {
+  const ys = (d: string) => d.slice(1).split('L').map((p) => Number(p.split(' ')[1]))
+  it('peaks on each beat and is flat halfway between, rising and falling smoothly', () => {
+    expect(beatPulse(0.5, 120, 0.5)).toBeCloseTo(1)
+    expect(beatPulse(0.75, 120, 0.5)).toBeCloseTo(0)
+    let last = beatPulse(0, 120)
+    for (let t = 1 / 60; t < 3; t += 1 / 60) {
+      const v = beatPulse(t, 120)
+      expect(Math.abs(v - last)).toBeLessThan(0.25) // no snap between two frames
+      last = v
+    }
+    expect(beatPulse(1, undefined)).toBe(0)
+  })
+  it('is a small wave, settling flat at both ends', () => {
+    const y = ys(wavePath(200, 20, { t: 3.1, tempo: 90 }))
+    expect(y[0]).toBeCloseTo(10)
+    expect(y[y.length - 1]).toBeCloseTo(10)
+    expect(Math.max(...y.map((v) => Math.abs(v - 10)))).toBeLessThanOrEqual(20 * 0.22 + 0.1)
+    expect(Math.max(...y) - Math.min(...y)).toBeGreaterThan(2) // it does wave
+  })
+  it('moves with time and holds still when time does (paused)', () => {
+    expect(wavePath(200, 20, { t: 3.1, tempo: 90 })).toBe(wavePath(200, 20, { t: 3.1, tempo: 90 }))
+    expect(wavePath(200, 20, { t: 3.2, tempo: 90 })).not.toBe(wavePath(200, 20, { t: 3.1, tempo: 90 }))
+  })
+  it('is a straight line when it isn’t the pause being waited out', () => {
+    expect(wavePath(200, 20, null)).toBe('M0 10.0H200.0')
   })
 })

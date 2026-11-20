@@ -347,9 +347,8 @@ textarea:focus-visible {
   -webkit-background-clip: text;
   background-clip: text;
 }
-/* a pause: one line as long as the pause. It fills from the start like a sung word, so
-   the moment it's full is the moment to sing; on each beat of the song it gives a small
-   lift, then settles (--beat: 1 on the beat, easing to 0). */
+/* a pause: one straight line as long as the pause. It fills from the start like a sung
+   word, so the moment it's full is the moment to sing. */
 .lyric-gap {
   display: inline-block;
   position: relative;
@@ -358,7 +357,6 @@ textarea:focus-visible {
   border-radius: 999px;
   flex: none;
   background: color-mix(in srgb, var(--sub) 45%, transparent);
-  transform: translateY(calc(var(--beat, 0) * -0.1em)) scaleY(calc(1 + var(--beat, 0) * 0.5));
 }
 .lyric-gap > span {
   display: block;
@@ -373,6 +371,41 @@ textarea:focus-visible {
 .lyric-gap[data-state='past'] > span {
   width: 100%;
   background: color-mix(in srgb, var(--text) 55%, transparent);
+}
+/* full-screen lyrics: the same line drawn as a gentle wave (LyricTicker draws the path) */
+.lyric-gap.lyric-wave {
+  height: 0.5em;
+  border-radius: 0;
+  background: none;
+}
+.lyric-wave svg {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.lyric-wave path {
+  fill: none;
+  stroke-width: max(3px, 0.09em);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: color-mix(in srgb, var(--sub) 45%, transparent);
+}
+.lyric-gap.lyric-wave > span {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: none;
+}
+.lyric-wave[data-state='now'] > span path {
+  stroke: var(--main);
+}
+.lyric-wave[data-state='past'] > span path {
+  stroke: color-mix(in srgb, var(--text) 55%, transparent);
 }
 
 /* dialog content fades out at the bottom edge so it reads as scrollable */

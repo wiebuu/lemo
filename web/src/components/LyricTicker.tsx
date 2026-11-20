@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { itemAt, lyricRows, rowAt, sungPoint } from '../lib/lyricTiming'
+import { itemAt, lyricRows, rowAt, sungPoint, wavePath } from '../lib/lyricTiming'
 import { studio } from '../state/studio'
 import { Languages } from 'lucide-react'
 import { cx, Eq, Tip, usePhone, useStudio } from './ui'
@@ -46,7 +46,7 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
           if (el.dataset.state !== state) el.dataset.state = state
           if (k !== i) {
             el.style.removeProperty('--p')
-            el.style.removeProperty('--beat')
+            if (focus && items[k]?.kind === 'gap') drawWave(el, null) // only the pause being waited out waves
           }
         })
         shown.current = i
@@ -56,8 +56,11 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         const el = els.current[i]
         if (!el) return
         el.style.setProperty('--p', Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start))).toFixed(3))
-        // a pause line gives a small bump on each beat of the song, then settles
-        if (it.kind === 'gap') el.style.setProperty('--beat', livePulse(t).toFixed(3))
+        // full-screen lyrics: the pause line waves gently, swelling a little on each beat
+        if (focus && it.kind === 'gap') {
+          const tr = studio.snap.track
+          drawWave(el, reducedMotion() ? null : { t, tempo: tr?.tempo, firstBeat: tr?.firstBeat })
+        }
       }
       // The point being sung always sits in the centre. It moves steadily from one item's
       // start to the next one's (word, space and pause alike), so it never jumps between them.
@@ -76,7 +79,7 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
       gliding.current = shift.current !== target
       track.current.style.transform = `translate3d(${shift.current.toFixed(1)}px,0,0)`
     },
-    [rows, items, rtl],
+    [rows, items, rtl, focus],
   )
 
   // A new middle line starts in place (no glide from the last line's position).
@@ -119,11 +122,18 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
             style={{ fontSize: `${z.mid}rem` }}>
             {items.map((it, k) =>
               it.kind === 'gap' ? (
-                // a pause: one line, as long as the pause, that runs down into the next word —
-                // when it's gone, sing
-                <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-gap" aria-label="pause"
-                  style={{ width: Math.max(28, Math.min(300, (it.end - it.start) * 60)) * z.scale }}>
-                  <span />
+                // a pause: one line, as long as the pause, that fills like a sung word — when
+                // it's full, sing. Full-screen lyrics: a softly waving line.
+                <span key={k} ref={(el) => void (els.current[k] = el)} className={cx('lyric-gap', focus && 'lyric-wave')} aria-label="pause"
+                  style={{ width: gapWidth(it.end - it.start, z.scale) }}>
+                  {focus ? (
+                    <>
+                      <svg aria-hidden><path /></svg>
+                      <span><svg aria-hidden style={{ width: gapWidth(it.end - it.start, z.scale) }}><path /></svg></span>
+                    </>
+                  ) : (
+                    <span />
+                  )}
                 </span>
               ) : (
                 <span key={k} ref={(el) => void (els.current[k] = el)} className="lyric-word">{it.text}</span>
@@ -148,19 +158,15 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
   )
 }
 
-/**
- * 1 right on a beat of the song, 0 between beats (0 when the tempo is unknown, while
- * paused, or when the system asks for less motion). A smooth rise and fall — no snap
- * on the beat — so the line bobs with the music instead of twitching.
- */
-export function beatPulse(t: number, tempo: number | undefined, firstBeat = 0): number {
-  if (!tempo) return 0
-  const phase = ((((t - firstBeat) * tempo) / 60) % 1 + 1) % 1
-  return ((1 + Math.cos(2 * Math.PI * phase)) / 2) ** 4
-}
-const livePulse = (t: number) => {
-  const tr = studio.snap.track
-  return studio.snap.playing && !reducedMotion() ? beatPulse(t, tr?.tempo, tr?.firstBeat) : 0
+/** A pause line's length (px): about 60 px a second, 28–300 px, scaled with the lyrics. */
+const gapWidth = (dur: number, scale: number) => Math.max(28, Math.min(300, dur * 60)) * scale
+
+/** Draw a full-screen pause line: waving at time t, or flat (null). Both its paths (grey, and the filled part). */
+function drawWave(el: HTMLElement, at: { t: number; tempo?: number; firstBeat?: number } | null) {
+  if (!at && el.dataset.wave === 'flat') return
+  const d = wavePath(el.offsetWidth, el.offsetHeight, at)
+  el.dataset.wave = at ? 'on' : 'flat'
+  el.querySelectorAll('path').forEach((p) => p.setAttribute('d', d))
 }
 let reduced: MediaQueryList | null = null
 const reducedMotion = () => (reduced ??= matchMedia('(prefers-reduced-motion: reduce)')).matches

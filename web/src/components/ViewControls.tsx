@@ -22,9 +22,8 @@ export function ViewControls({ round }: { /** results row: round icon buttons li
         onClick={() => studio.updateSettings({ lyricsOnly: !lyricsOnly })}
         className={round
           ? 'w-9 h-9 rounded-full flex items-center justify-center text-sub hover:text-text hover:bg-sub-alt transition-colors'
-          : 'flex items-center gap-1.5 p-1.5 rounded-md text-sub hover:text-text transition-colors'}>
-        <ToggleIcon size={round ? 17 : 15} />
-        {!round && <span className="hidden sm:inline text-xs">{lyricsOnly ? 'graph' : 'lyrics only'}</span>}
+          : 'flex items-center p-1.5 rounded-md text-sub hover:text-text transition-colors'}>
+        <ToggleIcon size={round ? 17 : 16} />
       </button>
     </Tip>
   )

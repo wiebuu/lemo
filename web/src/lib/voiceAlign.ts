@@ -27,6 +27,8 @@ export interface VoiceOptions {
 }
 
 const VOICE: VoiceOptions = { floorDb: -30, bridge: 0.3, minLen: 0.12 }
+/** Unbridged: where the voice itself starts and stops, syllable by syllable (for snapping word edges). */
+export const FINE_VOICE: Partial<VoiceOptions> = { bridge: 0.04, minLen: 0.04 }
 
 /**
  * Stretches where the separated vocal is sounding, from the reference's loudness
@@ -98,6 +100,12 @@ export interface AlignOptions {
 const ALIGN: AlignOptions = { maxShift: 1.0, maxShiftAligned: 0.5, lead: 0.05, minCoverage: 0.5 }
 const STEP = 0.02
 const MIN_WORD = 0.06
+/** A whole line only moves when that puts at least this share more of it on the voice. */
+const SHIFT_GAIN = 0.2
+/** A late word start moves back to a voice onset at most this far before it. */
+const SNAP = 0.2
+/** A word whose note is still sounding is held on at most this much longer. */
+const EXTEND = 1.5
 /** A silence this long inside a word ends it (the rest belongs to other words). */
 const SPLIT = 0.5
 const LONG_WORD = 1.2
@@ -111,7 +119,7 @@ const round = (t: number) => Math.round(t * 1000) / 1000
  * chart, are kept exactly. A line the voice can't account for (no singing near it)
  * is kept as it was rather than guessed.
  */
-export function alignToVoice(lines: LyricLine[], voice: Span[], opts: Partial<AlignOptions> = {}): LyricLine[] {
+export function alignToVoice(lines: LyricLine[], voice: Span[], opts: Partial<AlignOptions> = {}, fine: Span[] = voice): LyricLine[] {
   const o = { ...ALIGN, ...opts }
   if (!voice.length) return lines
   const all = lines.flatMap((l) => l.words ?? [])
@@ -123,15 +131,24 @@ export function alignToVoice(lines: LyricLine[], voice: Span[], opts: Partial<Al
     .filter(({ l }) => l.words?.length)
     .sort((a, b) => a.l.words![0].start - b.l.words![0].start)
   const out = lines.slice()
-  let prevEnd = -Infinity
+  // A line's last word held on past the start of the next line gives way to it (a
+  // word's start is surer than its end; call-and-response lines overlap like this).
   order.forEach(({ l, i }, k) => {
+    const nx = order[k + 1]?.l
+    if (!nx || l.verified || l.wordsSource === 'chart') return
+    const ws = l.words!, last = ws[ws.length - 1], cut = nx.words![0].start
+    if (last.end > cut && cut - last.start >= MIN_WORD) out[i] = { ...l, words: [...ws.slice(0, -1), { ...last, end: cut }] }
+  })
+  let prevEnd = -Infinity
+  order.forEach(({ i }, k) => {
+    const l = out[i]
     const words = l.words!
     if (l.verified || l.wordsSource === 'chart') {
       prevEnd = Math.max(prevEnd, words[words.length - 1].end)
       return
     }
     const nextStart = order[k + 1]?.l.words![0].start ?? Infinity
-    const fitted = fitLine(words, voice, l.wordsSource === 'aligned' ? o.maxShiftAligned : o.maxShift, prevEnd, nextStart, o.lead)
+    const fitted = fitLine(words, voice, fine, l.wordsSource === 'aligned' ? o.maxShiftAligned : o.maxShift, prevEnd, nextStart, o.lead)
     if (fitted) {
       const by = fitted.shift
       out[i] = {
@@ -148,7 +165,7 @@ export function alignToVoice(lines: LyricLine[], voice: Span[], opts: Partial<Al
 }
 
 /** One line's words fitted to the voice, or null to keep the line as it is. */
-function fitLine(words: LyricWord[], voice: Span[], maxShift: number, prevEnd: number, nextStart: number, lead: number): { words: LyricWord[]; shift: number } | null {
+function fitLine(words: LyricWord[], voice: Span[], fine: Span[], maxShift: number, prevEnd: number, nextStart: number, lead: number): { words: LyricWord[]; shift: number } | null {
   const dur = wordsLength(words)
   if (dur <= 0) return null
   const first = words[0].start, last = words[words.length - 1].end
@@ -168,7 +185,7 @@ function fitLine(words: LyricWord[], voice: Span[], maxShift: number, prevEnd: n
         shift = by
       }
     }
-    if (best - base < Math.max(0.1 * dur, 0.1)) shift = 0
+    if (best - base < Math.max(SHIFT_GAIN * dur, 0.1)) shift = 0
   }
   const moved = words.map((w) => ({ ...w, start: w.start + shift, end: w.end + shift }))
   const trim = (w: LyricWord): LyricWord | null => {
@@ -225,9 +242,24 @@ function fitLine(words: LyricWord[], voice: Span[], maxShift: number, prevEnd: n
     const p = res[j - 1]
     const w = { ...res[j], start: p ? Math.max(res[j].start, p.end) : res[j].start }
     w.end = Math.max(w.end, w.start + 0.02)
-    res[j] = { ...w, start: round(w.start), end: round(w.end) }
+    res[j] = w
   }
-  return { words: res, shift }
+
+  // 5. onto the voice's own starts and stops (fine-grained, unbridged)
+  for (let j = 0; j < res.length; j++) {
+    const w = res[j]
+    const before = j ? res[j - 1].end : prevEnd
+    // starts late: the voice began just before, in the gap after the previous word
+    const on = fine[firstAfter(fine, w.start - SNAP)]
+    if (on && on[0] < w.start && on[0] >= w.start - SNAP && on[1] > w.start && before <= on[0] + 0.02) {
+      w.start = Math.max(before, on[0] - lead)
+    }
+    // ends early: its note is still sounding, and the next word is a while off
+    const after = j + 1 < res.length ? res[j + 1].start : nextStart
+    const held = fine[firstAfter(fine, w.end)]
+    if (held && held[0] < w.end && after - w.end >= 0.1) w.end = Math.min(held[1], after, w.end + EXTEND)
+  }
+  return { words: res.map((w) => ({ ...w, start: round(w.start), end: round(w.end) })), shift }
 }
 
 /**

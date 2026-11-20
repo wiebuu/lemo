@@ -116,4 +116,20 @@ describe('alignToVoice', () => {
     const lines = song()
     expect(alignToVoice(lines, [])).toBe(lines)
   })
+  it('lets a line held on past the next line give way to it, instead of pushing the next line later', () => {
+    const v: Span[] = [[1, 4], [4.4, 7]]
+    const out = alignToVoice([line([w(1, 2, 'call '), w(2, 4.6, 'out')]), line([w(4.4, 5.5, 'and '), w(5.5, 7, 'back')])], v)
+    expect(out[1].words![0].start).toBeLessThanOrEqual(4.4)
+    expect(out[0].words![1].end).toBeLessThanOrEqual(4.4)
+  })
+  it('moves a late word start back to where the voice started, in the gap after the previous word', () => {
+    const v: Span[] = [[1, 2], [2.4, 4], [6, 8]]
+    const out = alignToVoice([line([w(1, 2, 'one '), w(2.55, 4, 'two')]), line([w(6, 8, 'three')])], v)
+    expect(near(out[0].words![1].start, 2.35)).toBe(true) // the onset, less a consonant's lead
+  })
+  it('holds a word on while its note is still sounding', () => {
+    const v: Span[] = [[1, 4], [6, 8]]
+    const out = alignToVoice([line([w(1, 2, 'hold '), w(2, 3, 'on')]), line([w(6, 8, 'next')])], v)
+    expect(near(out[0].words![1].end, 4)).toBe(true)
+  })
 })

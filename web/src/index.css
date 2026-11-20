@@ -374,6 +374,18 @@ textarea:focus-visible {
 .lyric-gap[data-state='past'] .lyric-dash {
   opacity: 0.15;
 }
+/* seconds left in a long pause, small, before its dashes; only while it plays */
+.lyric-count {
+  display: none;
+  min-width: 1.4em;
+  font-size: 0.5em;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  color: var(--sub);
+}
+.lyric-gap[data-state='now'] .lyric-count {
+  display: inline-block;
+}
 
 /* dialog content fades out at the bottom edge so it reads as scrollable */
 .modal-body {

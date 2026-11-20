@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { itemAt, lyricRows, rowAt } from '../lib/lyricTiming'
+import { itemAt, lyricRows, rowAt, sungPoint } from '../lib/lyricTiming'
 import { studio } from '../state/studio'
 import { Languages } from 'lucide-react'
 import { cx, Eq, Tip, usePhone, useStudio } from './ui'
@@ -30,6 +30,9 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
   // Word colours are set here, not by React — otherwise any unrelated re-render
   // would reset them to "upcoming" for a frame (that was the blinking).
   const shown = useRef(-2)
+  const shift = useRef<number | null>(null)
+  const lastPaint = useRef(0)
+  const gliding = useRef(false)
   const paint = useCallback(
     (force: boolean) => {
       if (!wrap.current || !track.current || !items.length) return
@@ -45,24 +48,34 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         })
         shown.current = i
       }
-      let x = els.current[0]?.offsetLeft ?? 0
       if (i >= 0) {
         const it = items[i]
         const el = els.current[i]
         if (!el) return
-        const frac = Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start)))
-        el.style.setProperty('--p', frac.toFixed(3))
-        x = el.offsetLeft + (rtl ? 1 - frac : frac) * el.offsetWidth
+        el.style.setProperty('--p', Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, it.end - it.start))).toFixed(3))
       }
-      // Short lines stay centred as a whole; long lines glide to keep the sung word centred.
-      const W = wrap.current.clientWidth
-      const full = track.current.scrollWidth
-      const shift = full <= W - 2 * EDGE_FADE - 16 ? (W - full) / 2 : W / 2 - x
-      track.current.style.transform = `translate3d(${shift.toFixed(1)}px,0,0)`
+      // The point being sung always sits in the centre. It moves steadily from one item's
+      // start to the next one's (word, space and pause alike), so it never jumps between them.
+      const edge = (el: HTMLSpanElement | null, end: boolean) => (el ? el.offsetLeft + (rtl !== end ? el.offsetWidth : 0) : 0)
+      const starts = items.map((_, k) => edge(els.current[k], false))
+      const x = sungPoint(items, starts, edge(els.current[items.length - 1], true), r < 0 ? -1 : t)
+      const target = wrap.current.clientWidth / 2 - x
+      // Eased towards the target, so a seek or a slow frame glides instead of jumping;
+      // a new line starts in place (it slides in on its own).
+      const now = performance.now()
+      const prev = shift.current
+      const dt = Math.min(0.1, (now - lastPaint.current) / 1000)
+      lastPaint.current = now
+      const next = prev === null ? target : prev + (target - prev) * (1 - Math.exp(-dt / EASE))
+      shift.current = Math.abs(target - next) < 0.3 ? target : next
+      gliding.current = shift.current !== target
+      track.current.style.transform = `translate3d(${shift.current.toFixed(1)}px,0,0)`
     },
     [rows, items, rtl],
   )
 
+  // A new middle line starts in place (no glide from the last line's position).
+  useLayoutEffect(() => void (shift.current = null), [cur, rows])
   // After every render (before the browser paints), re-apply the current colours.
   useLayoutEffect(() => paint(true))
 
@@ -73,7 +86,7 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
     const tick = () => {
       raf = requestAnimationFrame(tick)
       const t = studio.heardTime()
-      if (t === lastT && ++still % 30) return // paused: skip the layout reads (re-check ~twice a second)
+      if (t === lastT && !gliding.current && ++still % 30) return // paused and at rest: skip the layout reads (re-check ~twice a second)
       lastT = t
       const r = rowAt(rows, t)
       if (r !== curRef.current) {
@@ -130,8 +143,8 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
   )
 }
 
-/** The ticker's edges fade over this many pixels (the sung word always sits clear of it). */
-const EDGE_FADE = 24
+/** How quickly the line glides to keep the sung point centred (s; smaller = tighter). */
+const EASE = 0.07
 
 export interface LyricSizes { scale: number; mid: number; side: number; midRow: number; sideLine: number; gap: number }
 

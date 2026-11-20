@@ -322,7 +322,7 @@ textarea:focus-visible {
 
 /* ---- lyric ticker ---------------------------------------------------------- */
 .lyric-ticker {
-  /* only a thin fade at the very edges (EDGE_FADE in LyricTicker): the sung word is always clear */
+  /* only a thin fade at the very edges (the sung word is always in the centre, well clear of it) */
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateWords, itemAt, lyricGate, lyricRows, retextLine, rowAt, syllables, tickerItems, withWordTiming } from './lyricTiming'
+import { estimateWords, itemAt, sungPoint, lyricGate, lyricRows, retextLine, rowAt, syllables, tickerItems, withWordTiming } from './lyricTiming'
 import type { LyricLine, ReferenceNote } from './types'
 
 const line = (start: number | null, text: string, end: number | null = null): LyricLine => ({ id: text, start, end, text, verified: false })
@@ -126,5 +126,35 @@ describe('retextLine (lyrics in another script)', () => {
     expect(r.words![0].start).toBe(1)
     expect(r.words![1].end).toBeCloseTo(3)
     expect(r.wordsSource).toBe('estimated')
+  })
+})
+
+describe('sungPoint (the point kept in the centre)', () => {
+  // a pause 0–2 s, "hi " 2–2.5 s, a 0.2 s silence, "there" 2.7–3.5 s
+  const items = [
+    { kind: 'gap' as const, start: 0, end: 2 },
+    { kind: 'word' as const, text: 'hi ', start: 2, end: 2.5, line: 0 },
+    { kind: 'word' as const, text: 'there', start: 2.7, end: 3.5, line: 0 },
+  ]
+  const starts = [0, 120, 160] // pixels
+  const end = 240
+  it('starts at the first item and ends at the last one’s end', () => {
+    expect(sungPoint(items, starts, end, -1)).toBe(0)
+    expect(sungPoint(items, starts, end, 0)).toBe(0)
+    expect(sungPoint(items, starts, end, 3.5)).toBe(240)
+    expect(sungPoint(items, starts, end, 9)).toBe(240)
+  })
+  it('reaches each word exactly as it starts (the pause runs out into it)', () => {
+    expect(sungPoint(items, starts, end, 2)).toBe(120)
+    expect(sungPoint(items, starts, end, 2.7)).toBeCloseTo(160)
+  })
+  it('never jumps: tiny steps in time are tiny steps on screen, always forward', () => {
+    let last = sungPoint(items, starts, end, 0)
+    for (let t = 0.001; t <= 3.6; t += 0.001) {
+      const x = sungPoint(items, starts, end, t)
+      expect(x).toBeGreaterThanOrEqual(last)
+      expect(x - last).toBeLessThan(0.3) // at most ~0.23 px per ms here
+      last = x
+    }
   })
 })

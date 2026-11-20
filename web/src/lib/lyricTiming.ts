@@ -193,6 +193,24 @@ export function lyricRows(lines: LyricLine[], minGap = 0.35, leadIn = 1.5, hold 
   return rows
 }
 
+/**
+ * Where the singing is at time t, in the row's own pixels: it moves steadily from each
+ * item's start to the next item's start (word, space and pause alike), and over the last
+ * item to its end, so it never jumps. `starts[k]` is where item k begins on screen,
+ * `end` where the last one ends. Before the row's first item: its start. (t < 0: not yet.)
+ */
+export function sungPoint(items: TickerItem[], starts: number[], end: number, t: number): number {
+  if (!items.length) return 0
+  const i = t < 0 ? -1 : itemAt(items, t)
+  if (i < 0) return starts[0]
+  const it = items[i]
+  const nx = items[i + 1]
+  const to = nx ? starts[i + 1] : end
+  const until = nx ? nx.start : it.end
+  const m = Math.max(0, Math.min(1, (t - it.start) / Math.max(0.01, until - it.start)))
+  return starts[i] + (to - starts[i]) * m
+}
+
 /** Index of the current row at time t (-1 before the first one becomes current). */
 export function rowAt(rows: LyricRow[], t: number): number {
   let ans = -1

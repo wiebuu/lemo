@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { studio, type Snapshot } from '../state/studio'
+import { sfx } from '../lib/sfx'
 
 /** A phone-sized screen (below Tailwind's sm breakpoint); follows rotation and resizing. */
 const PHONE = '(max-width: 639px)'
@@ -73,6 +74,11 @@ export function Divider() {
 export function Modal({ title, onClose, children, wide, tabs }: {
   title: string; onClose: () => void; children: ReactNode; wide?: boolean; tabs?: ReactNode
 }) {
+  // a window opening and closing
+  useEffect(() => {
+    sfx.play('open', { volume: 0.8 })
+    return () => void sfx.play('close', { volume: 0.7 })
+  }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -370,6 +376,13 @@ export function Menu({ button, tip, children, active, disabled, buttonClassName 
       window.removeEventListener('pointerdown', close, true)
       window.removeEventListener('keydown', esc, true)
     }
+  }, [pos])
+  // a menu folding out and away
+  const was = useRef(false)
+  useEffect(() => {
+    if (!!pos === was.current) return
+    was.current = !!pos
+    sfx.play(pos ? 'expand' : 'collapse', { volume: 0.7 })
   }, [pos])
   const toggle = () => {
     if (pos) return setPos(null)

@@ -7,6 +7,7 @@ import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
 import { cx, Pager, usePaged } from '../components/ui'
 import { navigate } from './router'
+import { noteRequested, notifications } from '../state/notifications'
 
 const DeviceRun = lazy(() => import('../components/DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
 
@@ -63,6 +64,13 @@ export function ComingPage() {
     try {
       await analyzer.fulfilRequest(songId, target)
       setThanks(title)
+      notifications.notify({
+        key: `helped:${songId}`,
+        kind: 'helped',
+        title: `Thank you! “${title}” is in Lemody`,
+        body: 'You analysed it for everyone — it’s in the song list of everyone who asked for it.',
+        songId: target || songId,
+      })
     } catch (e) {
       setErr((e as Error).message)
     }
@@ -204,6 +212,7 @@ export function AskDialog({ onClose, onAsked }: { onClose: () => void; onAsked: 
       if (r.state === 'ready') setState({ kind: 'ready', id: r.id })
       else {
         setState({ kind: 'done', title: r.title || 'the song' })
+        noteRequested(r)
         onAsked()
       }
     } catch (e) {

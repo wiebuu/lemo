@@ -17,6 +17,9 @@ export type MelodyView = 'line' | 'bars'
 export type LineDetail = 'smooth' | 'natural' | 'detailed'
 /** shape = melody shape & expression (default, key/octave free); exact = also judge original pitch. */
 export type ScoringMode = 'shape' | 'exact'
+/** The sound effects' personality (uisfx packs). */
+export type SfxPack = 'studio' | 'soft' | 'glass' | 'dreamy' | 'arcade' | 'zen'
+export const SFX_PACKS: SfxPack[] = ['studio', 'soft', 'glass', 'dreamy', 'arcade', 'zen']
 export interface GraphLayers {
   shape: boolean
   loudness: boolean
@@ -62,6 +65,11 @@ export interface Settings {
   disco: boolean
   /** A take good enough for today's top is shared there (your name, photo, result and voice). */
   shareTop: boolean
+  /** Little sounds on taps, toggles, results and notifications (never while a test records). */
+  sfx: boolean
+  sfxPack: SfxPack
+  /** How loud the sound effects are, 0–1. */
+  sfxVolume: number
 }
 
 /** How small / large the lyrics can be made. */
@@ -94,6 +102,9 @@ export const DEFAULT_SETTINGS: Settings = {
   layersVersion: 3,
   disco: false,
   shareTop: true,
+  sfx: true,
+  sfxPack: 'studio',
+  sfxVolume: 0.6,
 }
 
 export interface SongPrefs {
@@ -154,6 +165,8 @@ export const persist = {
         ? { ...DEFAULT_SETTINGS.layers, ...(saved.layers ?? {}) }
         : { ...DEFAULT_SETTINGS.layers, ...(saved.layers ?? {}), timing: false, exact: true, loudness: true },
       layersVersion: LAYERS_VERSION,
+      sfxPack: SFX_PACKS.includes(saved.sfxPack as SfxPack) ? saved.sfxPack! : 'studio',
+      sfxVolume: typeof saved.sfxVolume === 'number' ? Math.min(1, Math.max(0, saved.sfxVolume)) : DEFAULT_SETTINGS.sfxVolume,
     }
   },
   /** fromCloud: it came from your account — save it here without sending it back */

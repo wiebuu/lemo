@@ -19,6 +19,12 @@ const setStatus = (s: CloudStatus) => {
   listeners.forEach((l) => l())
 }
 
+export const cloudStatus = () => status
+export function subscribeCloud(fn: () => void): () => void {
+  listeners.add(fn)
+  return () => void listeners.delete(fn)
+}
+
 export function useCloud(): CloudStatus {
   return useSyncExternalStore(
     (fn) => {

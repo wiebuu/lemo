@@ -18,6 +18,7 @@ import { studio } from './state/studio'
 import { TopCelebration } from './components/TopCelebration'
 import { LikeAsk } from './components/Like'
 import { PhoneSongName } from './components/SongCounts'
+import { NotificationPopup } from './components/Notifications'
 
 // Opened now and then: each loads the first time it's needed, not with the app.
 const HeadphoneNote = lazy(() => import('./components/HeadphoneNote').then((m) => ({ default: m.HeadphoneNote })))
@@ -186,6 +187,7 @@ export default function App() {
       <TopCelebration />
 
       <LikeAsk />
+      {!s.session && <NotificationPopup />}
       {s.toast && (
         <div key={s.toast.id} className="toast-in fixed bottom-28 left-1/2 -translate-x-1/2 z-40 bg-sub-alt text-text text-xs rounded-full px-4 py-2 shadow-lg pointer-events-none">
           {s.toast.text}

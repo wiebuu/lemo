@@ -1,6 +1,7 @@
 import { Heart, X } from 'lucide-react'
 import { closeAsk, signInToLike, toggleLike, useLikes } from '../state/library'
 import { cx, Tip } from './ui'
+import { sfx } from '../lib/sfx'
 
 /** ♥ on a song: keeps it in your "liked" tab (a guest is asked to sign in first). */
 export function LikeButton({ id, size = 14, className }: { id: string; size?: number; className?: string }) {
@@ -9,7 +10,7 @@ export function LikeButton({ id, size = 14, className }: { id: string; size?: nu
   return (
     <Tip tip={on ? 'Liked · tap to unlike' : 'Like: keep it in your liked songs'}>
       <button type="button" aria-label={on ? 'unlike' : 'like'} aria-pressed={on}
-        onClick={(e) => { e.stopPropagation(); void toggleLike(id) }}
+        onClick={(e) => { e.stopPropagation(); sfx.play(on ? 'deselect' : 'reaction'); void toggleLike(id) }}
         className={cx('p-1 -m-1 rounded-full transition-[color,transform] active:scale-90', on ? 'text-main' : 'text-sub hover:text-text', className)}>
         <Heart size={size} className={cx(on && 'fill-current')} />
       </button>

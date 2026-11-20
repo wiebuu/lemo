@@ -84,6 +84,13 @@ export async function signOut() {
   if (auth) await fbSignOut(auth)
 }
 
+/** The sign-in state outside React (sounds, notifications). */
+export const authState = () => state
+export function subscribeAuth(fn: () => void): () => void {
+  listeners.add(fn)
+  return () => void listeners.delete(fn)
+}
+
 export function useAuth(): AuthState {
   return useSyncExternalStore(
     (fn) => {

@@ -2,14 +2,19 @@
 // song you have open is still there when you come back.
 
 import { useSyncExternalStore, type MouseEvent } from 'react'
+import { sfx } from '../lib/sfx'
 
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach((l) => l())
-window.addEventListener('popstate', notify)
+window.addEventListener('popstate', () => {
+  sfx.play('back', { volume: 0.7 })
+  notify()
+})
 
 export function navigate(to: string) {
   if (to === location.pathname) return
   history.pushState(null, '', to)
+  sfx.play(to === '/' ? 'back' : 'forward', { volume: 0.7 })
   notify()
 }
 

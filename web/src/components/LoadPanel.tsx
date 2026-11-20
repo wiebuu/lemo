@@ -12,6 +12,8 @@ import { events } from '../state/events'
 import { formatTime } from '../lib/music'
 import { go } from '../pages/router'
 import { studio } from '../state/studio'
+import { forgetRequest, noteRequested, notifications } from '../state/notifications'
+import { sfx } from '../lib/sfx'
 const AnalyseChoice = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.AnalyseChoice })))
 const DeviceRun = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun })))
 const TooWeak = lazy(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak })))
@@ -137,8 +139,24 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       try {
         const st = await analyzer.status(job.id)
         setJob(st)
-        if (st.stage === 'done') await open(st.id)
-        else if (st.stage === 'failed') setErr(st.error ?? 'Analysis failed')
+        if (st.stage !== job.stage && st.stage !== 'done' && st.stage !== 'failed') sfx.play('progress-step', { volume: 0.6 })
+        if (st.stage === 'done') {
+          notifications.notify({
+            key: `analysed:${st.id}`,
+            kind: 'analysed',
+            title: `“${st.title || job.title || 'Your song'}” is ready`,
+            body: 'Analysed and in your songs: the melody, lyrics and music are all set to sing along.',
+            songId: st.id,
+          })
+          await open(st.id)
+        } else if (st.stage === 'failed') {
+          setErr(st.error ?? 'Analysis failed')
+          notifications.notify({
+            kind: 'failed',
+            title: `Couldn’t analyse “${st.title || job.title || 'the song'}”`,
+            body: st.error ?? 'Something went wrong while analysing it. Try again, or ask Lemody to add it.',
+          })
+        }
       } catch (e) {
         setErr((e as Error).message)
         setJob(null)
@@ -194,6 +212,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
       const r = await analyzer.requestSong(u)
       if (r.state === 'ready') return void open(r.id) // it's already in Lemody
       setAsked(r.title || 'this song')
+      noteRequested(r)
       void loadRequests()
     } catch (e) {
       setErr((e as Error).message)
@@ -356,7 +375,7 @@ export function LoadPanel({ onDone, inline }: { onDone: () => void; inline?: boo
         onOpen={(id) => void open(id)}
         canPrepare={!!health?.separation}
         requests={requests}
-        onCancelRequest={async (id) => { setRequests((r) => r.filter((x) => x.songId !== id)); await analyzer.cancelRequest(id).catch(() => {}) }}
+        onCancelRequest={async (id) => { setRequests((r) => r.filter((x) => x.songId !== id)); forgetRequest(id); sfx.play('cancel'); await analyzer.cancelRequest(id).catch(() => {}) }}
         onPrepare={async (now) => { await analyzer.prepareFeatured(now).catch((e) => setErr((e as Error).message)); void refresh() }}
         onFetch={(id) => (catalog.some((c) => c.id === id) ? void open(id) : void askLemody(`https://www.youtube.com/watch?v=${id.slice(3)}`))}
         onRemove={async (id) => {

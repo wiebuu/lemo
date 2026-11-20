@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { studio } from '../state/studio'
-import { THEMES, type LineDetail, type MelodyView, type ThemeName } from '../state/persist'
+import { SFX_PACKS, THEMES, type LineDetail, type MelodyView, type SfxPack, type ThemeName } from '../state/persist'
+import { sfx } from '../lib/sfx'
 import { WiecodesCredit } from './Credit'
 import { go } from '../pages/router'
 import { Btn, Choice, cx, Modal, Section, Tabs, Tip, useStudio } from './ui'
@@ -107,6 +108,20 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
 
       {tab === 'sound' && (
         <>
+          <Section title="sound effects" hint="little sounds on taps, play / pause, results and notifications. never while a test is recording or the mic hears the song.">
+            <Choice value={st.sfx ? 'on' : 'off'} onChange={(v) => studio.updateSettings({ sfx: v === 'on' })}
+              options={[{ value: 'on', label: 'on' }, { value: 'off', label: 'off' }]} />
+            {st.sfx && (
+              <input type="range" min={0.1} max={1} step={0.05} value={st.sfxVolume} aria-label="sound effects volume" className="w-32"
+                onChange={(e) => studio.updateSettings({ sfxVolume: Number(e.target.value) })} />
+            )}
+          </Section>
+          {st.sfx && (
+            <Section title="sound style" hint="the same sounds, a different feel. tap one to hear it.">
+              <Choice value={st.sfxPack} onChange={(sfxPack: SfxPack) => { studio.updateSettings({ sfxPack }); sfx.preview('complete', sfxPack) }}
+                options={SFX_PACKS.map((p) => ({ value: p, label: p }))} />
+            </Section>
+          )}
           <Section
             title="latency"
             hint={`lines your voice up with what you hear. ${st.latencyMs === null ? `auto: ${auto} ms.` : `manual: ${st.latencyMs} ms.`} bluetooth usually needs 150–300 ms — calibrate once.`}

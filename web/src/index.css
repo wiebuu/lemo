@@ -726,3 +726,38 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
 /* a heartbeat-like pulse: quick grow on the beat, then settle */
 @keyframes dj-bounce { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.18); } 30% { transform: scale(0.96); } 45% { transform: scale(1.04); } 60% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .dj-flow, .dj-flow.dj-bounce { animation: none; } }
+
+/* Notifications: the card that slides in at the top, its countdown, the bell's little ring */
+.note-in {
+  animation: note-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+}
+.note-timer {
+  animation: note-timer 6s linear forwards;
+}
+@keyframes note-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.bell-ring {
+  transform-origin: 50% 2px;
+  animation: bell-ring 0.7s ease-in-out;
+}
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-11deg); }
+  60% { transform: rotate(7deg); }
+  80% { transform: rotate(-4deg); }
+}
+.badge-pop {
+  animation: badge-pop 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes badge-pop {
+  from { transform: scale(0.4); opacity: 0; }
+}

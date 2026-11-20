@@ -11,6 +11,7 @@ import { studio } from '../state/studio'
 import { Wordmark } from './Brand'
 import { DjIcon } from './DjIcon'
 import { WiecodesCredit } from './Credit'
+import { NotificationBell } from './Notifications'
 import { IconToggle, Menu, MenuItem, Tip, useStudio, usePhone, cx } from './ui'
 
 export type Panel = 'load' | 'settings' | 'lyrics' | 'fixlyrics' | 'tutorial' | 'calibrate' | null
@@ -72,6 +73,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
           </button>
         </Tip>
       )}
+      <NotificationBell className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
       <Account />
     </header>
   )

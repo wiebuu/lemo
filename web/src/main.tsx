@@ -10,12 +10,14 @@ import { startAuth } from './auth/firebase'
 import { AuthGate } from './components/AuthGate'
 import { rememberLinkedSong } from './lib/linkedSong'
 import { usePath } from './pages/router'
+import { installFeedback } from './state/feedback'
 
 // Apply the saved theme before first paint (the canvas reads its colours on creation).
 document.documentElement.dataset.theme = persist.settings().theme
 installGuards()
 installStaleBuildReload()
 startAuth()
+installFeedback()
 
 const SitePage = lazy(() => import('./pages/Pages').then((m) => ({ default: m.SitePage })))
 

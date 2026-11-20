@@ -1,0 +1,91 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api-test",
+      "runtimeExecutable": "/usr/bin/env",
+      "runtimeArgs": [
+        "LEMO_PORT=8788",
+        "LEMO_BACKGROUND=false",
+        "LEMO_SERVER_ANALYSIS=false",
+        "sh",
+        "-c",
+        "cd /Users/vishwassingh/Desktop/lemo/analyzer && .venv/bin/python -m uvicorn lemo_analyzer.server:app --host 127.0.0.1 --port 8788 --log-level warning"
+      ],
+      "port": 8788
+    },
+    {
+      "name": "web-test",
+      "runtimeExecutable": "/usr/bin/env",
+      "runtimeArgs": [
+        "LEMO_ANALYZER_URL=http://127.0.0.1:8788",
+        "sh",
+        "-c",
+        "cd /Users/vishwassingh/Desktop/lemo/web && npx vite --port 5174 --strictPort"
+      ],
+      "port": 5174
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "/Users/vishwassingh/Desktop/lemo/analyzer/.venv/bin/python",
+      "runtimeArgs": [
+        "/Users/vishwassingh/Desktop/lemo/admin/server.py"
+      ],
+      "port": 8790
+    },
+    {
+      "name": "web-share",
+      "runtimeExecutable": "/usr/bin/env",
+      "runtimeArgs": [
+        "LEMO_ANALYZER_URL=http://127.0.0.1:8788",
+        "sh",
+        "-c",
+        "cd /Users/vishwassingh/Desktop/lemo/web && npx vite --port 5175 --strictPort"
+      ],
+      "port": 5175
+    },
+    {
+      "name": "reel-studio",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/Users/vishwassingh/Desktop/lemo/reels/studio/server.mjs"
+      ],
+      "port": 5190
+    },
+    {
+      "name": "site-dist",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5180",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "/Users/vishwassingh/Desktop/lemo/web/dist"
+      ],
+      "port": 5180
+    },
+    {
+      "name": "admin-test",
+      "runtimeExecutable": "/usr/bin/env",
+      "runtimeArgs": [
+        "LEMO_ADMIN_PORT=8791",
+        "/Users/vishwassingh/Desktop/lemo/analyzer/.venv/bin/python",
+        "/Users/vishwassingh/Desktop/lemo/admin/server.py"
+      ],
+      "port": 8791
+    },
+    {
+      "name": "web-live-api",
+      "runtimeExecutable": "/usr/bin/env",
+      "runtimeArgs": [
+        "LEMO_ANALYZER_URL=https://api.lemodysounds.online",
+        "sh",
+        "-c",
+        "cd /Users/vishwassingh/Desktop/lemo/web && npx vite --port 5176 --strictPort"
+      ],
+      "port": 5176
+    }
+  ]
+}

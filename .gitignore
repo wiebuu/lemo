@@ -12,3 +12,6 @@ web/.env.*.local
 
 # local admin site (only on this computer)
 admin/
+
+# reels: made and kept on this computer only
+reels/

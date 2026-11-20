@@ -1,0 +1,793 @@
+[
+ {
+  "title": "Tum Kya Mile",
+  "artist": "Arijit Singh, Shreya Ghoshal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "S15GwOj_1us"
+ },
+ {
+  "title": "Believer",
+  "artist": "Imagine Dragons",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "Kx7B-XvmFtE"
+ },
+ {
+  "title": "Born To Shine",
+  "artist": "Diljit Dosanjh",
+  "lang": "pa",
+  "hidden": true,
+  "videoId": "Lq0S1lqEjxo"
+ },
+ {
+  "title": "Rumah Singgah",
+  "artist": "Fabio Asher",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "BoESHbOq_s8"
+ },
+ {
+  "title": "O Bedardeya",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "iphTneTGXBQ"
+ },
+ {
+  "title": "Counting Stars",
+  "artist": "OneRepublic",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "_GWKkqNoyEA"
+ },
+ {
+  "title": "KICK BACK",
+  "artist": "Kenshi Yonezu",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "NMA_isZYsYQ"
+ },
+ {
+  "title": "Durch den Monsun",
+  "artist": "Tokio Hotel",
+  "lang": "de",
+  "hidden": true,
+  "videoId": "H_3PYuCmHlY"
+ },
+ {
+  "title": "Phir Bhi Tumko Chaahunga",
+  "artist": "Arijit Singh, Shashaa Tirupati",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "q1uPPBJ2tcI"
+ },
+ {
+  "title": "All of Me",
+  "artist": "John Legend",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "sQtnhwU2R9Y"
+ },
+ {
+  "title": "G.O.A.T.",
+  "artist": "Diljit Dosanjh",
+  "lang": "pa",
+  "hidden": true,
+  "videoId": "tznwZUDjTU8"
+ },
+ {
+  "title": "Separuh Nafas",
+  "artist": "Dewa 19",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "kitkOTxGfjI"
+ },
+ {
+  "title": "Khairiyat",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "1U9548B35WI"
+ },
+ {
+  "title": "Say You Won't Let Go",
+  "artist": "James Arthur",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "TUnEJM6W-Fw"
+ },
+ {
+  "title": "Suzume",
+  "artist": "RADWIMPS",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "9LW9DpmhrPE"
+ },
+ {
+  "title": "Bauch und Kopf",
+  "artist": "Mark Forster",
+  "lang": "de",
+  "hidden": true,
+  "videoId": "2RDXniF70k0"
+ },
+ {
+  "title": "Bekhayali",
+  "artist": "Sachet Tandon",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "PVDPkS4v8FQ"
+ },
+ {
+  "title": "Heat Waves",
+  "artist": "Glass Animals",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "XDjB9E3YtUE"
+ },
+ {
+  "title": "Summer High",
+  "artist": "AP Dhillon",
+  "lang": "pa",
+  "hidden": true,
+  "videoId": "t5IzCyDZmes"
+ },
+ {
+  "title": "Satu Bulan",
+  "artist": "Bernadya",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "z-XHpftdXEE"
+ },
+ {
+  "title": "Dil Diyan Gallan",
+  "artist": "Atif Aslam",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "u5DCgnh8S9M"
+ },
+ {
+  "title": "Unstoppable",
+  "artist": "Sia",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "cfhwSpSDA9c"
+ },
+ {
+  "title": "Nandemonaiya",
+  "artist": "RADWIMPS",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "n89SKAymNfA"
+ },
+ {
+  "title": "Chöre",
+  "artist": "Mark Forster",
+  "lang": "de",
+  "hidden": true,
+  "videoId": "gJmev7pCVPw"
+ },
+ {
+  "title": "Kaun Tujhe",
+  "artist": "Palak Muchhal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "ZVyA_8rd1Ko"
+ },
+ {
+  "title": "lovely",
+  "artist": "Billie Eilish, Khalid",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "MMfpp0-lnw4"
+ },
+ {
+  "title": "Winning Speech",
+  "artist": "Karan Aujla",
+  "lang": "pa",
+  "hidden": true,
+  "videoId": "0DS5jYQeiw0"
+ },
+ {
+  "title": "Kita Usahakan Lagi",
+  "artist": "Batas Senja",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "5QMsYmJYUlQ"
+ },
+ {
+  "title": "Mere Rashke Qamar",
+  "artist": "Rahat Fateh Ali Khan",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "iyxByIhwrC0"
+ },
+ {
+  "title": "ocean eyes",
+  "artist": "Billie Eilish",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "3IUqoyTxEU8"
+ },
+ {
+  "title": "Sparkle",
+  "artist": "RADWIMPS",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "-J9FuvPmMoI"
+ },
+ {
+  "title": "Wenn sie tanzt",
+  "artist": "Max Giesinger",
+  "lang": "de",
+  "hidden": true,
+  "videoId": "JillyV2eBKM"
+ },
+ {
+  "title": "Malang Sajna",
+  "artist": "Sachet Tandon, Parampara Tandon",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "BA37wV6e7IE"
+ },
+ {
+  "title": "Happier Than Ever",
+  "artist": "Billie Eilish",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "NSTUVHsb9xw"
+ },
+ {
+  "title": "Lehanga",
+  "artist": "Jass Manak",
+  "lang": "pa",
+  "hidden": true,
+  "videoId": "Qj_q5zmP5VE"
+ },
+ {
+  "title": "Bergema Sampai Selamanya",
+  "artist": "Nadhif Basalamah",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "bAoxY1jQnqo"
+ },
+ {
+  "title": "Kahani Suno 2.0",
+  "artist": "Kaifi Khalil",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "ulIfwWVr30g"
+ },
+ {
+  "title": "Too Sweet",
+  "artist": "Hozier",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "IN-PeAZDi7g"
+ },
+ {
+  "title": "Usseewa",
+  "artist": "Ado",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "GtPLYvYeZ_4"
+ },
+ {
+  "title": "Haus am See",
+  "artist": "Peter Fox",
+  "lang": "de",
+  "hidden": true,
+  "videoId": "Vgwkxa-uGcE"
+ },
+ {
+  "title": "Teri Mitti",
+  "artist": "B Praak",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "_Pb8KChWokA"
+ },
+ {
+  "title": "Ghost",
+  "artist": "Justin Bieber",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "v6HFc5I0hr8"
+ },
+ {
+  "title": "Jee Ni Lagda",
+  "artist": "Karan Aujla",
+  "lang": "pa",
+  "hidden": true,
+  "videoId": "fpyBL6J0EuA"
+ },
+ {
+  "title": "Penjaga Hati",
+  "artist": "Nadhif Basalamah",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "g6iIVyRfiUk"
+ },
+ {
+  "title": "Mann Bharryaa 2.0",
+  "artist": "B Praak",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "86h_3HSoEkc"
+ },
+ {
+  "title": "Golden Hour",
+  "artist": "JVKE",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "uV_5eEvamoQ"
+ },
+ {
+  "title": "Show",
+  "artist": "Ado",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "VJDbgtc692k"
+ },
+ {
+  "title": "Musik sein",
+  "artist": "Wincent Weiss",
+  "lang": "de",
+  "hidden": true,
+  "videoId": "mqEzfSra87U"
+ },
+ {
+  "title": "Filhall",
+  "artist": "B Praak",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "_nJI4VcxF70"
+ },
+ {
+  "title": "Line Without a Hook",
+  "artist": "Ricky Montgomery",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "XSqx8Ibkzrk"
+ },
+ {
+  "title": "Arjan Vailly",
+  "artist": "Bhupinder Babbal",
+  "lang": "pa",
+  "hidden": true,
+  "videoId": "vaSRih9ThTE"
+ },
+ {
+  "title": "Tak Segampang Itu",
+  "artist": "Anggi Marito",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "gR_qbfGkwpc"
+ },
+ {
+  "title": "Lut Gaye",
+  "artist": "Jubin Nautiyal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "4z-oDk1utVo"
+ },
+ {
+  "title": "Calm Down",
+  "artist": "Rema, Selena Gomez",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "DKrelwjugQA"
+ },
+ {
+  "title": "Matsuri",
+  "artist": "Fujii Kaze",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "HMqhXxH5-RQ"
+ },
+ {
+  "title": "Humnava Mere",
+  "artist": "Jubin Nautiyal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "n9qQiuwBywU"
+ },
+ {
+  "title": "Dandelions",
+  "artist": "Ruth B.",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "HZbsLxL7GeM"
+ },
+ {
+  "title": "Asmalibrasi",
+  "artist": "Soegi Bornean",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "6Kqrcm4RPW8"
+ },
+ {
+  "title": "Dil Galti Kar Baitha Hai",
+  "artist": "Jubin Nautiyal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "9vpr7vQE84w"
+ },
+ {
+  "title": "Starboy",
+  "artist": "The Weeknd, Daft Punk",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "3_g2un5M350"
+ },
+ {
+  "title": "Kirari",
+  "artist": "Fujii Kaze",
+  "lang": "ja",
+  "hidden": true,
+  "videoId": "IFCDLIKSArs"
+ },
+ {
+  "title": "Jhoome Jo Pathaan",
+  "artist": "Arijit Singh, Sukriti Kakar",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "AU9AdGIdWZs"
+ },
+ {
+  "title": "Somebody That I Used To Know",
+  "artist": "Gotye, Kimbra",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "xOazTYPrt64"
+ },
+ {
+  "title": "Ruang Sendiri",
+  "artist": "Tulus",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "jJYI38R7nKk"
+ },
+ {
+  "title": "Deva Deva",
+  "artist": "Arijit Singh, Jonita Gandhi",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "zYnpURpOZvw"
+ },
+ {
+  "title": "Rewrite The Stars",
+  "artist": "Zac Efron, Zendaya",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "RbimXGH5zkE"
+ },
+ {
+  "title": "Ram Siya Ram",
+  "artist": "Sachet Tandon, Parampara Tandon",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "j_c4S1n710A"
+ },
+ {
+  "title": "Lose You To Love Me",
+  "artist": "Selena Gomez",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "WlA99PPNTik"
+ },
+ {
+  "title": "Hanya Rindu",
+  "artist": "Andmesh",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "yJPe0NgZ__o"
+ },
+ {
+  "title": "Bol Do Na Zara",
+  "artist": "Armaan Malik",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "2Y3Wsdq-MN8"
+ },
+ {
+  "title": "Treat You Better",
+  "artist": "Shawn Mendes",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "qSay_8xzijg"
+ },
+ {
+  "title": "Dil Ko Karaar Aaya",
+  "artist": "Yasser Desai, Neha Kakkar",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "TPq1BKSXUF0"
+ },
+ {
+  "title": "drivers license",
+  "artist": "Olivia Rodrigo",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "l0txe6yk8Kc"
+ },
+ {
+  "title": "Cinta Luar Biasa",
+  "artist": "Andmesh",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "ZUm1iTjI8VQ"
+ },
+ {
+  "title": "Tujhko Jo Paaya",
+  "artist": "Mohit Chauhan",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "yRbI73zR_m4"
+ },
+ {
+  "title": "traitor",
+  "artist": "Olivia Rodrigo",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "4QLvEIXlF6Q"
+ },
+ {
+  "title": "Lambiyaan Si Judaiyaan",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "4wbdPFvJ3ew"
+ },
+ {
+  "title": "vampire",
+  "artist": "Olivia Rodrigo",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "aHmg0jsmNhg"
+ },
+ {
+  "title": "Sephia",
+  "artist": "Sheila On 7",
+  "lang": "id",
+  "hidden": true,
+  "videoId": "Y90xQ-bxkWU"
+ },
+ {
+  "title": "Sanam Re",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "1vVGjAonhEA"
+ },
+ {
+  "title": "Daylight",
+  "artist": "David Kushner",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "Y1gswBe-DjM"
+ },
+ {
+  "title": "Janam Janam",
+  "artist": "Arijit Singh, Antara Mitra",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "5rHzi_5rSyw"
+ },
+ {
+  "title": "Let Me Love You",
+  "artist": "DJ Snake, Justin Bieber",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "rJ0D1GbDq1Q"
+ },
+ {
+  "title": "Khuda Jaane",
+  "artist": "KK, Shilpa Rao",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "aG7MaqtWxT8"
+ },
+ {
+  "title": "Closer",
+  "artist": "The Chainsmokers, Halsey",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "r7zTKRonHXM"
+ },
+ {
+  "title": "Tu Hi Haqeeqat",
+  "artist": "Javed Ali",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "2CAiycLVy7s"
+ },
+ {
+  "title": "Faded",
+  "artist": "Alan Walker",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "pIWaVJPl0-c"
+ },
+ {
+  "title": "Tera Ban Jaunga",
+  "artist": "Akhil Sachdeva, Tulsi Kumar",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "39BOqZO8xaM"
+ },
+ {
+  "title": "Hymn for the Weekend",
+  "artist": "Coldplay",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "H3Kzh6RrnMc"
+ },
+ {
+  "title": "Pehle Bhi Main",
+  "artist": "Vishal Mishra",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "9cHq63r1vHQ"
+ },
+ {
+  "title": "Stitches",
+  "artist": "Shawn Mendes",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "DqO1lLavWGo"
+ },
+ {
+  "title": "Maiyya Mainu",
+  "artist": "Sachet Tandon",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "9Cp-hNvSWZs"
+ },
+ {
+  "title": "Arcade",
+  "artist": "Duncan Laurence",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "858GKxHbiUg"
+ },
+ {
+  "title": "Qaafirana",
+  "artist": "Arijit Singh, Nikhita Gandhi",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "Kf781IbMQXk"
+ },
+ {
+  "title": "Love Story",
+  "artist": "Taylor Swift",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "aZ1hziFhj1o"
+ },
+ {
+  "title": "Saware",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "KptF_0yWr_Q"
+ },
+ {
+  "title": "Blank Space",
+  "artist": "Taylor Swift",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "dC9QIUKviJU"
+ },
+ {
+  "title": "Kya Baat Ay",
+  "artist": "Harrdy Sandhu",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "kr0fr6RCLDo"
+ },
+ {
+  "title": "Shake It Off",
+  "artist": "Taylor Swift",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "sWMk8dwljFU"
+ },
+ {
+  "title": "Tum Mile",
+  "artist": "Neeraj Shridhar",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "C0S0PMpNybM"
+ },
+ {
+  "title": "Greedy",
+  "artist": "Tate McRae",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "_QtN6qocpKU"
+ },
+ {
+  "title": "Sooraj Dooba Hai",
+  "artist": "Arijit Singh, Aditi Singh Sharma",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "kbvceIA2Lz4"
+ },
+ {
+  "title": "Stargazing",
+  "artist": "Myles Smith",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "Fplgu4VVb94"
+ },
+ {
+  "title": "Hawa Banke",
+  "artist": "Darshan Raval",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "44cPHKhIha0"
+ },
+ {
+  "title": "Pink Pony Club",
+  "artist": "Chappell Roan",
+  "lang": "en",
+  "hidden": true,
+  "videoId": "R_iTpfSCIVk"
+ },
+ {
+  "title": "Tera Zikr",
+  "artist": "Darshan Raval",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "zRKvLzLVIKQ"
+ },
+ {
+  "title": "Kabhi Jo Baadal Barse",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "qH1eRWlJpsY"
+ },
+ {
+  "title": "Dhadak",
+  "artist": "Ajay Gogavale, Shreya Ghoshal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "1mGEhLpfXmg"
+ },
+ {
+  "title": "Kalank",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "if7X8G9c3t0"
+ },
+ {
+  "title": "Ghungroo",
+  "artist": "Arijit Singh, Shilpa Rao",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "7SHohKbEKog"
+ },
+ {
+  "title": "Main Agar Kahoon",
+  "artist": "Sonu Nigam, Shreya Ghoshal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "8PEqEh1lnNE"
+ },
+ {
+  "title": "Hamdard",
+  "artist": "Arijit Singh",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "Z_Pr3Z9jz8I"
+ },
+ {
+  "title": "Ishq Bulaava",
+  "artist": "Sanam Puri, Shipra Goyal",
+  "lang": "hi",
+  "hidden": true,
+  "videoId": "5Np6_XEf_lg"
+ }
+]

@@ -100,11 +100,14 @@ def work_once() -> int:
 
 
 def _time(job: dict) -> dict:
-    from . import lyric_align
+    from . import lyric_align, storage
 
     d = jobs.song_dir(job["songId"])
     if not ((d / "reference.json").exists() or remote.pull(d)):
         raise RuntimeError("the song isn't in the store")
+    # just used: a pulled song keeps its old file dates, so without this the cache trim
+    # (run when any other job finishes) takes it as the oldest and deletes it mid-timing
+    storage.touch(d)
     if job.get("kind") == "plain":
         lines = worker.run(lyric_align.align_plain_song, str(d), job["lines"], tuple(job["span"]), heavy=True)
     else:

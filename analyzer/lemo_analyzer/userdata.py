@@ -9,6 +9,7 @@ read or write their own. Newer writes win, by the client's updatedAt."""
 from __future__ import annotations
 
 import os
+import re
 import threading
 import time
 from typing import Any
@@ -92,6 +93,24 @@ CREATE TABLE IF NOT EXISTS lemo_likes (
   PRIMARY KEY (uid, song_id)
 );
 -- tests started / finished on each song (the library's "most sung on Lemody")
+-- a singer's name on Lemody (their profile is /u/<username>); unique ignoring case
+ALTER TABLE lemo_users ADD COLUMN IF NOT EXISTS username text;
+CREATE UNIQUE INDEX IF NOT EXISTS lemo_users_username ON lemo_users (lower(username));
+-- every test a signed-in singer starts and finishes (their profile: activity, time sung, history)
+CREATE TABLE IF NOT EXISTS lemo_tests (
+  id        bigserial PRIMARY KEY,
+  uid       text NOT NULL REFERENCES lemo_users(uid) ON DELETE CASCADE,
+  day       text NOT NULL,
+  at        double precision NOT NULL,
+  finished  boolean NOT NULL,
+  song_id   text,
+  title     text,
+  artist    text,
+  seconds   double precision NOT NULL DEFAULT 0,
+  score     double precision,
+  scores    jsonb
+);
+CREATE INDEX IF NOT EXISTS lemo_tests_uid_at ON lemo_tests (uid, at DESC);
 CREATE TABLE IF NOT EXISTS lemo_song_stats (
   song_id  text PRIMARY KEY,
   started  integer NOT NULL DEFAULT 0,
@@ -205,10 +224,12 @@ def touch_user(claims: dict) -> dict:
         """INSERT INTO lemo_users (uid, email, name, photo, created_at, last_seen) VALUES (%s, %s, %s, %s, %s, %s)
            ON CONFLICT (uid) DO UPDATE SET email = COALESCE(EXCLUDED.email, lemo_users.email), name = COALESCE(EXCLUDED.name, lemo_users.name),
              photo = COALESCE(EXCLUDED.photo, lemo_users.photo), last_seen = EXCLUDED.last_seen
-           RETURNING settings, settings_updated_at""",
+           RETURNING settings, settings_updated_at, username""",
         (uid, claims.get("email"), claims.get("name"), claims.get("picture"), now, now),
         one=True,
     )
+    if row.get("username") is None:
+        _give_username(uid, claims.get("email"), claims.get("name"))
     return {"settings": row["settings"], "settingsUpdatedAt": row["settings_updated_at"]}
 
 
@@ -500,3 +521,132 @@ def stats(day: str) -> dict:
     return {"singers": int(users["n"]), "singersToday": int(users["today"]),
             "testsStarted": int(tot["started"]), "testsFinished": int(tot["finished"]), "secondsSung": float(tot["seconds"]),
             "today": {"testsStarted": int(today["started"]), "testsFinished": int(today["finished"]), "secondsSung": float(today["seconds"])}}
+
+
+# ---- profiles: usernames, tests, activity --------------------------------------------------------
+
+USERNAME = re.compile(r"^[A-Za-z0-9_.-]{3,20}$")
+DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _base_username(email: str | None, name: str | None) -> str:
+    """The first name a singer gets: their Gmail name (before the @), tidied to the allowed letters."""
+    raw = (email or "").split("@")[0] or (name or "")
+    base = re.sub(r"[^A-Za-z0-9_.-]+", "", raw.replace(" ", "_"))[:20].strip("._-")
+    return base if len(base) >= 3 else (base + "singer")[:20]
+
+
+def _give_username(uid: str, email: str | None, name: str | None) -> str | None:
+    if uid.startswith(GUEST):
+        return None
+    base = _base_username(email, name)
+    for k in range(50):
+        cand = base if k == 0 else f"{base[:20 - len(str(k))]}{k}"
+        try:
+            n = _q("UPDATE lemo_users SET username = %s WHERE uid = %s AND username IS NULL", (cand, uid))
+            return cand if n else None
+        except Exception as e:  # taken (unique index): try the next number
+            if "lemo_users_username" not in str(e):
+                raise
+    return None
+
+
+def username_of(uid: str) -> str | None:
+    row = _q("SELECT username FROM lemo_users WHERE uid = %s", (uid,), one=True)
+    return row["username"] if row else None
+
+
+def set_username(uid: str, name: str) -> str:
+    """Change your username. Raises ValueError with the reason when it can't be used."""
+    name = name.strip()
+    if not USERNAME.match(name):
+        raise ValueError("3 to 20 letters, numbers, dots, dashes or underscores")
+    row = _q("SELECT uid FROM lemo_users WHERE lower(username) = lower(%s)", (name,), one=True)
+    if row and row["uid"] != uid:
+        raise ValueError("that name is taken")
+    _ensure_user(uid)
+    _q("UPDATE lemo_users SET username = %s WHERE uid = %s", (name, uid))
+    return name
+
+
+def log_test(uid: str, entry: dict) -> None:
+    """One test started or finished, for the singer's own profile."""
+    if uid.startswith(GUEST):
+        return
+    _ensure_user(uid)
+    _q("""INSERT INTO lemo_tests (uid, day, at, finished, song_id, title, artist, seconds, score, scores)
+          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+       (uid, entry["day"], time.time(), entry["finished"], entry.get("songId"), entry.get("title"), entry.get("artist"),
+        entry.get("seconds") or 0.0, entry.get("score"), _json(entry["scores"]) if entry.get("scores") else None))
+
+
+def _days(uid: str) -> list[dict]:
+    """Each day the singer sang in the last year: tests finished and seconds sung."""
+    rows = _q("""SELECT day, COUNT(*) FILTER (WHERE finished) AS tests, COALESCE(SUM(seconds), 0) AS seconds
+                 FROM lemo_tests WHERE uid = %s AND at > %s GROUP BY day ORDER BY day""",
+              (uid, time.time() - 400 * 86400))
+    return [{"day": r["day"], "tests": int(r["tests"]), "seconds": round(float(r["seconds"]), 1)} for r in rows]
+
+
+def profile(uid: str) -> dict:
+    """Your own profile: name, totals, activity and every finished test (newest first)."""
+    u = _q("SELECT username, name, photo, created_at FROM lemo_users WHERE uid = %s", (uid,), one=True) or {}
+    tot = _q("""SELECT COUNT(*) FILTER (WHERE NOT finished) AS started, COUNT(*) FILTER (WHERE finished) AS finished,
+                       COALESCE(SUM(seconds), 0) AS seconds, AVG(score) FILTER (WHERE finished) AS avg
+                FROM lemo_tests WHERE uid = %s""", (uid,), one=True)
+    hist = _q("""SELECT id, day, at, song_id, title, artist, seconds, score, scores FROM lemo_tests
+                 WHERE uid = %s AND finished ORDER BY at DESC LIMIT 1000""", (uid,))
+    return {
+        "username": u.get("username"), "photo": u.get("photo"), "joined": u.get("created_at"),
+        "testsStarted": int(tot["started"]), "testsFinished": int(tot["finished"]), "seconds": float(tot["seconds"]),
+        "average": float(tot["avg"]) if tot["avg"] is not None else None,
+        "days": _days(uid),
+        "history": [{"id": r["id"], "day": r["day"], "at": r["at"], "songId": r["song_id"], "title": r["title"], "artist": r["artist"],
+                     "seconds": r["seconds"], "score": r["score"], "scores": r["scores"]} for r in hist],
+    }
+
+
+def public_profile(username: str) -> dict | None:
+    """What anyone can see of a singer: their name, picture, when they joined and the days they sang."""
+    u = _q("SELECT uid, username, photo, created_at FROM lemo_users WHERE lower(username) = lower(%s)", (username,), one=True)
+    if not u:
+        return None
+    return {"username": u["username"], "photo": u["photo"], "joined": u["created_at"], "days": _days(u["uid"])}
+
+
+def find_users(q: str, limit: int = 10) -> list[dict]:
+    """Singers whose name has q in it (names that start with it first)."""
+    q = re.sub(r"[^A-Za-z0-9_.-]+", "", q)[:20]
+    if not q:
+        return []
+    like = "%" + q.replace("_", "\\_").replace("%", "") + "%"
+    rows = _q("""SELECT username, photo FROM lemo_users WHERE username ILIKE %s
+                 ORDER BY (lower(username) LIKE lower(%s)) DESC, last_seen DESC LIMIT %s""",
+              (like, q.replace("_", "\\_") + "%", limit))
+    return [{"username": r["username"], "photo": r["photo"]} for r in rows]
+
+
+def backfill_tests() -> int:
+    """Once: earlier finished tests (kept per song in the singer's data) into their history.
+    How long each one was isn't known, so those count no time sung."""
+    from datetime import datetime, timezone
+
+    n = 0
+    rows = _q("""SELECT p.uid, p.song_id, p.prefs, s.title, s.artist FROM lemo_prefs p
+                 LEFT JOIN lemo_songs s ON s.uid = p.uid AND s.song_id = p.song_id
+                 WHERE NOT EXISTS (SELECT 1 FROM lemo_tests t WHERE t.uid = p.uid)""")
+    for r in rows:
+        if r["uid"].startswith(GUEST):
+            continue
+        for a in (r["prefs"] or {}).get("attempts") or []:
+            sc = a.get("scores") or {}
+            at = a.get("at")
+            if a.get("phrase") is not None or not isinstance(at, (int, float)) or sc.get("overall") is None:
+                continue
+            t = at / 1000
+            _q("""INSERT INTO lemo_tests (uid, day, at, finished, song_id, title, artist, seconds, score, scores)
+                  VALUES (%s, %s, %s, true, %s, %s, %s, 0, %s, %s)""",
+               (r["uid"], datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d"), t, r["song_id"], r["title"], r["artist"],
+                sc["overall"], _json(sc)))
+            n += 1
+    return n

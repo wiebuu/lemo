@@ -1,5 +1,5 @@
 import { ChallengeBadge } from './Challenge'
-import { ChartColumn, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield } from 'lucide-react'
+import { ChartColumn, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield, UserRound } from 'lucide-react'
 import { signInWithGoogle, signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
 import { useSong } from '../state/library'
@@ -39,9 +39,15 @@ export function Header({ open }: { open: (p: Panel) => void }) {
         <IconToggle tip="Today's top" onClick={() => navigate('/top')}>
           <Crown size={17} />
         </IconToggle>
-        <IconToggle tip="Stats" onClick={() => navigate('/stats')}>
-          <ChartColumn size={17} />
+        <IconToggle tip="Your profile" onClick={() => navigate('/profile')}>
+          <UserRound size={17} />
         </IconToggle>
+        {/* phones: no room for every icon (Stats is in the footer) */}
+        {!phone && (
+          <IconToggle tip="Stats" onClick={() => navigate('/stats')}>
+            <ChartColumn size={17} />
+          </IconToggle>
+        )}
         <IconToggle tip="Settings" onClick={() => open('settings')}>
           <Settings size={17} />
         </IconToggle>
@@ -126,6 +132,7 @@ function Account() {
               </Tip>
             )}
           </div>
+          <MenuItem icon={<UserRound size={14} />} label="profile" tip="Your activity, time singing and every test." onClick={() => { close(); navigate('/profile') }} />
           <MenuItem icon={<ListMusic size={14} />} label="coming soon" tip="Songs people asked for — help add one." onClick={() => { close(); navigate('/coming') }} />
           <MenuItem icon={<CircleHelp size={14} />} label="help & questions" tip="Answers to common questions." onClick={() => { close(); navigate('/help') }} />
           <MenuItem icon={<Shield size={14} />} label="privacy" tip="What Lemody keeps, and what it never does." onClick={() => { close(); navigate('/privacy') }} />

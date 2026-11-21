@@ -36,7 +36,7 @@ class UserDataTests(unittest.TestCase):
         self.addCleanup(no_mail.stop)
         userdata.use(TEST_DSN)
         userdata.status()  # connect + create tables
-        userdata._q("TRUNCATE lemo_likes, lemo_song_stats, lemo_top, lemo_daily, lemo_requests, lemo_prefs, lemo_songs, lemo_users")
+        userdata._q("TRUNCATE lemo_tests, lemo_likes, lemo_song_stats, lemo_top, lemo_daily, lemo_requests, lemo_prefs, lemo_songs, lemo_users")
         userdata._sung["at"] = 0.0
         tokens = {"Bearer a": ALICE, "Bearer b": BOB}
 
@@ -198,6 +198,50 @@ class UserDataTests(unittest.TestCase):
             r = self.call("GET", "/api/me")
         self.assertEqual(r.status_code, 503)
         self.assertIn("unreachable", r.json()["detail"])
+
+
+    # ---- profiles ----
+    def test_a_first_username_comes_from_gmail_and_clashes_get_a_number(self):
+        self.call("GET", "/api/me")
+        self.assertEqual(self.call("GET", "/api/me/profile").json()["username"], "alice")
+        with mock.patch.dict(BOB, {"email": "alice@other.com"}):
+            self.call("GET", "/api/me", who="b")
+        self.assertEqual(userdata.username_of("bob"), "alice1")
+
+    def test_changing_the_username(self):
+        self.call("GET", "/api/me")
+        self.call("GET", "/api/me", who="b")
+        self.assertEqual(self.call("PUT", "/api/me/username", json={"username": "x"}).status_code, 400)
+        self.assertEqual(self.call("PUT", "/api/me/username", json={"username": "BOB"}).json()["detail"], "that name is taken")
+        self.assertEqual(self.call("PUT", "/api/me/username", json={"username": "Ali.Sings"}).json()["username"], "Ali.Sings")
+        self.assertEqual(self.call("GET", "/api/users/ali.sings", who=None).json()["username"], "Ali.Sings")
+
+    def test_tests_build_the_profile_and_others_see_only_the_days(self):
+        self.call("GET", "/api/me")
+        self.call("POST", "/api/stats/test", json={"finished": False, "songId": "yt-abcdefghijk", "day": "2026-11-20"})
+        self.call("POST", "/api/stats/test", json={"finished": True, "seconds": 90, "songId": "yt-abcdefghijk", "day": "2026-11-20",
+                                                   "title": "Song", "artist": "Singer", "score": 0.8, "scores": {"overall": 0.8, "shape": 0.7}})
+        self.call("POST", "/api/stats/test", who=None, json={"finished": True, "seconds": 50})  # a guest: not anyone's history
+        p = self.call("GET", "/api/me/profile").json()
+        self.assertEqual((p["testsStarted"], p["testsFinished"], p["seconds"]), (1, 1, 90))
+        self.assertEqual(p["history"][0]["title"], "Song")
+        self.assertEqual(p["days"], [{"day": "2026-11-20", "tests": 1, "seconds": 90.0}])
+        pub = self.call("GET", "/api/users/alice", who=None).json()
+        self.assertEqual(set(pub), {"username", "photo", "joined", "days"})
+        self.assertEqual(self.call("GET", "/api/users/nobody", who=None).status_code, 404)
+
+    def test_finding_singers(self):
+        self.call("GET", "/api/me")
+        self.call("GET", "/api/me", who="b")
+        self.assertEqual([u["username"] for u in self.call("GET", "/api/users?q=li", who=None).json()], ["alice"])
+        self.assertEqual(self.call("GET", "/api/users?q=%25", who=None).json(), [])
+
+    def test_earlier_tests_are_brought_into_the_history_once(self):
+        self.call("PUT", "/api/me/prefs/yt-abcdefghijk", json={"prefs": {"attempts": [
+            {"id": "1", "at": 1763600000000, "phrase": None, "scores": {"overall": 0.6}, "keyOffset": 0},
+            {"id": "2", "at": 1763600100000, "phrase": 3, "scores": {"overall": 0.9}, "keyOffset": 0}]}, "updatedAt": 1})
+        self.assertEqual(userdata.backfill_tests(), 1)
+        self.assertEqual(userdata.backfill_tests(), 0)
 
 
 if __name__ == "__main__":

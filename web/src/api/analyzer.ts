@@ -193,6 +193,33 @@ export interface TopTake {
   frames: { t: number[]; m: (number | null)[]; c: number[]; l?: (number | null)[] }
 }
 
+/** Today in the singer's own time zone (YYYY-MM-DD): the day a test counts on in their activity. */
+export function localDay(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export interface TestDetails { title?: string | null; artist?: string | null; score?: number | null; scores?: Record<string, number | null> }
+export interface ActivityDay { day: string; tests: number; seconds: number }
+export interface PublicProfile { username: string; photo: string | null; joined: number | null; days: ActivityDay[] }
+export interface HistoryTest {
+  id: number
+  day: string
+  at: number
+  songId: string | null
+  title: string | null
+  artist: string | null
+  seconds: number
+  score: number | null
+  scores: Record<string, number | null> | null
+}
+export interface MyProfile extends PublicProfile {
+  testsStarted: number
+  testsFinished: number
+  seconds: number
+  average: number | null
+  history: HistoryTest[]
+}
+
 export interface SiteStats {
   singers: number
   singersToday: number
@@ -269,8 +296,15 @@ export const analyzer = {
   },
   stats: () => fetch('/api/stats').then((r) => json<SiteStats>(r)),
   /** a test started, or finished after `seconds` of singing (for the stats page) */
-  countTest: (finished: boolean, seconds = 0, songId?: string | null) =>
-    fetch('/api/stats/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ finished, seconds, songId }) }).catch(() => undefined),
+  countTest: (finished: boolean, seconds = 0, songId?: string | null, more: TestDetails = {}) =>
+    fetch('/api/stats/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ finished, seconds, songId, day: localDay(), ...more }) }).catch(() => undefined),
+  /** your profile: name, totals, the days you sang and every finished test */
+  profile: () => fetch('/api/me/profile').then((r) => json<MyProfile>(r)),
+  setUsername: (username: string) =>
+    fetch('/api/me/username', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }) }).then((r) => json<{ username: string }>(r)),
+  /** anyone's profile: their name, picture, when they joined and the days they sang */
+  user: (username: string) => fetch(`/api/users/${encodeURIComponent(username)}`).then((r) => json<PublicProfile>(r)),
+  findUsers: (q: string) => fetch(`/api/users?${new URLSearchParams({ q })}`).then((r) => json<{ username: string; photo: string | null }[]>(r)),
   /** every stored song, for search */
   catalog: () => fetch('/api/catalog').then((r) => json<CatalogItem[]>(r)),
   /** songs by a bit of their lyrics, typed any way: the line each one is on */

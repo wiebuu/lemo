@@ -39,7 +39,7 @@ def _to_store(request: Request, url: str):
 OPEN_PATHS = {"/api/health", "/api/stats"}
 GUEST_READS = re.compile(
     r"/api/(catalog|featured|search/lyrics|songs/match|lyrics|top(/[\w-]+(/voice)?)?|requests|requests/all"
-    r"|songs/[\w-]+/(preview|status|reference|render-status|audio/\w+))"
+    r"|songs/[\w-]+/(preview|status|reference|render-status|audio/\w+)|users(/[\w.-]+)?)"
 )
 # counted; a guest's take can go on today's top (as "a guest singer"; its voice kept private);
 # and a guest can read the lyrics in Hinglish, Hindi or Urdu script
@@ -1284,7 +1284,7 @@ def top_cover(request: Request, take_id: str):
 
 
 @app.post("/api/stats/test")
-def stats_test(body: dict = Body(...)) -> dict:
+def stats_test(request: Request, body: dict = Body(...)) -> dict:
     """A test started, or finished (with how long was sung)."""
     finished = bool(body.get("finished"))
     seconds = body.get("seconds") if finished else 0
@@ -1293,7 +1293,63 @@ def stats_test(body: dict = Body(...)) -> dict:
     sid = body.get("songId")
     sid = sid if isinstance(sid, str) and SONG_ID.match(sid) else None  # the song it's on (most sung)
     _data(lambda: userdata.count_test(top.today(), finished, float(seconds), sid))
+    if request.state.user is not None:  # a signed-in singer's own history (their profile)
+        day = body.get("day")
+        score = body.get("score")
+        scores = body.get("scores")
+        text = lambda v: v[:200] if isinstance(v, str) and v.strip() else None  # noqa: E731
+        entry = {
+            "day": day if isinstance(day, str) and userdata.DAY.match(day) else top.today(),
+            "finished": finished, "songId": sid, "title": text(body.get("title")), "artist": text(body.get("artist")),
+            "seconds": max(0.0, min(float(seconds), 3600.0)),
+            "score": float(score) if isinstance(score, (int, float)) and 0 <= score <= 1 else None,
+            "scores": {k: v for k, v in scores.items() if isinstance(k, str) and len(k) < 20 and (v is None or isinstance(v, (int, float)))}
+            if isinstance(scores, dict) and len(scores) <= 12 else None,
+        }
+        _data(lambda: userdata.log_test(_uid(request), entry))
     return {"ok": True}
+
+
+# ---- profiles: yours (everything), anyone's (the days they sang), and finding singers ----------
+
+
+@app.get("/api/me/profile")
+def my_profile(request: Request) -> dict:
+    def run():
+        userdata.touch_user(request.state.user)  # gives a first username if there isn't one yet
+        p = userdata.profile(_uid(request))
+        cat = catalog.load()
+        for h in p["history"]:  # tests from before names were kept: the name from the library
+            e = cat.get(h["songId"] or "")
+            if e and not h["title"]:
+                h["title"], h["artist"] = e.get("title"), e.get("artist")
+        return p
+
+    return _data(run)
+
+
+@app.put("/api/me/username")
+def my_username(request: Request, body: dict = Body(...)) -> dict:
+    name = body.get("username")
+    if not isinstance(name, str):
+        raise HTTPException(400, "send {username}")
+    try:
+        return {"username": _data(lambda: userdata.set_username(_uid(request), name))}
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.get("/api/users")
+def users_find(q: str = "") -> list:
+    return _data(lambda: userdata.find_users(q))
+
+
+@app.get("/api/users/{username}")
+def user_profile(username: str) -> dict:
+    p = _data(lambda: userdata.public_profile(username)) if userdata.USERNAME.match(username) else None
+    if not p:
+        raise HTTPException(404, "no singer by that name")
+    return p
 
 
 @app.get("/api/stats")

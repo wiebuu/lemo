@@ -1,17 +1,28 @@
-import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type MouseEvent, type ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { Wordmark } from '../components/Brand'
 
 import { SiteFooter } from './Footer'
 import { StatsPage, TopPage } from './Board'
 import { ComingPage } from './Coming'
+import { ProfilePage, UserPage } from './Profile'
 import { go, navigate } from './router'
 import { ARTICLES, SITE, UPDATED, type Article } from './content.js'
 
-export const PAGES: Record<string, { title: string; seoTitle?: string; description?: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean }> = {
+export const PAGES: Record<string, { title: string; seoTitle?: string; description?: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean; /** the page draws its own heading */ bare?: boolean }> = {
   '/top': { title: 'Today’s top', body: TopPage, compact: true },
   '/stats': { title: 'Stats', body: StatsPage, compact: true },
   '/coming': { title: 'Coming soon', body: ComingPage, compact: true },
+  '/profile': { title: 'Profile', body: ProfilePage, compact: true, bare: true },
+}
+
+/** /u/<username>: a singer's public profile. */
+function pageFor(path: string): (typeof PAGES)[string] | undefined {
+  if (PAGES[path]) return PAGES[path]
+  const m = /^\/u\/([A-Za-z0-9_.-]{3,20})\/?$/.exec(path)
+  if (!m) return undefined
+  const name = m[1]
+  return { title: name, seoTitle: `${name} · Lemody singer`, description: `The days ${name} sang on Lemody.`, body: () => <UserPage username={name} />, compact: true, bare: true }
 }
 for (const a of ARTICLES) PAGES[a.path] = { title: a.title, seoTitle: a.seoTitle, description: a.description, body: () => <ArticleBody article={a} /> }
 
@@ -34,7 +45,7 @@ function useHead(path: string, page: (typeof PAGES)[string] | undefined) {
 
 /** A site page, over the app (which keeps running underneath). Unknown addresses get a friendly 404. */
 export function SitePage({ path }: { path: string }) {
-  const page = PAGES[path]
+  const page = useMemo(() => pageFor(path), [path])
   const scroller = useRef<HTMLDivElement>(null)
   useHead(path, page)
   useEffect(() => {
@@ -60,7 +71,7 @@ export function SitePage({ path }: { path: string }) {
         <main className={page?.compact ? 'flex-1 py-4 sm:py-12' : 'flex-1 py-8 sm:py-12'}>
           {page ? (
             <article className={page.compact ? 'prose-lemody prose-compact' : 'prose-lemody'}>
-              <h1>{page.title}</h1>
+              {!page.bare && <h1>{page.title}</h1>}
               <page.body />
             </article>
           ) : (

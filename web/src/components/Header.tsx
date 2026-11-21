@@ -21,6 +21,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
   const phone = usePhone()
   const t = s.track
   const counts = useSong(t?.id)
+  const signedIn = useAuth().status === 'signed-in' // a guest has no notifications or profile: no buttons for them
   return (
     // below the notch / status bar when Lemody runs full screen (added to the home screen)
     <header className="flex items-center gap-2 sm:gap-4 pt-[max(0.75rem,calc(env(safe-area-inset-top)-0.5rem))] pb-1.5 sm:pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] sm:pb-3 shrink-0">
@@ -76,12 +77,16 @@ export function Header({ open }: { open: (p: Panel) => void }) {
           </button>
         </Tip>
       )}
-      <NotificationBell className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
-      <div className={cx('-ml-1.5 sm:-ml-2.5 transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')}>
-        <IconToggle tip="Your profile" onClick={() => navigate('/profile')}>
-          <UserRound size={17} />
-        </IconToggle>
-      </div>
+      {signedIn && (
+        <>
+          <NotificationBell className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
+          <div className={cx('-ml-1.5 sm:-ml-2.5 transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')}>
+            <IconToggle tip="Your profile" onClick={() => navigate('/profile')}>
+              <UserRound size={17} />
+            </IconToggle>
+          </div>
+        </>
+      )}
       <Account />
     </header>
   )

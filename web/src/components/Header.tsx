@@ -39,9 +39,6 @@ export function Header({ open }: { open: (p: Panel) => void }) {
         <IconToggle tip="Today's top" onClick={() => navigate('/top')}>
           <Crown size={17} />
         </IconToggle>
-        <IconToggle tip="Your profile" onClick={() => navigate('/profile')}>
-          <UserRound size={17} />
-        </IconToggle>
         {/* phones: no room for every icon (Stats is in the footer) */}
         {!phone && (
           <IconToggle tip="Stats" onClick={() => navigate('/stats')}>
@@ -80,6 +77,11 @@ export function Header({ open }: { open: (p: Panel) => void }) {
         </Tip>
       )}
       <NotificationBell className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
+      <div className={cx('-ml-1.5 sm:-ml-2.5 transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')}>
+        <IconToggle tip="Your profile" onClick={() => navigate('/profile')}>
+          <UserRound size={17} />
+        </IconToggle>
+      </div>
       <Account />
     </header>
   )

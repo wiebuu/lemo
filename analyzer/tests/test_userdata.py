@@ -227,7 +227,9 @@ class UserDataTests(unittest.TestCase):
         self.assertEqual(p["history"][0]["title"], "Song")
         self.assertEqual(p["days"], [{"day": "2026-11-20", "tests": 1, "seconds": 90.0}])
         pub = self.call("GET", "/api/users/alice", who=None).json()
-        self.assertEqual(set(pub), {"username", "photo", "joined", "days"})
+        self.assertEqual(set(pub), {"username", "photo", "joined", "days", "testsStarted", "testsFinished", "seconds", "average", "last10"})
+        self.assertEqual((pub["testsFinished"], pub["last10"]), (1, 0.8))
+        self.assertNotIn("history", pub)
         self.assertEqual(self.call("GET", "/api/users/nobody", who=None).status_code, 404)
 
     def test_finding_singers(self):

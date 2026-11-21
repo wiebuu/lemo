@@ -588,18 +588,27 @@ def _days(uid: str) -> list[dict]:
     return [{"day": r["day"], "tests": int(r["tests"]), "seconds": round(float(r["seconds"]), 1)} for r in rows]
 
 
-def profile(uid: str) -> dict:
-    """Your own profile: name, totals, activity and every finished test (newest first)."""
-    u = _q("SELECT username, name, photo, created_at FROM lemo_users WHERE uid = %s", (uid,), one=True) or {}
+def _totals(uid: str) -> dict:
+    """Tests started and completed, time sung, the average score and the last 10 tests' average."""
     tot = _q("""SELECT COUNT(*) FILTER (WHERE NOT finished) AS started, COUNT(*) FILTER (WHERE finished) AS finished,
                        COALESCE(SUM(seconds), 0) AS seconds, AVG(score) FILTER (WHERE finished) AS avg
                 FROM lemo_tests WHERE uid = %s""", (uid,), one=True)
+    last = _q("""SELECT AVG(score) AS avg FROM (SELECT score FROM lemo_tests WHERE uid = %s AND finished AND score IS NOT NULL
+                 ORDER BY at DESC LIMIT 10) t""", (uid,), one=True)
+    # every completed test was started (tests from before starts were kept have no start of their own)
+    return {"testsStarted": max(int(tot["started"]), int(tot["finished"])), "testsFinished": int(tot["finished"]), "seconds": float(tot["seconds"]),
+            "average": float(tot["avg"]) if tot["avg"] is not None else None,
+            "last10": float(last["avg"]) if last["avg"] is not None else None}
+
+
+def profile(uid: str) -> dict:
+    """Your own profile: name, totals, activity and every finished test (newest first)."""
+    u = _q("SELECT username, name, photo, created_at FROM lemo_users WHERE uid = %s", (uid,), one=True) or {}
     hist = _q("""SELECT id, day, at, song_id, title, artist, seconds, score, scores FROM lemo_tests
                  WHERE uid = %s AND finished ORDER BY at DESC LIMIT 1000""", (uid,))
     return {
         "username": u.get("username"), "photo": u.get("photo"), "joined": u.get("created_at"),
-        "testsStarted": int(tot["started"]), "testsFinished": int(tot["finished"]), "seconds": float(tot["seconds"]),
-        "average": float(tot["avg"]) if tot["avg"] is not None else None,
+        **_totals(uid),
         "days": _days(uid),
         "history": [{"id": r["id"], "day": r["day"], "at": r["at"], "songId": r["song_id"], "title": r["title"], "artist": r["artist"],
                      "seconds": r["seconds"], "score": r["score"], "scores": r["scores"]} for r in hist],
@@ -607,11 +616,12 @@ def profile(uid: str) -> dict:
 
 
 def public_profile(username: str) -> dict | None:
-    """What anyone can see of a singer: their name, picture, when they joined and the days they sang."""
+    """What anyone can see of a singer: their name, picture, when they joined, their totals and the days they sang
+    (not which songs, nor their voice)."""
     u = _q("SELECT uid, username, photo, created_at FROM lemo_users WHERE lower(username) = lower(%s)", (username,), one=True)
     if not u:
         return None
-    return {"username": u["username"], "photo": u["photo"], "joined": u["created_at"], "days": _days(u["uid"])}
+    return {"username": u["username"], "photo": u["photo"], "joined": u["created_at"], **_totals(u["uid"]), "days": _days(u["uid"])}
 
 
 def find_users(q: str, limit: int = 10) -> list[dict]:

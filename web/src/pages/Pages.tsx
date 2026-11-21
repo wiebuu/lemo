@@ -9,11 +9,11 @@ import { ProfilePage, UserPage } from './Profile'
 import { go, navigate } from './router'
 import { ARTICLES, SITE, UPDATED, type Article } from './content.js'
 
-export const PAGES: Record<string, { title: string; seoTitle?: string; description?: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean; /** the page draws its own heading */ bare?: boolean }> = {
+export const PAGES: Record<string, { title: string; seoTitle?: string; description?: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean; /** the page draws its own heading */ bare?: boolean; /** a wider column (profiles) */ wide?: boolean }> = {
   '/top': { title: 'Today’s top', body: TopPage, compact: true },
   '/stats': { title: 'Stats', body: StatsPage, compact: true },
   '/coming': { title: 'Coming soon', body: ComingPage, compact: true },
-  '/profile': { title: 'Profile', body: ProfilePage, compact: true, bare: true },
+  '/profile': { title: 'Profile', body: ProfilePage, compact: true, bare: true, wide: true },
 }
 
 /** /u/<username>: a singer's public profile. */
@@ -22,7 +22,7 @@ function pageFor(path: string): (typeof PAGES)[string] | undefined {
   const m = /^\/u\/([A-Za-z0-9_.-]{3,20})\/?$/.exec(path)
   if (!m) return undefined
   const name = m[1]
-  return { title: name, seoTitle: `${name} · Lemody singer`, description: `The days ${name} sang on Lemody.`, body: () => <UserPage username={name} />, compact: true, bare: true }
+  return { title: name, seoTitle: `${name} · Lemody singer`, description: `The days ${name} sang on Lemody.`, body: () => <UserPage username={name} />, compact: true, bare: true, wide: true }
 }
 for (const a of ARTICLES) PAGES[a.path] = { title: a.title, seoTitle: a.seoTitle, description: a.description, body: () => <ArticleBody article={a} /> }
 
@@ -60,7 +60,7 @@ export function SitePage({ path }: { path: string }) {
 
   return (
     <div ref={scroller} className="page-in fixed inset-0 z-[70] bg-bg overflow-y-auto overscroll-contain">
-      <div className="max-w-2xl mx-auto px-4 sm:px-8 min-h-full flex flex-col">
+      <div className={`${page?.wide ? 'max-w-4xl' : 'max-w-2xl'} mx-auto px-4 sm:px-8 min-h-full flex flex-col`}>
         <header className="flex items-center gap-3 pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] pb-3 sticky top-0 bg-bg/90 backdrop-blur z-10">
           <a href="/" onClick={go} aria-label="Lemody home"><Wordmark /></a>
           <span className="flex-1" />

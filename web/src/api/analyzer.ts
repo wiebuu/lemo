@@ -200,7 +200,8 @@ export function localDay(d = new Date()): string {
 
 export interface TestDetails { title?: string | null; artist?: string | null; score?: number | null; scores?: Record<string, number | null> }
 export interface ActivityDay { day: string; tests: number; seconds: number }
-export interface PublicProfile { username: string; photo: string | null; joined: number | null; days: ActivityDay[] }
+export interface ProfileTotals { testsStarted: number; testsFinished: number; seconds: number; average: number | null; last10: number | null }
+export interface PublicProfile extends ProfileTotals { username: string; photo: string | null; joined: number | null; days: ActivityDay[] }
 export interface HistoryTest {
   id: number
   day: string
@@ -213,10 +214,6 @@ export interface HistoryTest {
   scores: Record<string, number | null> | null
 }
 export interface MyProfile extends PublicProfile {
-  testsStarted: number
-  testsFinished: number
-  seconds: number
-  average: number | null
   history: HistoryTest[]
 }
 

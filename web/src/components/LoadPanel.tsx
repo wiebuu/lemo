@@ -446,7 +446,7 @@ function forgetJob() {
 /** The visitor's own language (from their time zone): its shelf comes first, then english. */
 const HOME = visitorHome()
 /** at most this many songs on the visitor's own-language shelf, and at least this many to show it */
-const LOCAL_MAX = 20
+const LOCAL_MAX = 30
 const LOCAL_MIN = 4
 /** a featured song's shelf; songs in other languages (Japanese, French …) have none of these three, so they never land on english */
 const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : f.lang === 'hi' ? 'hindi' : f.lang === 'en' || !f.lang ? 'english' : `lang:${f.lang}`)

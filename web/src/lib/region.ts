@@ -6,8 +6,11 @@ import { LANGUAGES } from './library'
 
 /** Time zones whose country has its own language shelf ('india': Lemody's home order). */
 const ZONES: Record<string, string> = {
-  'Asia/Kolkata': 'india', 'Asia/Calcutta': 'india', 'Asia/Karachi': 'india', 'Asia/Kathmandu': 'india',
+  'Asia/Kolkata': 'india', 'Asia/Calcutta': 'india', 'Asia/Kathmandu': 'india',
+  'Asia/Karachi': 'ur', 'Asia/Dhaka': 'bn',
   'Asia/Tokyo': 'ja',
+  'Asia/Manila': 'tl', 'Asia/Ho_Chi_Minh': 'vi', 'Asia/Saigon': 'vi', 'Asia/Bangkok': 'th',
+  'Asia/Kuala_Lumpur': 'ms', 'Asia/Kuching': 'ms',
   'Asia/Jakarta': 'id', 'Asia/Pontianak': 'id', 'Asia/Makassar': 'id', 'Asia/Jayapura': 'id',
   'Europe/Paris': 'fr', 'Europe/Monaco': 'fr',
   'Europe/Berlin': 'de', 'Europe/Vienna': 'de', 'Europe/Zurich': 'de', 'Europe/Busingen': 'de',
@@ -15,12 +18,16 @@ const ZONES: Record<string, string> = {
   'Europe/Madrid': 'es', 'Atlantic/Canary': 'es', 'America/Mexico_City': 'es', 'America/Bogota': 'es',
   'America/Lima': 'es', 'America/Santiago': 'es', 'America/Argentina/Buenos_Aires': 'es', 'America/Buenos_Aires': 'es',
   'America/Caracas': 'es', 'America/Guayaquil': 'es', 'America/Montevideo': 'es', 'America/La_Paz': 'es',
+  'America/Monterrey': 'es', 'America/Tijuana': 'es', 'America/Cancun': 'es', 'America/Merida': 'es', 'America/Chihuahua': 'es',
+  'America/Hermosillo': 'es', 'America/Mazatlan': 'es', 'America/Matamoros': 'es', 'America/Bahia_Banderas': 'es',
   'Asia/Seoul': 'ko',
-  'America/Sao_Paulo': 'pt', 'Europe/Lisbon': 'pt',
+  'America/Sao_Paulo': 'pt', 'Europe/Lisbon': 'pt', 'America/Fortaleza': 'pt', 'America/Recife': 'pt', 'America/Bahia': 'pt',
+  'America/Belem': 'pt', 'America/Manaus': 'pt', 'America/Cuiaba': 'pt', 'America/Campo_Grande': 'pt', 'America/Maceio': 'pt',
   'Europe/Moscow': 'ru',
 }
-/** Languages spoken in India: the home order (garhwali, hindi, english) stays. */
-const INDIAN = new Set(['hi', 'pa', 'hr', 'gw', 'ur', 'ta', 'te', 'bn', 'mr', 'gu', 'kn', 'ml', 'ne'])
+/** Languages spoken in India: the home order (garhwali, hindi, english) stays. (Urdu and Bengali
+ * browsers get their own shelf: Pakistan and Bangladesh have their own songs.) */
+const INDIAN = new Set(['hi', 'pa', 'hr', 'gw', 'ta', 'te', 'mr', 'gu', 'kn', 'ml', 'ne'])
 
 /**
  * The visitor's own language for the featured shelves: 'india' (Lemody's home order),

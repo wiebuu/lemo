@@ -7,7 +7,7 @@ export const LANGUAGES: Record<string, string> = {
   hi: 'Hindi', en: 'English', pa: 'Punjabi', hr: 'Haryanvi', gw: 'Garhwali', ur: 'Urdu', ja: 'Japanese', es: 'Spanish',
   fr: 'French', it: 'Italian', de: 'German', id: 'Indonesian', ko: 'Korean', ta: 'Tamil', te: 'Telugu', ru: 'Russian',
   pt: 'Portuguese', ne: 'Nepali', ka: 'Georgian', bn: 'Bengali', mr: 'Marathi', gu: 'Gujarati', kn: 'Kannada', ml: 'Malayalam',
-  zh: 'Chinese', ar: 'Arabic', tr: 'Turkish',
+  zh: 'Chinese', ar: 'Arabic', tr: 'Turkish', tl: 'Filipino', vi: 'Vietnamese', th: 'Thai', ms: 'Malay',
 }
 export const languageName = (code: string) => LANGUAGES[code] ?? code.toUpperCase()
 

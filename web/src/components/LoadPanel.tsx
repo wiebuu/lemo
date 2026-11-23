@@ -23,7 +23,7 @@ import { shelfOrder, visitorHome } from '../lib/region'
 import { LikeButton } from './Like'
 import { Plays, PreviewButton, useLyricHits, usePreview, withLyricHits } from './SongSearch'
 import { SongSearch } from './SongSearch'
-import { cx, Eq, Menu, MenuItem, Pager, Tip, usePaged } from './ui'
+import { cx, Eq, Menu, MenuItem, Pager, Tip, usePaged, usePhone } from './ui'
 
 const STAGES: { id: JobStage; label: string }[] = [
   { id: 'fetching', label: 'get audio' },
@@ -488,6 +488,37 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   const [tab, setTab] = useState<'featured' | 'explore' | 'liked' | 'mine'>('featured')
   const [find, setFind] = useState('')
   useEffect(() => setFind(''), [tab])
+  // phones: the language chips, search and sort slide away while you scroll down the list
+  // (more songs in sight), and come back as soon as you scroll up — never while you're searching
+  const phone = usePhone()
+  const scroller = useRef<HTMLDivElement>(null)
+  const lastTop = useRef(0)
+  const [toolsAway, setToolsAway] = useState(false)
+  const settling = useRef(0)
+  const onListScroll = () => {
+    const el = scroller.current
+    if (!el) return
+    const top = el.scrollTop
+    // while the bar slides, the list's height changes and the browser nudges the scroll
+    // itself: that isn't the singer scrolling, so it mustn't flip the bar back (flicker)
+    if (performance.now() < settling.current) {
+      lastTop.current = top
+      return
+    }
+    const dy = top - lastTop.current
+    if (Math.abs(dy) < 8) return
+    lastTop.current = top
+    const away = dy > 0 && top > 24
+    if (away !== toolsAway) {
+      settling.current = performance.now() + 380
+      setToolsAway(away)
+    }
+  }
+  useEffect(() => {
+    setToolsAway(false)
+    lastTop.current = 0
+  }, [tab])
+  const toolsHidden = phone && toolsAway && !find
   // the language chips and the sort apply to featured, explore and liked (the sort is remembered on this device)
   const [{ lang, sort }, setView] = useState(savedView)
   const pick = (v: Partial<LibraryView>) => setView((was) => { const now = { ...was, ...v }; saveView(now); return now })
@@ -545,13 +576,14 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   // "your songs" and then jumping to featured when it arrives.
   const featuredLoading = loading && !featured.length
   const show = tab !== 'featured' ? tab : featured.length || featuredLoading ? 'featured' : 'mine'
+  const canFind = show === 'explore' || (show === 'liked' && likedIds.length > 0) || (show === 'mine' && own.length > 0)
   if (loading && !featured.length && !own.length) return <ListSkeleton fill={fill} />
   if (!featured.length && !own.length && !requests.length) return null
   const waiting = featured.filter((f) => !f.ready)
   const idle = waiting.length > 0 && waiting.every((f) => !f.stage || f.stage === 'failed' || f.stage === 'cancelled')
 
   return (
-    <div className={cx('mt-6 sm:mt-8', fill && 'flex-1 min-h-0 flex flex-col')}>
+    <div className={cx('mt-3 sm:mt-8', fill && 'flex-1 min-h-0 flex flex-col')}>
       {(featured.length > 0 || featuredLoading) && (
         <div className="flex items-center gap-4 sm:gap-5 mb-3 shrink-0 text-xs">
           {([['featured', 'featured'], ['explore', 'explore'], ['liked', `liked${likedIds.length ? ` · ${likedIds.length}` : ''}`],
@@ -565,14 +597,18 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
           <span className="flex-1 h-px bg-line" />
         </div>
       )}
-      {show !== 'mine' && langs.length > 0 && (
-        <LibraryBar langs={langs} lang={shownLang} sort={sort} onLang={(l) => pick({ lang: l })} onSort={(o) => pick({ sort: o })} />
+      {((show !== 'mine' && langs.length > 0) || canFind) && (
+        <div className={cx('shrink-0 grid transition-[grid-template-rows,opacity] duration-300 ease-out', toolsHidden ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100')}>
+          <div className="min-h-0 overflow-hidden">
+            <LibraryBar langs={show !== 'mine' ? langs : []} lang={shownLang} sort={show !== 'mine' ? sort : null} onLang={(l) => pick({ lang: l })} onSort={(o) => pick({ sort: o })}
+              search={canFind ? {
+                value: find, onChange: setFind,
+                label: show === 'mine' ? 'search your songs' : `search ${show === 'liked' ? 'liked' : 'every'}${shownLang ? ` ${languageName(shownLang)}` : ''} song${show === 'liked' ? 's' : ''}`,
+              } : undefined} />
+          </div>
+        </div>
       )}
-      {(show === 'explore' || (show === 'liked' && likedIds.length > 0) || (show === 'mine' && own.length > 0)) && (
-        <ListSearch value={find} onChange={setFind}
-          label={show === 'mine' ? 'search your songs' : `search ${show === 'liked' ? 'liked' : 'every'}${shownLang ? ` ${languageName(shownLang)}` : ''} song${show === 'liked' ? 's' : ''}`} />
-      )}
-      <div className={cx('overflow-y-auto -mx-2 px-2', fill ? 'flex-1 min-h-0' : 'max-h-[42vh]')}>
+      <div ref={scroller} onScroll={onListScroll} className={cx('overflow-y-auto -mx-2 px-2', fill ? 'flex-1 min-h-0' : 'max-h-[42vh]')}>
         {show === 'explore' ? (
           <Explore songs={exploreSorted} loading={!catalog.length} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
         ) : show === 'liked' ? (
@@ -766,14 +802,19 @@ function saveView(v: LibraryView) {
 }
 
 /** Language chips (only languages that have songs) and the sort. One row; the chips scroll sideways. */
-function LibraryBar({ langs, lang, sort, onLang, onSort }: {
+function LibraryBar({ langs, lang, sort, onLang, onSort, search }: {
   langs: { code: string; name: string; count: number }[]
   lang: string | null
-  sort: SortOrder
+  /** null: no sort here (your songs) */
+  sort: SortOrder | null
   onLang: (code: string | null) => void
   onSort: (o: SortOrder) => void
+  /** a search in this list: an icon by the sort, which opens a box in place of the chips */
+  search?: { value: string; onChange: (v: string) => void; label: string }
 }) {
   const row = useRef<HTMLDivElement>(null)
+  const [searching, setSearching] = useState(false)
+  const open = searching || !!search?.value
   // the chip that's on stays in sight (phones scroll the row sideways)
   useEffect(() => {
     const on = row.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
@@ -781,24 +822,46 @@ function LibraryBar({ langs, lang, sort, onLang, onSort }: {
   }, [lang])
   const chip = (on: boolean) => cx('shrink-0 h-7 px-3 rounded-full text-[11px] whitespace-nowrap transition-colors',
     on ? 'bg-main text-bg font-medium' : 'bg-sub-alt/50 text-sub hover:text-text hover:bg-sub-alt/80')
+  const close = () => {
+    search?.onChange('')
+    setSearching(false)
+  }
   return (
-    <div className="flex items-center gap-2 mb-2.5 shrink-0">
-      <div ref={row} role="group" aria-label="language" className="shelf relative flex-1 min-w-0 flex gap-1.5 overflow-x-auto -ml-0.5 pl-0.5">
-        <button type="button" aria-pressed={!lang} onClick={() => onLang(null)} className={chip(!lang)}>All</button>
-        {langs.map((l) => (
-          <button key={l.code} type="button" aria-pressed={lang === l.code} onClick={() => onLang(lang === l.code ? null : l.code)} className={chip(lang === l.code)}>
-            {l.name}
+    <div className="flex items-center gap-2 mb-2.5 h-8">
+      {search && open ? (
+        <ListSearch value={search.value} onChange={search.onChange} label={search.label} onClose={close} />
+      ) : (
+        <div ref={row} role="group" aria-label="language" className="shelf relative flex-1 min-w-0 flex gap-1.5 overflow-x-auto -ml-0.5 pl-0.5">
+          {langs.length > 0 && (
+            <>
+              <button type="button" aria-pressed={!lang} onClick={() => onLang(null)} className={chip(!lang)}>All</button>
+              {langs.map((l) => (
+                <button key={l.code} type="button" aria-pressed={lang === l.code} onClick={() => onLang(lang === l.code ? null : l.code)} className={chip(lang === l.code)}>
+                  {l.name}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+      {search && !open && (
+        <Tip tip={search.label}>
+          <button type="button" onClick={() => setSearching(true)} aria-label={search.label}
+            className="shrink-0 p-1.5 rounded-md text-sub hover:text-text transition-colors">
+            <Search size={14} />
           </button>
-        ))}
-      </div>
-      <Menu tip="Sort songs" buttonClassName="shrink-0 flex items-center gap-1 text-[11px] whitespace-nowrap"
-        button={<><ArrowDownWideNarrow size={13} /><span>{SORTS.find((s) => s.id === sort)?.short}</span></>}>
-        {(close) => SORTS.map((o) => (
-          <MenuItem key={o.id} icon={<Check size={13} className={cx(sort !== o.id && 'opacity-0')} />} label={o.label} active={sort === o.id}
-            tip={o.id === 'popular' ? 'Most plays on YouTube (counted once a week)' : o.id === 'sung' ? 'Most tests started on Lemody' : 'As Lemody lists them'}
-            onClick={() => { onSort(o.id); close() }} />
-        ))}
-      </Menu>
+        </Tip>
+      )}
+      {sort && (
+        <Menu tip="Sort songs" buttonClassName="shrink-0 flex items-center gap-1 text-[11px] whitespace-nowrap"
+          button={<><ArrowDownWideNarrow size={13} /><span>{SORTS.find((s) => s.id === sort)?.short}</span></>}>
+          {(close) => SORTS.map((o) => (
+            <MenuItem key={o.id} icon={<Check size={13} className={cx(sort !== o.id && 'opacity-0')} />} label={o.label} active={sort === o.id}
+              tip={o.id === 'popular' ? 'Most plays on YouTube (counted once a week)' : o.id === 'sung' ? 'Most tests started on Lemody' : 'As Lemody lists them'}
+              onClick={() => { onSort(o.id); close() }} />
+          ))}
+        </Menu>
+      )}
     </div>
   )
 }
@@ -904,18 +967,16 @@ function SearchPopup({ onClose, children }: { onClose: () => void; children: Rea
 }
 
 /** The small search above Explore and your songs. */
-function ListSearch({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+function ListSearch({ value, onChange, label, onClose }: { value: string; onChange: (v: string) => void; label: string; onClose: () => void }) {
   return (
-    <div className="relative mb-2 shrink-0 max-w-xs">
+    <div className="relative flex-1 min-w-0 sm:max-w-xs fade-in">
       <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sub pointer-events-none" />
-      <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && onChange('')}
+      <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && onClose()}
         placeholder={label} aria-label={label}
-        className="w-full h-8 rounded-lg bg-sub-alt/50 focus:bg-sub-alt/80 pl-8 pr-7 text-[16px] sm:text-[13px] text-text placeholder:text-sub outline-none transition-colors" />
-      {value && (
-        <button type="button" onClick={() => onChange('')} aria-label="clear" className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-sub hover:text-text">
-          <X size={12} />
-        </button>
-      )}
+        className="w-full h-8 rounded-lg bg-sub-alt/50 focus:bg-sub-alt/80 pl-8 pr-8 text-[16px] sm:text-[13px] text-text placeholder:text-sub outline-none transition-colors" />
+      <button type="button" onClick={onClose} aria-label="close search" className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-sub hover:text-text">
+        <X size={12} />
+      </button>
     </div>
   )
 }

@@ -201,6 +201,20 @@ export function AskDialog({ onClose, onAsked }: { onClose: () => void; onAsked: 
   const [url, setUrl] = useState('')
   const [state, setState] = useState<{ kind: 'idle' | 'sending' } | { kind: 'done'; title: string } | { kind: 'ready'; id: string } | { kind: 'error'; message: string }>({ kind: 'idle' })
   const input = useRef<HTMLInputElement>(null)
+  // phones: the sheet rides on top of the keyboard (the page itself doesn't shrink for it)
+  const [keyboard, setKeyboard] = useState(0)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const fit = () => setKeyboard(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)))
+    fit()
+    vv.addEventListener('resize', fit)
+    vv.addEventListener('scroll', fit)
+    return () => {
+      vv.removeEventListener('resize', fit)
+      vv.removeEventListener('scroll', fit)
+    }
+  }, [])
   useEffect(() => {
     input.current?.focus()
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -225,6 +239,7 @@ export function AskDialog({ onClose, onAsked }: { onClose: () => void; onAsked: 
   }
   return (
     <div data-page-dialog className="overlay-in fixed inset-0 z-[80] bg-black/55 flex items-end sm:items-center justify-center sm:p-6"
+      style={keyboard ? { paddingBottom: keyboard } : undefined}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal aria-labelledby="ask-title"
         className="not-prose modal-in sheet-in modal-card w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">

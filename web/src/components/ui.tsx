@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { Info, X } from 'lucide-react'
 import { studio, type Snapshot } from '../state/studio'
 import { sfx } from '../lib/sfx'
 
@@ -176,12 +176,11 @@ function useSheetDrag(sheet: React.RefObject<HTMLDivElement | null>, overlay: Re
   }
 }
 
-/** A settings row: title and explanation on top, controls underneath — never squeezed side by side. */
+/** A settings row: title (its explanation behind an ⓘ) on top, controls underneath — never squeezed side by side. */
 export function Section({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <div className="py-4 border-b border-sub-alt last:border-0">
-      <div className="text-text text-sm">{title}</div>
-      {hint && <p className="text-sub text-xs mt-1 leading-relaxed">{hint}</p>}
+      <div className="text-text text-sm flex items-center gap-1">{title}{hint && <InfoTip>{hint}</InfoTip>}</div>
       <div className="flex flex-wrap items-center gap-2 mt-3">{children}</div>
     </div>
   )
@@ -408,6 +407,20 @@ export function Menu({ button, tip, children, active, disabled, buttonClassName 
           document.body,
         )}
     </>
+  )
+}
+
+/**
+ * A small ⓘ: the explanation of something, kept out of the way until asked for. Opens on
+ * a click or tap (phones too), closes on a tap anywhere else or Esc.
+ */
+export function InfoTip({ children, label = 'what is this?' }: { children: ReactNode; label?: string }) {
+  return (
+    <span className="inline-flex align-middle not-prose">
+      <Menu button={<Info size={13} />} tip={label} buttonClassName="p-0.5 rounded-full">
+        <div className="text-xs leading-relaxed text-sub normal-case tracking-normal font-normal text-left [&_b]:text-text [&_b]:font-medium">{children}</div>
+      </Menu>
+    </span>
   )
 }
 

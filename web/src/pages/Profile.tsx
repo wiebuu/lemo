@@ -5,7 +5,7 @@ import { signInWithGoogle, useAuth } from '../auth/firebase'
 import { METRIC_LABELS } from '../lib/evaluation'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
-import { cx, Pager, Tip, usePaged } from '../components/ui'
+import { cx, InfoTip, Pager, Tip, usePaged } from '../components/ui'
 import type { MetricKey } from '../lib/types'
 import { go, navigate } from './router'
 
@@ -176,7 +176,13 @@ function ScoreChart({ history }: { history: HistoryTest[] }) {
     if (!el) return
     const ro = new ResizeObserver(() => setW(el.clientWidth))
     ro.observe(el)
-    return () => ro.disconnect()
+    // a tap anywhere off the chart puts its details away (phones have no "mouse left")
+    const away = (e: PointerEvent) => !el.contains(e.target as Node) && setAt(null)
+    window.addEventListener('pointerdown', away, true)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('pointerdown', away, true)
+    }
   }, [])
   if (pts.length < 2) return null
   const phone = w < 500
@@ -416,10 +422,10 @@ export function ProfileView({ data, onChange }: { data: MyProfile; onChange: (d:
       <ActivityCalendar days={data.days} />
       <ScoreChart history={data.history} />
       <History history={data.history} />
-      <p className="mt-5 text-[11px] sm:text-xs text-sub">
-        Others see your name, picture, numbers and activity, never your songs or voice:{' '}
-        <a href={`/u/${data.username}`} onClick={go} className="text-main">your public profile</a>.
-      </p>
+      <div className="mt-5 flex items-center gap-1 text-[11px] sm:text-xs text-sub">
+        <a href={`/u/${data.username}`} onClick={go} className="text-main">your public profile</a>
+        <InfoTip>Others see your name, picture, numbers and activity: never which songs you sang, nor your voice.</InfoTip>
+      </div>
     </div>
   )
 }

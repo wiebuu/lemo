@@ -1,12 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { early } from '../lib/staleBuild'
-import { ExternalLink, Laptop, Link2, Play, Plus, Upload, X } from 'lucide-react'
+import { ExternalLink, Link2, Play, Plus, Upload, X } from 'lucide-react'
 import { analyzer, type RequestBoard } from '../api/analyzer'
 import { useAuth } from '../auth/firebase'
 import { songLink } from '../lib/songLinks'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
-import { cx, Pager, usePaged } from '../components/ui'
+import { cx, InfoTip, Pager, usePaged } from '../components/ui'
 import { navigate } from './router'
 import { noteRequested, notifications } from '../state/notifications'
 
@@ -80,17 +80,21 @@ export function ComingPage() {
 
   return (
     <>
-      <p className="lead">Songs people asked Lemody to add. They’re added within a week — or right now, if you help.</p>
+      <div className="lead flex items-center gap-1.5 mb-4">
+        Songs people asked Lemody to add.
+        <InfoTip>
+          <div>They’re added within a week, or right now if you help.</div>
+          <div className="mt-2">
+            Got a good laptop or computer? Analyse a song on it and it’s added for everyone who asked. Song-file links are analysed
+            straight from the link; for YouTube, Spotify and the rest, use your own copy of the song.
+          </div>
+        </InfoTip>
+      </div>
       <button type="button" onClick={() => setAsking(true)}
         className="not-prose mb-4 rounded-full bg-main text-bg text-[13px] font-medium px-4 py-2 inline-flex items-center gap-1.5">
         <Plus size={14} /> ask for a song
       </button>
       {asking && <AskDialog onClose={() => setAsking(false)} onAsked={() => void load()} />}
-      <p>
-        <Laptop size={14} className="inline -mt-0.5 mr-1 text-main" />
-        Got a good laptop or computer? Analyse a song on it and it’s added for everyone who asked.
-        Song-file links are analysed straight from the link; for YouTube, Spotify and the rest, use your own copy of the song.
-      </p>
       {err && <p className="card">{err}</p>}
       {thanks && (
         <div className="card">
@@ -186,7 +190,6 @@ export function ComingPage() {
               <Pager at={added.at} pages={added.pages} onPage={added.go} />
             </>
           )}
-          <p className="mt-6">Want a song that isn’t here? <a href="#ask" onClick={(e) => { e.preventDefault(); setAsking(true) }}>Paste its link</a>.</p>
         </>
       )}
     </>

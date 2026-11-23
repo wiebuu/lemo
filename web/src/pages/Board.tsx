@@ -5,7 +5,7 @@ import { useAuth } from '../auth/firebase'
 import { formatTime } from '../lib/music'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
-import { cx, Pager, usePaged } from '../components/ui'
+import { cx, InfoTip, Pager, usePaged } from '../components/ui'
 import { go, navigate } from './router'
 
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`
@@ -58,12 +58,17 @@ export function TopPage() {
   }
   return (
     <>
-      <p className="lead">The best takes sung today. Tap one to open the full result — and hear how they sang it, where the singer shared their voice (🎤).</p>
-      <p>
-        Each singer’s best take of each song counts — at least {data?.minSeconds ?? 45} seconds of a song from the library,
-        at normal speed and in the original key (on easy difficulty, with a score of 50 or more). The score is the one on the singer’s own result.
-        {data && <> Starts again in {until(data.resetsAt)} (midnight, India time).</>}
-      </p>
+      <div className="lead flex items-center gap-1.5 mb-4">
+        The best takes sung today.
+        <InfoTip>
+          <div>Tap a take to open its full result, and hear the singer where they shared their voice (🎤).</div>
+          <div className="mt-2">
+            Each singer’s best take of each song counts: at least {data?.minSeconds ?? 45} seconds of a library song, at normal speed, in the
+            original key, on easy with a score of 50 or more.
+          </div>
+          {data && <div className="mt-2">Starts again in <b>{until(data.resetsAt)}</b> (midnight, India time).</div>}
+        </InfoTip>
+      </div>
       {error && <p className="card">{error}</p>}
       {!data && !error && <p className="text-sub">loading…</p>}
       {data && data.entries.length === 0 && (

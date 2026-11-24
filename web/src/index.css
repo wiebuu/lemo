@@ -647,6 +647,9 @@ button:disabled {
 
 /* ---- site pages (about, help, privacy …) -------------------------------------- */
 .page-in { animation: page-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* a screen fading in without moving (no transform: fixed bars inside stay on the screen) */
+.screen-in { animation: screen-in 0.22s ease-out both; }
+@keyframes screen-in { from { opacity: 0; } }
 @keyframes page-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
@@ -762,4 +765,14 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
 }
 @keyframes badge-pop {
   from { transform: scale(0.4); opacity: 0; }
+}
+
+/* the way into the singing course: tinted with the "low" and "high" pitch colours, so it
+   has colour in every theme (even mono) and reads as a place to go, not a setting */
+.course-btn {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--flat) 22%, transparent), color-mix(in srgb, var(--sharp) 18%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--flat) 35%, transparent);
+}
+.course-btn:hover {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--flat) 32%, transparent), color-mix(in srgb, var(--sharp) 26%, transparent));
 }

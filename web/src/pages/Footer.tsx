@@ -5,6 +5,7 @@ import { go } from './router'
 export const FOOTER_LINKS: [string, string][] = [
   ['/songs', 'Songs'],
   ['/guides', 'Guides'],
+  ['/practice', 'Singing course'],
   ['/top', 'Today’s top'],
   ['/stats', 'Stats'],
   ['/coming', 'Coming soon'],

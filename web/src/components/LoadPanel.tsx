@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { early } from '../lib/staleBuild'
-import { ArrowDownWideNarrow, Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
+import { ArrowDownWideNarrow, AudioLines, Check, HardDrive, Loader2, Play, Search, Trash2, Upload, X } from 'lucide-react'
 import { ApiError, analyzer, type AnalyzerHealth, type CatalogItem, type FeaturedItem, type JobStage, type JobStatus, type SongRequest } from '../api/analyzer'
 import { signedIn, signInWithGoogle } from '../auth/firebase'
 import { tidyTitle } from '../lib/titles'
@@ -915,11 +915,18 @@ function Hero({ onSearch }: { onSearch: () => void }) {
         <h1 className="hero-title text-[28px] sm:text-[44px] leading-[1.05] font-semibold text-text tracking-[-0.035em]">
           What are we <span className="text-main">singing</span> today?
         </h1>
-        <button type="button" onClick={onSearch} aria-label="search songs, upload one or paste a link"
-          className="group flex items-center gap-2 -ml-0.5 sm:ml-0 sm:mb-1.5 py-1 text-[13px] sm:text-sm text-sub hover:text-text transition-colors">
-          <Search size={16} className="text-text/80 group-hover:text-main transition-colors" />
-          <span>search or add a song</span>
-        </button>
+        <div className="flex items-center gap-4 sm:gap-5 -ml-0.5 sm:ml-0 sm:mb-1.5">
+          <button type="button" onClick={onSearch} aria-label="search songs, upload one or paste a link"
+            className="group flex items-center gap-2 py-1 text-[13px] sm:text-sm text-sub hover:text-text transition-colors">
+            <Search size={16} className="text-text/80 group-hover:text-main transition-colors" />
+            <span>search or add a song</span>
+          </button>
+          {/* new to singing: the course is one tap away */}
+          <a href="/practice" onClick={go} className="group flex items-center gap-1.5 py-1 text-[13px] sm:text-sm text-sub hover:text-text transition-colors">
+            <AudioLines size={15} className="text-main" />
+            <span>learn to sing in tune</span>
+          </a>
+        </div>
       </div>
     </div>
   )

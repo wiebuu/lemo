@@ -59,12 +59,12 @@ export function SitePage({ path }: { path: string }) {
   }, [])
 
   return (
-    <div ref={scroller} className="page-in fixed inset-0 z-[70] bg-bg overflow-y-auto overscroll-contain">
+    <div ref={scroller} className="screen-in fixed inset-0 z-[70] bg-bg overflow-y-auto overscroll-contain">
       <div className={`${page?.wide ? 'max-w-4xl' : 'max-w-2xl'} mx-auto px-4 sm:px-8 min-h-full flex flex-col`}>
-        <header className="flex items-center gap-3 pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] pb-3 sticky top-0 bg-bg/90 backdrop-blur z-10">
+        <header className="flex items-center gap-2 sm:gap-4 pt-[max(0.75rem,calc(env(safe-area-inset-top)-0.5rem))] pb-1.5 sm:pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] sm:pb-3 sticky top-0 bg-bg/90 backdrop-blur z-10">
           <a href="/" onClick={go} aria-label="Lemody home"><Wordmark /></a>
           <span className="flex-1" />
-          <a href="/" onClick={go} className="flex items-center gap-1.5 text-xs text-sub hover:text-text rounded-full surface px-3 py-1.5">
+          <a href="/" onClick={go} className="h-[29px] flex items-center gap-1.5 text-xs text-sub hover:text-text rounded-full surface px-3">
             <ArrowLeft size={13} /> back to singing
           </a>
         </header>

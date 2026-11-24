@@ -21,13 +21,14 @@ startAuth()
 installFeedback()
 
 const SitePage = lazy(early(() => import('./pages/Pages').then((m) => ({ default: m.SitePage }))))
+const PracticeApp = lazy(() => import('./practice/PracticeApp'))
 
 /** About, Help, Privacy … open over the app (readable signed in or not); loaded when first opened. */
 function Pages() {
   const path = usePath()
   return path === '/' ? null : (
     <Suspense fallback={<div className="fixed inset-0 z-[70] bg-bg" />}>
-      <SitePage path={path} />
+      {path === '/practice' ? <PracticeApp /> : <SitePage path={path} />}
     </Suspense>
   )
 }

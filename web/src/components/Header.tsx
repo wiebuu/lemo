@@ -1,5 +1,5 @@
 import { ChallengeBadge } from './Challenge'
-import { ChartColumn, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield, UserRound } from 'lucide-react'
+import { AudioLines, ChartColumn, ArrowRight, CircleHelp, Crown, Info, ListMusic, LogOut, Music2, PencilLine, Settings, Shield, UserRound } from 'lucide-react'
 import { signInWithGoogle, signOut, useAuth } from '../auth/firebase'
 import { useCloud } from '../state/cloud'
 import { useSong } from '../state/library'
@@ -77,6 +77,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
           </button>
         </Tip>
       )}
+      <CourseButton className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
       {signedIn && (
         <>
           <NotificationBell className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
@@ -140,6 +141,7 @@ function Account() {
             )}
           </div>
           <MenuItem icon={<UserRound size={14} />} label="profile" tip="Your activity, time singing and every test." onClick={() => { close(); navigate('/profile') }} />
+          <MenuItem icon={<AudioLines size={14} />} label="singing course" tip="Learn to hit a note and hold it in tune." onClick={() => { close(); navigate('/practice') }} />
           <MenuItem icon={<ListMusic size={14} />} label="coming soon" tip="Songs people asked for — help add one." onClick={() => { close(); navigate('/coming') }} />
           <MenuItem icon={<CircleHelp size={14} />} label="help & questions" tip="Answers to common questions." onClick={() => { close(); navigate('/help') }} />
           <MenuItem icon={<Shield size={14} />} label="privacy" tip="What Lemody keeps, and what it never does." onClick={() => { close(); navigate('/privacy') }} />
@@ -150,5 +152,53 @@ function Account() {
         </>
       )}
     </Menu>
+  )
+}
+
+/** How far into the singing course you are (kept in this browser by the course). */
+function courseProgress(): number {
+  try {
+    return Object.keys(JSON.parse(localStorage.getItem('lemody.course') ?? '{}').best ?? {}).length
+  } catch {
+    return 0
+  }
+}
+
+/** The way into the singing course: tinted, so it reads as a place to go, not one more setting. */
+function CourseButton({ className }: { className?: string }) {
+  const done = courseProgress()
+  return (
+    <div className={className}>
+      <Tip preview={<CoursePreview />} tip={
+        <span className="block">
+          <b className="font-semibold">Singing course</b>
+          <span className="block opacity-75 mt-0.5">{done ? `${done} of 12 lessons done — pick up where you left off.` : 'Learn to hit a note and hold it in tune, one note at a time.'}</span>
+          <span className="flex items-center gap-1 mt-1.5 font-medium">{done ? 'Continue' : 'Start lesson 1'} <ArrowRight size={11} /></span>
+        </span>
+      }>
+        <button type="button" onClick={() => navigate('/practice')} aria-label="singing course"
+          className="course-btn group h-[29px] flex items-center gap-1.5 rounded-full px-2 sm:px-3 text-[12px] font-medium text-text active:scale-[.97] transition-all">
+          <AudioLines size={15} className="text-flat transition-transform group-hover:scale-110" />
+          <span className="hidden sm:inline">practice</span>
+        </button>
+      </Tip>
+    </div>
+  )
+}
+
+/** A tiny lesson: the scale as steps, and a voice line landing on the lit one. */
+function CoursePreview() {
+  const steps = [0, 2, 4, 5, 7, 9, 11, 12]
+  return (
+    <svg viewBox="0 0 200 64" className="w-full h-16 block" aria-hidden>
+      {steps.map((s, i) => {
+        const h = 10 + s * 3.6
+        const lit = i === 4
+        return <rect key={s} x={4 + i * 24.5} y={62 - h} width="21" height={h} rx="3"
+          fill="var(--main)" fillOpacity={lit ? 0.3 : 0.08} stroke={lit ? 'var(--main)' : 'none'} strokeWidth="1" />
+      })}
+      <path d={`M4 ${62 - (10 + 2 * 3.6)} C 40 ${62 - 12} 70 ${62 - 44} 100 ${62 - (10 + 7 * 3.6)} L 196 ${62 - (10 + 7 * 3.6)}`}
+        fill="none" stroke="var(--voice)" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   )
 }

@@ -5,8 +5,8 @@
 
 export const SITE = 'https://www.lemodysounds.online'
 export const EMAIL = 'wiecodes@gmail.com'
-export const UPDATED = '10 November 2026'
-export const UPDATED_ISO = '2026-11-10'
+export const UPDATED = '25 November 2026'
+export const UPDATED_ISO = '2026-11-25'
 
 const mail = `<a href="mailto:${EMAIL}">${EMAIL}</a>`
 
@@ -29,13 +29,20 @@ const HELP_FAQ = [
   ['What do the scores mean?', 'Melody shape: how closely you follow the tune. Rhythm: whether notes start and end on time. Stability: how steadily you hold notes. Tone and dynamics: how your loudness and expression follow the original. They’re a practice guide, not a verdict on your voice.'],
   ['My voice line is a little behind the music.', 'That’s latency, common with Bluetooth. Run Settings → sound → calibrate once and it lines up.'],
   ['The lyrics are wrong or out of time.', 'Open the lyrics editor (the pencil icon) to search other sources, edit lines, or fix the timing. Your edits are saved to your account.'],
+  ['What is the singing course?', 'Twelve short lessons that teach you to hit a note and hold it in tune, one note at a time, the way a typing course adds one key at a time. Each lesson has four stages: meet the note, a drill where every note is played for you, practice where you ask for help only when stuck, and a test on your own. Open it from the practice button at the top, or go to <a href="/learn-to-sing">learn to sing</a>.'],
+  ['Sa Re Ga or Do Re Mi?', 'Both, and more. The singing course writes notes the way you learned them: Do Re Mi (solfège), Sa Re Ga (sargam), C D E (note names) or 1 2 3 (numbers). Switch at any time; your progress stays.'],
+  ['What is my home note?', 'The note the whole scale is built on (your Sa or Do). The first time you open the course, sing an easy “aah” and Lemody picks a home note that suits your voice. A low or high voice both fit. Change it any time from the note at the top of the course.'],
+  ['Can I find a song by its lyrics?', 'Yes. Type a line you remember, spelled any way (Hindi in English letters works too), and the search finds the song.'],
+  ['Can I challenge a friend?', 'Yes. After a test, press share: you get a picture of your score and a link to the same song. Your friend sees the score to beat while they sing.'],
+  ['What’s on my profile?', 'Sign in and your profile shows the days you sang, your time singing, your tests and a chart of your scores. Others can see your name, picture, numbers and activity at your public profile — never which songs you sang, and never your voice.'],
+  ['Can I keep a recording of my singing?', 'If a take makes today’s top and you’re signed in, you can play it back and download your cover from there. Other takes stay only in your device’s memory until you close the page.'],
   ['Which browsers work?', 'Recent Chrome, Edge, Safari and Firefox, on phones and computers.'],
 ]
 
 const faqHtml = (faq) =>
   `<div class="faq">${faq.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div>`
 
-const tryIt = (label = 'Start singing') => `<p><a class="button" href="/">${label}</a></p>`
+const tryIt = (label = 'Start singing', href = '/') => `<p><a class="button" href="${href}">${label}</a></p>`
 
 /** @type {Article[]} */
 export const ARTICLES = [
@@ -44,10 +51,10 @@ export const ARTICLES = [
     path: '/about',
     kind: 'site',
     title: 'About Lemody',
-    seoTitle: 'About Lemody · free online karaoke and singing practice',
-    description: 'Lemody is a free singing practice app by Wiecodes: sing along with lyrics, see your pitch live on the original melody and get honest scores.',
+    seoTitle: 'About Lemody · free online karaoke, singing lessons and practice',
+    description: 'Lemody is a free singing app by Wiecodes: karaoke in 24 languages with live pitch and honest scores, and lessons to learn to sing in tune, Sa Re Ga or Do Re Mi.',
     html: `
-<p class="lead">Lemody is a free place to practise singing along to the songs you love, and to see, note by note, how close you are.</p>
+<p class="lead">Lemody is a free place to practise singing along to the songs you love, to see, note by note, how close you are, and to learn to sing in tune from the very first note.</p>
 <h2>How it works</h2>
 <ol>
 <li><b>Pick a song.</b> Search the songs already in Lemody, or paste a YouTube link to add a new one. A new song is analysed once: the voice is separated from the music and its melody is drawn. From then on it opens instantly for everyone.</li>
@@ -61,11 +68,22 @@ export const ARTICLES = [
 <li>Synced lyrics in their own script, in Hindi or Urdu script, or written in English letters for any language (Hinglish, romaji, …).</li>
 <li>A live coach that tells you when the mic can’t hear you, the room is noisy, or you’re too loud.</li>
 <li>Sing in any key or octave: by default only the shape of the melody counts.</li>
+<li>Hear yourself next to the original on any phrase, with breath marks and a metronome to lean on.</li>
+<li>Lyrics that follow the singer’s own voice, a lyrics-only view you can pinch bigger, and a lyrics editor for fixes.</li>
+<li>Find a song by a line of its lyrics, spelled any way.</li>
 </ul>
-<h2>Songs in many languages</h2>
-<p>Hindi and Bollywood, Punjabi, English, Haryanvi, Garhwali and more. See <a href="/songs">all songs</a>, or ask for one that’s missing on <a href="/coming">coming soon</a>.</p>
+<h2>A singing course</h2>
+<p>Never sung before? The <a href="/learn-to-sing">singing course</a> teaches the most important skill first: hitting a note and holding it in tune. Twelve short lessons add one note at a time, like a typing course adds one key. Lemody plays the note, listens, and shows whether you’re high or low until you land it. Write the notes as Do Re Mi, Sa Re Ga, C D E or 1 2 3, and the course sets itself to your own voice.</p>
+<h2>Sing with others</h2>
+<ul>
+<li><a href="/top">Today’s top</a>: the 100 best takes of the day. Make the board and you can keep your cover.</li>
+<li>Challenge a friend: share a picture of your score with a link to the same song.</li>
+<li>Your profile: the days you sang, your time singing and every test, with a public page others can visit.</li>
+</ul>
+<h2>Songs in 24 languages</h2>
+<p>Over a thousand songs: Hindi and Bollywood, English, Punjabi, Haryanvi, Garhwali, Urdu and Bengali, and Indonesian, Japanese, Korean, Spanish, French, Italian, Portuguese, German, Vietnamese, Filipino, Malay, Thai and more. See <a href="/songs">all songs</a>, paste a YouTube link to add any song, or ask for one on <a href="/coming">coming soon</a>.</p>
 <h2>Learn as you go</h2>
-<p>Short <a href="/guides">guides</a> explain how to read the pitch graph, build a daily practice routine and improve your singing voice.</p>
+<p>Short <a href="/guides">guides</a> explain how to read the pitch graph, build a daily practice routine, find your vocal range and improve your singing voice.</p>
 <h2>Who makes it</h2>
 <p>Lemody is made by <a href="https://wiecodes.com/about">Wiecodes</a>, a small independent studio. Write to us any time at ${mail}.</p>`,
   },
@@ -74,7 +92,7 @@ export const ARTICLES = [
     kind: 'site',
     title: 'Help & questions',
     seoTitle: 'Help · Lemody singing app questions',
-    description: 'Answers to common Lemody questions: headphones, microphone access, background noise, scores, latency, lyrics and supported browsers.',
+    description: 'Answers to common Lemody questions: the singing course, headphones, microphone access, scores, sharing a challenge, your profile, latency, lyrics and browsers.',
     faq: HELP_FAQ,
     html: `
 <p class="lead">Quick answers to the things people ask most.</p>
@@ -104,6 +122,12 @@ ${faqHtml(HELP_FAQ)}
 <li>Your song list, liked songs, lyric edits, breath marks and scores.</li>
 </ul>
 <p>This is kept in our database (Google Firebase) so it follows you across devices. Your browser keeps a small copy of your settings so the app works smoothly.</p>
+
+<h2>The singing course</h2>
+<p>The singing course listens through your microphone in your browser, exactly like the rest of Lemody: nothing you sing is recorded or uploaded. Your progress (lessons done, stars, your home note and how notes are written) is kept in your browser only.</p>
+
+<h2>Your profile</h2>
+<p>If you sign in, you get a username and a profile with the days you sang, your time singing, your tests and your scores. Your public profile (at /u/your-username) shows others your username, picture, when you joined, your numbers and the days you sang. It never shows which songs you sang or your voice. You can change your username at any time.</p>
 
 <h2>Songs you ask for</h2>
 <p>When you ask Lemody to add a song, it’s listed on <a href="/coming">coming soon</a> for signed-in singers: the song, its link, when it was asked for, and the first name of everyone who asked. If someone adds it by analysing it on their own device, their first name is shown with it. Cancel a request and your name comes off the list.</p>
@@ -211,11 +235,12 @@ ${faqHtml(HELP_FAQ)}
     kind: 'landing',
     title: 'Free online karaoke with lyrics',
     seoTitle: 'Free online karaoke with lyrics and scores · no sign-up | Lemody',
-    description: 'Sing karaoke online for free: Hindi, Punjabi and English songs with synced lyrics, your pitch drawn live on the melody and a score after every song. No sign-up.',
+    description: 'Sing karaoke online free: songs in 24 languages, Hindi, English, Punjabi and more, with synced lyrics, your pitch live on the melody and a score. No sign-up.',
     faq: [
       ['Is it really free?', 'Yes. Lemody is free and runs in your browser. Ads keep it that way.'],
       ['Do I need to download an app?', 'No. It works in Chrome, Safari, Edge and Firefox, on phones and computers.'],
-      ['Can I sing Hindi and Punjabi songs?', 'Yes. Hindi and Bollywood, Punjabi, Haryanvi, Garhwali, English and more. Paste a YouTube link to add any song.'],
+      ['Which languages can I sing in?', 'Over a thousand songs in 24 languages: Hindi and Bollywood, English, Punjabi, Haryanvi, Garhwali, Indonesian, Japanese, Korean, Spanish, French and more. Paste a YouTube link to add any song.'],
+      ['I’ve never sung before. Where do I start?', 'Start with the free <a href="/learn-to-sing">singing course</a>: short lessons that teach you to hit and hold a note in tune before you take on a whole song.'],
       ['Does it give a score?', 'Yes. After a test you get scores for melody, rhythm, stability, tone and dynamics.'],
     ],
     html: `
@@ -228,10 +253,11 @@ ${tryIt('Sing karaoke now')}
 <li><b>An honest score.</b> Separate marks for melody, rhythm, stability and dynamics, not one random number.</li>
 <li><b>Any key.</b> Sing higher or lower than the original. Only the shape of the melody counts.</li>
 <li><b>Practice tools.</b> Slow the song down, change the key, loop one line.</li>
+<li><b>Challenge friends.</b> Share your score with a link to the same song, and try for <a href="/top">today’s top</a>.</li>
 </ul>
 <h2>Songs to sing</h2>
-<p>Bollywood hits, old Hindi classics, Punjabi, Haryanvi and Garhwali songs, and English pop. Browse by language:</p>
-<p class="tags"><a href="/karaoke/hindi">Hindi karaoke</a><a href="/karaoke/punjabi">Punjabi karaoke</a><a href="/karaoke/english">English karaoke</a><a href="/karaoke/haryanvi">Haryanvi karaoke</a><a href="/karaoke/garhwali">Garhwali karaoke</a><a href="/songs">All songs</a></p>
+<p>Bollywood hits, old Hindi classics, Punjabi, Haryanvi and Garhwali songs, English pop, and songs from Indonesia, Japan, Korea, Latin America and Europe. Browse by language:</p>
+<p class="tags"><a href="/karaoke/hindi">Hindi karaoke</a><a href="/karaoke/english">English karaoke</a><a href="/karaoke/punjabi">Punjabi karaoke</a><a href="/karaoke/indonesian">Indonesian karaoke</a><a href="/karaoke/japanese">Japanese karaoke</a><a href="/karaoke/korean">Korean karaoke</a><a href="/karaoke/spanish">Spanish karaoke</a><a href="/karaoke/haryanvi">Haryanvi karaoke</a><a href="/karaoke/garhwali">Garhwali karaoke</a><a href="/songs">All songs</a></p>
 <p>Can’t find yours? Paste its YouTube link in Lemody and it’s added for everyone.</p>
 <h2>How to sing karaoke online</h2>
 <ol>
@@ -252,7 +278,7 @@ ${tryIt('Sing karaoke now')}
     faq: [
       ['How does the pitch checker work?', 'Your browser listens through the mic, finds the note you’re singing many times a second, and draws it on the song’s melody. Nothing is uploaded.'],
       ['What are cents?', 'A cent is a hundredth of a semitone. Within about ±20 cents sounds in tune to most listeners.'],
-      ['Can I check my pitch without a song?', 'Lemody is built around songs: it compares you with the original singer, which tells you far more than a bare note.'],
+      ['Can I check my pitch without a song?', 'Yes: the <a href="/learn-to-sing">singing course</a> plays one note at a time and shows whether you’re high or low until you hold it in tune. With a song, Lemody compares you with the original singer, which tells you even more.'],
     ],
     html: `
 <p class="lead">Want to know if you’re singing in tune? Sing along to a real song and Lemody draws your pitch right on the original singer’s melody.</p>
@@ -307,6 +333,52 @@ ${tryIt('Take the singing test')}
 <h2>Questions</h2>`,
   },
 
+  {
+    path: '/learn-to-sing',
+    kind: 'landing',
+    title: 'Learn to sing in tune',
+    seoTitle: 'Learn to sing online free · Sa Re Ga Ma and Do Re Mi lessons | Lemody',
+    description: 'Free online singing lessons for beginners: hear a note, sing it and hold it in tune while Lemody shows if you’re high or low. Sa Re Ga Ma, Do Re Mi, C D E or 1 2 3.',
+    faq: [
+      ['I’ve never sung. Can I start here?', 'Yes. Lesson 1 is a single note. Each lesson adds one more, so you never face more than one new thing at a time.'],
+      ['Do I need to know music?', 'No. You only need to hear a note and match it. The course shows you whether to go higher or lower.'],
+      ['Sa Re Ga Ma or Do Re Mi?', 'Whichever you know. Pick Sa Re Ga (sargam), Do Re Mi (solfège), C D E (note names) or 1 2 3, and switch any time.'],
+      ['Is my voice too low or too high?', 'Neither. Before the first lesson you sing one easy note, and the course builds its scale from a home note that suits your voice.'],
+      ['Is it free?', 'Yes. It runs in your browser, nothing to install, and nothing you sing is recorded.'],
+    ],
+    html: `
+<p class="lead">Singing in tune comes down to one skill: hearing a note, landing on it, and holding it there. Lemody’s free course teaches exactly that, one note at a time, the way a typing course teaches one key at a time.</p>
+${tryIt('Start the singing course', '/practice')}
+<h2>How a lesson works</h2>
+<p>Every lesson adds a new note and runs in four stages, each with a little less help:</p>
+<ol>
+<li><b>Meet the note.</b> Lemody plays it. You sing it back and hold it until the ring fills.</li>
+<li><b>Drill.</b> A short line of notes, each one played for you first.</li>
+<li><b>Practice.</b> Only the first note is played. Ask to hear one when you’re stuck.</li>
+<li><b>Test.</b> You hear your home note, then find the rest by ear. That’s the skill that carries into real songs.</li>
+</ol>
+<p>Hold a note in tune for a second and the next one lights up. If you drift, an arrow says “a little higher” or “a little lower”, and a line shows your voice against the note.</p>
+<h2>Twelve lessons</h2>
+<ul>
+<li><b>The scale, note by note:</b> your home note, then one new step each lesson, up to the high home note.</li>
+<li><b>Moving around:</b> the full scale up and down, skips, big leaps, and long held notes.</li>
+</ul>
+<p>Each test gives you stars for how close you were and how quickly you found each note, and the next lesson unlocks.</p>
+<h2>Your notes, your way</h2>
+<ul>
+<li><b>Sa Re Ga Ma Pa Dha Ni</b>: sargam, as in Indian classical music and riyaz.</li>
+<li><b>Do Re Mi Fa Sol La Ti</b>: solfège, how most of the world learns to sing.</li>
+<li><b>C D E F G A B</b>: note names, as on a piano.</li>
+<li><b>1 2 3 4 5 6 7</b>: the steps of the scale.</li>
+</ul>
+<p>Free practice lets you type any line of notes, like <i>sa re ga ma</i> or <i>do mi sol do’</i>, and sing it.</p>
+<h2>Fits your voice</h2>
+<p>Sing one easy “aah” and the course picks a home note to suit you, so a deep voice and a high voice both sing comfortably. Any octave counts.</p>
+<h2>Then sing real songs</h2>
+<p>Once you can hold a note, take it into a song: <a href="/karaoke-online">free online karaoke</a> shows your pitch on the original melody, line by line. For a daily habit, try the <a href="/guides/daily-vocal-practice-routine">15-minute practice routine</a>.</p>
+<h2>Questions</h2>`,
+  },
+
   // ---------------------------------------------------------------- guides
   {
     path: '/guides/how-to-read-the-pitch-graph',
@@ -356,7 +428,7 @@ ${tryIt('Try it on a song')}`,
 <h2>3. Warm up first</h2>
 <p>Five minutes is enough. Hum, do lip trills, then slide gently from low to high and back. Never start on your hardest song.</p>
 <h2>4. Train your ear</h2>
-<p>Singing in tune starts with hearing. Sing one note, hold it, and check it on a <a href="/pitch-checker">pitch checker</a>. Then try short phrases. The more you see your pitch, the faster your ear learns.</p>
+<p>Singing in tune starts with hearing. Sing one note, hold it, and check it. The free <a href="/learn-to-sing">singing course</a> does exactly this, one note at a time. Then try short phrases on a <a href="/pitch-checker">pitch checker</a>. The more you see your pitch, the faster your ear learns.</p>
 <h2>5. Slow it down</h2>
 <p>Hard line? Slow the song down without changing its key, loop just that line, and sing it five times. Then speed it back up.</p>
 <h2>6. Record and listen</h2>
@@ -396,7 +468,7 @@ ${tryIt('Start practising')}`,
 <ul>
 <li>Sing five notes up and down a scale on “ma”: do-re-mi-fa-sol-fa-mi-re-do.</li>
 <li>Move it up a step each time, and stop before it strains.</li>
-<li>Check yourself on the <a href="/pitch-checker">pitch graph</a>: are you landing on each note?</li>
+<li>Check yourself: the <a href="/learn-to-sing">singing course</a> listens to each note and tells you if you’re high or low. Do one lesson a day.</li>
 </ul>
 <h2>Minutes 9–14: one song section</h2>
 <p>Pick one verse or chorus, not the whole song.</p>
@@ -432,6 +504,7 @@ ${tryIt('Pick a song')}`,
 <li>Read both notes on a pitch graph, like Lemody’s note names on the left.</li>
 </ol>
 <p>Count only notes you can sing with ease. A squeezed high note doesn’t count.</p>
+<p>Quicker: the “find your voice” step of the <a href="/learn-to-sing">singing course</a> listens to one easy note and picks a home note that suits you.</p>
 <h2>Common voice types</h2>
 <ul>
 <li><b>Bass</b>: about E2 to E4.</li>
@@ -520,12 +593,13 @@ ARTICLES.push({
   kind: 'site',
   title: 'Singing guides',
   seoTitle: 'Singing guides: practice, pitch and karaoke tips | Lemody',
-  description: 'Short, practical singing guides: improve your voice at home, a daily vocal practice routine, find your vocal range, sing high notes and karaoke tips.',
+  description: 'Short, practical singing guides and a free singing course: improve your voice at home, a daily practice routine, find your vocal range, high notes and karaoke tips.',
   html: `
 <p class="lead">Short, practical guides to help you sing better. Read one, then try it on a song.</p>
 <ul class="guide-list">${GUIDES.map((g) => `<li><a href="${g.path}">${g.title}</a><span>${g.description}</span></li>`).join('')}</ul>
 <h2>Tools</h2>
 <ul class="guide-list">
+<li><a href="/learn-to-sing">Singing course</a><span>Learn to hit and hold a note in tune, one note at a time.</span></li>
 <li><a href="/karaoke-online">Free online karaoke</a><span>Songs with lyrics, live pitch and a score.</span></li>
 <li><a href="/pitch-checker">Singing pitch checker</a><span>See if you sing in tune, note by note.</span></li>
 <li><a href="/singing-test">Online singing test</a><span>Score your singing against the original.</span></li>
@@ -542,12 +616,27 @@ export const KARAOKE_LANGS = {
   English: { slug: 'english', intro: 'English pop, rock and ballads, with synced lyrics.' },
   Haryanvi: { slug: 'haryanvi', intro: 'Popular Haryanvi songs, with synced lyrics.' },
   Garhwali: { slug: 'garhwali', intro: 'Garhwali folk and new songs from Uttarakhand, with synced lyrics.' },
+  Urdu: { slug: 'urdu', intro: 'Urdu songs and ghazals, with synced lyrics in Urdu script or English letters.' },
+  Bengali: { slug: 'bengali', intro: 'Bengali songs, with synced lyrics.' },
+  Indonesian: { slug: 'indonesian', intro: 'Indonesian pop and ballads, with synced lyrics.' },
+  Japanese: { slug: 'japanese', intro: 'Japanese pop, anime and rock songs, with synced lyrics in Japanese or romaji.' },
+  Korean: { slug: 'korean', intro: 'K-pop and Korean ballads, with synced lyrics in Hangul or English letters.' },
+  Spanish: { slug: 'spanish', intro: 'Spanish and Latin pop, with synced lyrics.' },
+  French: { slug: 'french', intro: 'French pop and chanson, with synced lyrics.' },
+  Italian: { slug: 'italian', intro: 'Italian pop and classics, with synced lyrics.' },
+  Portuguese: { slug: 'portuguese', intro: 'Brazilian and Portuguese songs, with synced lyrics.' },
+  German: { slug: 'german', intro: 'German pop and rock, with synced lyrics.' },
+  Vietnamese: { slug: 'vietnamese', intro: 'Vietnamese pop and ballads, with synced lyrics.' },
+  Filipino: { slug: 'filipino', intro: 'OPM and Filipino ballads, with synced lyrics.' },
+  Malay: { slug: 'malay', intro: 'Malay pop and ballads, with synced lyrics.' },
+  Thai: { slug: 'thai', intro: 'Thai pop and ballads, with synced lyrics.' },
 }
 
 /** Links in the site footer (static pages show all; the app shows a shorter list). */
 export const FOOTER = [
   ['/songs', 'Songs'],
   ['/guides', 'Guides'],
+  ['/learn-to-sing', 'Learn to sing'],
   ['/karaoke-online', 'Karaoke online'],
   ['/pitch-checker', 'Pitch checker'],
   ['/singing-test', 'Singing test'],

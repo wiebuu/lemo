@@ -25,7 +25,7 @@ const LANGS = {
   hi: 'Hindi', pa: 'Punjabi', gw: 'Garhwali', ku: 'Kumaoni', hr: 'Haryanvi', en: 'English', ur: 'Urdu',
   ta: 'Tamil', te: 'Telugu', ml: 'Malayalam', bn: 'Bengali', mr: 'Marathi', ne: 'Nepali', es: 'Spanish',
   fr: 'French', it: 'Italian', pt: 'Portuguese', ja: 'Japanese', ko: 'Korean', ru: 'Russian', ka: 'Georgian',
-  de: 'German', id: 'Indonesian',
+  de: 'German', id: 'Indonesian', vi: 'Vietnamese', tl: 'Filipino', ms: 'Malay', th: 'Thai',
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
@@ -162,7 +162,7 @@ function write(path, html) {
 }
 
 /** sitemap entries: [path, changefreq, priority, lastmod?] */
-const map = [['/', 'weekly', '1.0']]
+const map = [['/', 'weekly', '1.0'], ['/practice', 'monthly', '0.8']]
 
 // ---- the reading pages
 for (const a of ARTICLES) {

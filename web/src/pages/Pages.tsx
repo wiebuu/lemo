@@ -94,7 +94,7 @@ function ArticleBody({ article }: { article: Article }) {
   const onClick = (e: MouseEvent<HTMLDivElement>) => {
     const a = (e.target as HTMLElement).closest('a')
     const href = a?.getAttribute('href')
-    if (!a || !href || !(href === '/' || PAGES[href])) return
+    if (!a || !href || !(href === '/' || href === '/practice' || PAGES[href])) return
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
     e.preventDefault()
     navigate(href)

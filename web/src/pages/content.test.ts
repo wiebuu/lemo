@@ -4,7 +4,7 @@ import { ARTICLES, FOOTER, KARAOKE_LANGS } from './content.js'
 
 const paths = new Set(ARTICLES.map((a) => a.path))
 const langPaths = new Set(Object.values(KARAOKE_LANGS).map((l) => `/karaoke/${l.slug}`))
-const appPaths = new Set(['/', '/songs', '/top', '/stats', '/coming'])
+const appPaths = new Set(['/', '/songs', '/top', '/stats', '/coming', '/practice'])
 
 describe('reading pages', () => {
   it('have unique paths, a title and a description that fits a search result', () => {

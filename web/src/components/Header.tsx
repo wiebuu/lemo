@@ -24,7 +24,9 @@ export function Header({ open }: { open: (p: Panel) => void }) {
   const signedIn = useAuth().status === 'signed-in' // a guest has no notifications or profile: no buttons for them
   return (
     // below the notch / status bar when Lemody runs full screen (added to the home screen)
-    <header className="flex items-center gap-2 sm:gap-4 pt-[max(0.75rem,calc(env(safe-area-inset-top)-0.5rem))] pb-1.5 sm:pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] sm:pb-3 shrink-0">
+    // big screens, no song open: the header is only a little wider than the page under it,
+    // so its two ends don't drift to the far edges of the window
+    <header className={cx('w-full flex items-center gap-2 sm:gap-4', !t && 'lg:max-w-5xl lg:mx-auto', 'pt-[max(0.75rem,calc(env(safe-area-inset-top)-0.5rem))] pb-1.5 sm:pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] sm:pb-3 shrink-0')}>
       <button type="button" onClick={() => { open(null); studio.goHome() }} className="shrink-0" aria-label="home">
         <Wordmark />
       </button>

@@ -489,36 +489,41 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   const [find, setFind] = useState('')
   useEffect(() => setFind(''), [tab])
   // phones: the language chips, search and sort slide away while you scroll down the list
-  // (more songs in sight), and come back as soon as you scroll up — never while you're searching
+  // (more songs in sight), and come back as soon as you scroll up — never while you're searching.
+  // The bar floats over the top of the list (which keeps room for it), so hiding it never
+  // changes the list's size: no jump in the list, and no scroll nudge that would flip it back.
   const phone = usePhone()
   const scroller = useRef<HTMLDivElement>(null)
+  const [barH, setBarH] = useState(0)
   const lastTop = useRef(0)
   const [toolsAway, setToolsAway] = useState(false)
-  const settling = useRef(0)
   const onListScroll = () => {
     const el = scroller.current
     if (!el) return
-    const top = el.scrollTop
-    // while the bar slides, the list's height changes and the browser nudges the scroll
-    // itself: that isn't the singer scrolling, so it mustn't flip the bar back (flicker)
-    if (performance.now() < settling.current) {
-      lastTop.current = top
-      return
-    }
+    // the bounce past either end (phones) isn't the singer changing direction: count it as the end
+    const top = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, el.scrollTop))
     const dy = top - lastTop.current
     if (Math.abs(dy) < 8) return
     lastTop.current = top
-    const away = dy > 0 && top > 24
-    if (away !== toolsAway) {
-      settling.current = performance.now() + 380
-      setToolsAway(away)
-    }
+    const away = dy > 0 && top > barH
+    if (away !== toolsAway) setToolsAway(away)
   }
   useEffect(() => {
     setToolsAway(false)
     lastTop.current = 0
   }, [tab])
   const toolsHidden = phone && toolsAway && !find
+  // the room the list keeps for the bar follows its height (it wraps on narrow screens)
+  const barSeen = useRef<ResizeObserver | null>(null)
+  const barRef = useCallback((el: HTMLDivElement | null) => {
+    barSeen.current?.disconnect()
+    barSeen.current = null
+    if (!el) return setBarH(0)
+    const ro = new ResizeObserver(() => setBarH(el.offsetHeight))
+    ro.observe(el)
+    barSeen.current = ro
+    setBarH(el.offsetHeight)
+  }, [])
   // the language chips and the sort apply to featured, explore and liked (the sort is remembered on this device)
   const [{ lang, sort }, setView] = useState(savedView)
   const pick = (v: Partial<LibraryView>) => setView((was) => { const now = { ...was, ...v }; saveView(now); return now })
@@ -577,6 +582,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   const featuredLoading = loading && !featured.length
   const show = tab !== 'featured' ? tab : featured.length || featuredLoading ? 'featured' : 'mine'
   const canFind = show === 'explore' || (show === 'liked' && likedIds.length > 0) || (show === 'mine' && own.length > 0)
+  const hasBar = (show !== 'mine' && langs.length > 0) || canFind
   if (loading && !featured.length && !own.length) return <ListSkeleton fill={fill} />
   if (!featured.length && !own.length && !requests.length) return null
   const waiting = featured.filter((f) => !f.ready)
@@ -597,18 +603,20 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
           <span className="flex-1 h-px bg-line" />
         </div>
       )}
-      {((show !== 'mine' && langs.length > 0) || canFind) && (
-        <div className={cx('shrink-0 grid transition-[grid-template-rows,opacity] duration-300 ease-out', toolsHidden ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100')}>
-          <div className="min-h-0 overflow-hidden">
+      {/* clipped above and below only: the bar slides up out of sight, the rows keep their side room */}
+      <div className={cx('relative [clip-path:inset(0_-1rem)]', fill && 'flex-1 min-h-0 flex flex-col')}>
+      {hasBar && (
+        <div ref={barRef} className={cx('absolute inset-x-0 top-0 z-10 bg-bg transition-[transform,opacity] duration-300 ease-out will-change-transform',
+          toolsHidden && '-translate-y-full opacity-0 pointer-events-none')}>
             <LibraryBar langs={show !== 'mine' ? langs : []} lang={shownLang} sort={show !== 'mine' ? sort : null} onLang={(l) => pick({ lang: l })} onSort={(o) => pick({ sort: o })}
               search={canFind ? {
                 value: find, onChange: setFind,
                 label: show === 'mine' ? 'search your songs' : `search ${show === 'liked' ? 'liked' : 'every'}${shownLang ? ` ${languageName(shownLang)}` : ''} song${show === 'liked' ? 's' : ''}`,
               } : undefined} />
-          </div>
         </div>
       )}
-      <div ref={scroller} onScroll={onListScroll} className={cx('overflow-y-auto -mx-2 px-2', fill ? 'flex-1 min-h-0' : 'max-h-[42vh]')}>
+      <div ref={scroller} onScroll={onListScroll} style={{ paddingTop: hasBar ? barH : 0, maxHeight: fill ? undefined : `calc(42vh + ${hasBar ? barH : 0}px)` }}
+        className={cx('overflow-y-auto -mx-2 px-2', fill && 'flex-1 min-h-0')}>
         {show === 'explore' ? (
           <Explore songs={exploreSorted} loading={!catalog.length} find={find} lang={shownLang} sort={sort} opening={opening} online={online} onOpen={onOpen} />
         ) : show === 'liked' ? (
@@ -701,6 +709,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
         ) : (
           <div className="text-xs text-sub py-2 px-2">songs you open or add show up here — on every device you sign in on. nothing is stored on your phone.</div>
         )}
+      </div>
       </div>
     </div>
   )

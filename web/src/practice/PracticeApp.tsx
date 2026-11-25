@@ -3,11 +3,12 @@
 // Phones first: compact type, small controls, the actions in a bar under the thumb.
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, AudioWaveform, Check, ChevronLeft, ChevronRight, Lock, Mic, MicVocal, PencilLine, RotateCcw, SkipForward, Star, Volume2 } from 'lucide-react'
+import { ArrowRight, AudioWaveform, Check, ChevronLeft, ChevronRight, Lock, Mic, MicVocal, PencilLine, RotateCcw, SkipForward, Star, Volume2 } from 'lucide-react'
 import { Wordmark } from '../components/Brand'
 import { cx } from '../components/ui'
-import { go, navigate } from '../pages/router'
+import { back, navigate } from '../pages/router'
 import { SiteFooter } from '../pages/Footer'
+import { BackButton } from '../pages/Pages'
 import { studio } from '../state/studio'
 import { median, midiToNoteName } from '../lib/music'
 import {
@@ -65,11 +66,15 @@ export default function PracticeApp() {
   const scroller = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const was = document.title
     document.title = 'Singing course · learn to sing in tune · Lemody'
     // the studio underneath: its song and mic would get in the way
     if (studio.snap.playing) void studio.togglePlay()
     if (studio.snap.mic !== 'off') void studio.toggleMic()
-    return () => voice.close()
+    return () => {
+      voice.close()
+      document.title = was
+    }
   }, [voice])
 
   // only the lesson and voice screens listen
@@ -83,7 +88,7 @@ export default function PracticeApp() {
       if (e.key !== 'Escape') return
       if (e.target instanceof HTMLInputElement) return e.target.blur()
       e.preventDefault()
-      if (screen.k === 'home') navigate('/')
+      if (screen.k === 'home') back()
       else setScreen({ k: 'home' })
     }
     window.addEventListener('keydown', onKey, true)
@@ -106,9 +111,7 @@ export default function PracticeApp() {
             <span className="font-mono text-text">{homeName(p.notation, p.home)}</span>
             {p.notation !== 'letters' && <span className="font-mono">{midiToNoteName(p.home)}</span>}
           </button>
-          <a href="/" onClick={go} className="h-[29px] flex items-center gap-1.5 text-xs text-sub hover:text-text rounded-full surface px-3">
-            <ArrowLeft size={13} /> <span className="hidden sm:inline">back to singing</span><span className="sm:hidden">back</span>
-          </a>
+          <BackButton />
         </header>
       </div>
 
@@ -142,16 +145,8 @@ function CourseMap({ p, update, open, free, voice }: { p: Progress; update: (x: 
   const l = LESSONS[next]
   return (
     <div>
-      {/* the start screen's staff and sung line, so the course feels like part of Lemody */}
-      <svg viewBox="0 0 640 46" className="w-full h-5 mb-3 sm:h-7 sm:mb-4" aria-hidden preserveAspectRatio="none">
-        {[0, 1, 2, 3, 4].map((k) => (
-          <line key={k} x1="0" x2="640" y1={5 + k * 9} y2={5 + k * 9} stroke="var(--text)" strokeOpacity=".07" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        ))}
-        <path d="M0 41 L80 41 L80 32 L160 32 L160 23 L240 23 L240 18.5 L320 18.5 L320 9.5 L400 9.5 L400 5 L640 5"
-          fill="none" stroke="var(--line)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        <path d="M0 38 C50 38 60 30 100 31 S170 22 210 23 S280 16 320 18 S370 8 410 9.5 S520 5 640 5"
-          fill="none" stroke="var(--main)" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      </svg>
+      {/* the start screen's staff and sung line: shaky at first, steadier with every lesson done */}
+      <SungLine skill={done / LESSONS.length} />
       <Eyebrow>Singing course</Eyebrow>
       <div className="mt-1 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-6">
         <div>
@@ -207,6 +202,70 @@ function CourseMap({ p, update, open, free, voice }: { p: Progress; update: (x: 
 
       <SiteFooter className="mt-12 pt-6 border-t border-line" />
     </div>
+  )
+}
+
+/** The start screen's melody (the same curve), as a voice would sing it. */
+const MELODY = 'M0 34 C60 34 70 16 120 16 S190 38 250 30 S330 8 390 12 S470 34 520 22 S600 10 640 14'
+
+/** Where the melody is at each step across (sampled once from the curve itself). */
+let melodyY: number[] | null = null
+function sampleMelody(n: number): number[] {
+  if (melodyY) return melodyY
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  path.setAttribute('d', MELODY)
+  const len = path.getTotalLength()
+  // walk along the curve and keep the height at every x step
+  const ys: number[] = new Array(n + 1)
+  let at = 0
+  for (let k = 0; k <= n; k++) {
+    const x = (640 * k) / n
+    while (at < len && path.getPointAtLength(at).x < x) at += 1
+    ys[k] = path.getPointAtLength(Math.min(at, len)).y
+  }
+  return (melodyY = ys)
+}
+
+/** A smooth path through points (Catmull-Rom as curves), so even a shaky line isn't jagged. */
+function through(pts: [number, number][]): string {
+  let d = `M${pts[0][0]} ${pts[0][1].toFixed(2)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2
+    d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(2)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(2)} ${p2[0]} ${p2[1].toFixed(2)}`
+  }
+  return d
+}
+
+/**
+ * The melody over the staff, sung by you: at the start the line wavers off the tune and is
+ * faint; each lesson done steadies it, until (all done) it's the start screen's own clean line.
+ */
+function SungLine({ skill }: { skill: number }) {
+  const d = useMemo(() => {
+    if (skill >= 1) return MELODY
+    const N = 64
+    const ys = sampleMelody(N)
+    const rough = 1 - skill
+    // the same wobble every time (seeded), so the line only ever gets calmer, never just different
+    let seed = 7
+    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 2 - 1
+    const pts: [number, number][] = ys.map((y, k) => {
+      const x = (640 * k) / N
+      const drift = Math.sin(x / 41 + 0.6) * 3.2 + Math.sin(x / 17 + 2.1) * 1.8 // off the tune, slowly
+      const shake = rand() * 3 + Math.sin(x / 4.3) * 1.2 // the wobble of an unsure voice
+      const off = rough * drift + rough * rough * shake
+      return [Math.round(x * 10) / 10, Math.max(2, Math.min(44, y + off))]
+    })
+    return through(pts)
+  }, [skill])
+  return (
+    <svg viewBox="0 0 640 46" className="w-full h-5 mb-3 sm:h-7 sm:mb-4" aria-hidden preserveAspectRatio="none">
+      {[0, 1, 2, 3, 4].map((k) => (
+        <line key={k} x1="0" x2="640" y1={5 + k * 9} y2={5 + k * 9} stroke="var(--text)" strokeOpacity=".07" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      ))}
+      <path d={d} fill="none" stroke="var(--main)" strokeOpacity={0.45 + 0.55 * skill} strokeWidth={1.5 + 0.5 * skill}
+        strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ transition: 'stroke-opacity .6s, stroke-width .6s' }} />
+    </svg>
   )
 }
 

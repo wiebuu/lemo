@@ -13,9 +13,18 @@ window.addEventListener('popstate', () => {
 
 export function navigate(to: string) {
   if (to === location.pathname) return
-  history.pushState(null, '', to)
+  // how many pages deep inside Lemody (so "back" knows whether there's a Lemody page to go back to)
+  history.pushState({ depth: depth() + 1 }, '', to)
   sfx.play(to === '/' ? 'back' : 'forward', { volume: 0.7 })
   notify()
+}
+
+const depth = (): number => (history.state as { depth?: number } | null)?.depth ?? 0
+
+/** Back a page — or, when this page was opened straight from outside (a link, a search), to Lemody's home. */
+export function back() {
+  if (depth() > 0) history.back()
+  else navigate('/')
 }
 
 export function usePath(): string {

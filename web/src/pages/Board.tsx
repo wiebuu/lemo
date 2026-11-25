@@ -6,7 +6,7 @@ import { formatTime } from '../lib/music'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
 import { cx, InfoTip, Pager, usePaged } from '../components/ui'
-import { SingerName } from '../components/SingerName'
+import { SingerName, SingerPhoto } from '../components/SingerName'
 import { go, navigate } from './router'
 
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`
@@ -41,12 +41,12 @@ function ago(at: number): string {
   return `${Math.floor(s / 3600)} h ago`
 }
 
-function Avatar({ e }: { e: Pick<TopEntry, 'name' | 'photo'> }) {
-  return e.photo ? (
+function Avatar({ e }: { e: Pick<TopEntry, 'name' | 'photo' | 'username'> }) {
+  return <SingerPhoto name={e.name} username={e.username}>{e.photo ? (
     <img src={e.photo} alt="" referrerPolicy="no-referrer" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full shrink-0" />
   ) : (
     <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-sub-alt text-text text-[11px] sm:text-xs flex items-center justify-center shrink-0">{e.name.trim().charAt(0).toUpperCase() || '?'}</span>
-  )
+  )}</SingerPhoto>
 }
 
 /** Today's top: each singer's best take of each song today; open one to see and hear how they sang it. */

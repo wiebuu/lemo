@@ -6,7 +6,7 @@ import { SiteFooter } from './Footer'
 import { StatsPage, TopPage } from './Board'
 import { ComingPage } from './Coming'
 import { ProfilePage, UserPage } from './Profile'
-import { go, navigate } from './router'
+import { back, go, navigate } from './router'
 import { ARTICLES, SITE, UPDATED, type Article } from './content.js'
 
 export const PAGES: Record<string, { title: string; seoTitle?: string; description?: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean; /** the page draws its own heading */ bare?: boolean; /** a wider column (profiles) */ wide?: boolean }> = {
@@ -53,7 +53,7 @@ export function SitePage({ path }: { path: string }) {
   }, [path])
   useEffect(() => {
     // Esc leaves the page — unless a popup on it is open (that one closes instead)
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('[data-page-dialog]') && navigate('/')
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('[data-page-dialog]') && back()
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
@@ -64,9 +64,7 @@ export function SitePage({ path }: { path: string }) {
         <header className="flex items-center gap-2 sm:gap-4 pt-[max(0.75rem,calc(env(safe-area-inset-top)-0.5rem))] pb-1.5 sm:pt-[max(1.25rem,calc(env(safe-area-inset-top)-0.5rem))] sm:pb-3 sticky top-0 bg-bg/90 backdrop-blur z-10">
           <a href="/" onClick={go} aria-label="Lemody home"><Wordmark /></a>
           <span className="flex-1" />
-          <a href="/" onClick={go} className="h-[29px] flex items-center gap-1.5 text-xs text-sub hover:text-text rounded-full surface px-3">
-            <ArrowLeft size={13} /> back to singing
-          </a>
+          <BackButton />
         </header>
         <main className={page?.compact ? 'flex-1 py-4 sm:py-12' : 'flex-1 py-8 sm:py-12'}>
           {page ? (
@@ -88,6 +86,16 @@ export function SitePage({ path }: { path: string }) {
   )
 }
 
+
+/** Back a page (to Lemody's home when the page was opened from outside): an arrow, the size of the header's icons. */
+export function BackButton() {
+  return (
+    <button type="button" onClick={back} aria-label="back" title="Back"
+      className="w-[29px] h-[29px] shrink-0 flex items-center justify-center rounded-full surface text-sub hover:text-text active:scale-95 transition-all">
+      <ArrowLeft size={15} />
+    </button>
+  )
+}
 
 /** A reading page from content.js. Links to other pages here open in place; the rest load normally. */
 function ArticleBody({ article }: { article: Article }) {

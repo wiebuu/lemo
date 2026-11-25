@@ -6,7 +6,7 @@ import { Crown, Download, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, 
 const loadShareCard = prefetch(() => import('../lib/shareCard'))
 const VoiceFxPanel = lazy(early(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel }))))
 import { ChallengeBadge } from './Challenge'
-import { SingerName } from './SingerName'
+import { SingerName, SingerPhoto } from './SingerName'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
 import { formatTime } from '../lib/music'
 import type { MetricResult } from '../lib/evaluation'
@@ -250,7 +250,7 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
           : s.viewing.hasVoice ? 'A take from today’s top. ▶ plays their voice with the music.' : 'A take from today’s top. They kept their voice private: ▶ plays the original singer, with their pitch line.'}>
           <button type="button" onClick={() => navigate('/top')} className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-main text-bg">
             {s.viewing.photo
-              ? <img src={s.viewing.photo} alt="" referrerPolicy="no-referrer" className="w-4 h-4 rounded-full" />
+              ? <SingerPhoto name={s.viewing.name} username={s.viewing.username}><img src={s.viewing.photo} alt="" referrerPolicy="no-referrer" className="w-4 h-4 rounded-full" /></SingerPhoto>
               : <Crown size={12} className="ml-1" />}
             <SingerName name={s.viewing.name} username={s.viewing.username} />{s.viewing.rank ? ` · #${s.viewing.rank} today` : ''}{s.viewing.mine && s.viewing.voicePrivate ? ' · private, only you can listen' : s.viewing.hasVoice ? '' : ' · voice private'}
           </button>

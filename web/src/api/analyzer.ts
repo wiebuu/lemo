@@ -151,6 +151,8 @@ export interface TopEntry {
   rank: number
   name: string
   photo: string | null
+  /** their profile is /u/<username> (none for a guest) */
+  username?: string | null
   songId: string
   title: string | null
   artist: string | null
@@ -185,6 +187,8 @@ export interface TopTake {
   seconds: number
   name: string
   photo: string | null
+  /** their profile is /u/<username> (none for a guest) */
+  username?: string | null
   hasVoice: boolean
   voicePrivate?: boolean
   mine?: boolean

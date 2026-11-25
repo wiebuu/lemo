@@ -6,6 +6,7 @@ import { Crown, Download, Loader2, MicVocal, Music2, Share2, SlidersHorizontal, 
 const loadShareCard = prefetch(() => import('../lib/shareCard'))
 const VoiceFxPanel = lazy(early(() => import('./VoiceFxPanel').then((m) => ({ default: m.VoiceFxPanel }))))
 import { ChallengeBadge } from './Challenge'
+import { SingerName } from './SingerName'
 import { availableAspects, reviewNotes, type ReviewAspect } from '../lib/review'
 import { formatTime } from '../lib/music'
 import type { MetricResult } from '../lib/evaluation'
@@ -251,7 +252,7 @@ function DetailLine({ aspect }: { aspect: ReviewAspect }) {
             {s.viewing.photo
               ? <img src={s.viewing.photo} alt="" referrerPolicy="no-referrer" className="w-4 h-4 rounded-full" />
               : <Crown size={12} className="ml-1" />}
-            {s.viewing.name}{s.viewing.rank ? ` · #${s.viewing.rank} today` : ''}{s.viewing.mine && s.viewing.voicePrivate ? ' · private, only you can listen' : s.viewing.hasVoice ? '' : ' · voice private'}
+            <SingerName name={s.viewing.name} username={s.viewing.username} />{s.viewing.rank ? ` · #${s.viewing.rank} today` : ''}{s.viewing.mine && s.viewing.voicePrivate ? ' · private, only you can listen' : s.viewing.hasVoice ? '' : ' · voice private'}
           </button>
         </Tip>
       )}

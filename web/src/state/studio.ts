@@ -111,7 +111,7 @@ export interface Snapshot {
   challenge: number | null
   topRank: { rank: number; id: string | null; saving: boolean; voice: 'ask' | 'sending' | 'shared' | 'private' | 'no'; guest?: boolean; seen?: boolean } | null
   /** The result shown is someone's take from today's top, not yours. */
-  viewing: { id: string; name: string; photo: string | null; rank: number | null; hasVoice: boolean; mine?: boolean; voicePrivate?: boolean } | null
+  viewing: { id: string; name: string; username?: string | null; photo: string | null; rank: number | null; hasVoice: boolean; mine?: boolean; voicePrivate?: boolean } | null
   /** Your cover is being made for download. */
   coverMaking: boolean
 }
@@ -1265,7 +1265,7 @@ export class Studio {
       this.set({
         busy: null, canReplay: true, lastResult: this.topEval(take, track, mode), resultsView: 'results',
         resultMode: mode,
-        viewing: { id: t.id, name: t.name, photo: t.photo, rank: t.rank, hasVoice: t.hasVoice, mine: t.mine, voicePrivate: t.voicePrivate },
+        viewing: { id: t.id, name: t.name, username: t.username, photo: t.photo, rank: t.rank, hasVoice: t.hasVoice, mine: t.mine, voicePrivate: t.voicePrivate },
       })
       await this.enterReview()
       if (!t.hasVoice) {

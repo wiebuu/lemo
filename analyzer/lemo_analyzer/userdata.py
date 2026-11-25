@@ -445,22 +445,22 @@ def top_ids() -> set[str]:
 
 
 def top_list(day: str) -> list[dict]:
-    rows = _q(f"""SELECT r.rank, t.id, t.uid, t.song_id, t.title, t.artist, t.score, t.seconds, t.created_at, u.name, u.photo,
+    rows = _q(f"""SELECT r.rank, t.id, t.uid, t.song_id, t.title, t.artist, t.score, t.seconds, t.created_at, u.name, u.photo, u.username,
                          (t.meta->>'toleranceCents')::int AS tolerance, t.meta->>'scoringMode' AS mode
                   FROM ({_RANKED}) r JOIN lemo_top t ON t.id = r.id JOIN lemo_users u ON u.uid = t.uid ORDER BY r.rank""", (day,))
     return [{"rank": int(r["rank"]), "id": r["id"], "uid": r["uid"], "songId": r["song_id"], "title": r["title"], "artist": r["artist"],
              "score": r["score"], "seconds": r["seconds"], "at": r["created_at"], "name": r["name"] or "a singer", "photo": r["photo"],
-             "toleranceCents": r["tolerance"], "scoringMode": r["mode"]} for r in rows]
+             "username": r["username"], "toleranceCents": r["tolerance"], "scoringMode": r["mode"]} for r in rows]
 
 
 def top_get(take_id: str) -> dict | None:
-    row = _q(f"""SELECT r.rank, t.*, u.name, u.photo FROM lemo_top t JOIN lemo_users u ON u.uid = t.uid
+    row = _q(f"""SELECT r.rank, t.*, u.name, u.photo, u.username FROM lemo_top t JOIN lemo_users u ON u.uid = t.uid
                  LEFT JOIN ({_RANKED}) r ON r.id = t.id WHERE t.id = %s""", (_today_for(take_id), take_id), one=True)
     if not row:
         return None
     return {"id": row["id"], "rank": int(row["rank"]) if row["rank"] else None, "day": row["day"], "songId": row["song_id"],
             "title": row["title"], "artist": row["artist"], "score": row["score"], "seconds": row["seconds"],
-            "name": row["name"] or "a singer", "photo": row["photo"], "meta": row["meta"]}
+            "name": row["name"] or "a singer", "photo": row["photo"], "username": row["username"], "meta": row["meta"]}
 
 
 def top_owner(take_id: str) -> str | None:

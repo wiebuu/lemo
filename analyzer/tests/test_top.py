@@ -89,6 +89,7 @@ class TopTests(unittest.TestCase):
         self.assertEqual(len(board["entries"]), 1)
         e = board["entries"][0]
         self.assertEqual((e["name"], e["mine"], e["rank"]), ("Alice", False, 1))
+        self.assertEqual(e["username"], "alice")  # their name links to their profile
         self.assertTrue(self.get("/api/top", who="a").json()["entries"][0]["mine"])
         take = self.get(f"/api/top/{e['id']}", who="b").json()
         self.assertEqual(take["frames"]["m"][0], 60.0)

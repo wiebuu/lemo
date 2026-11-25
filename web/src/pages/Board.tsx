@@ -6,6 +6,7 @@ import { formatTime } from '../lib/music'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
 import { cx, InfoTip, Pager, usePaged } from '../components/ui'
+import { SingerName } from '../components/SingerName'
 import { go, navigate } from './router'
 
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`
@@ -93,7 +94,7 @@ export function TopPage() {
                   <Avatar e={e} />
                   <span className="flex-1 min-w-0 leading-tight">
                     <span className="flex items-center gap-1 text-[13px] sm:text-base text-text min-w-0">
-                      <span className="truncate">{e.name}</span>
+                      <SingerName name={e.name} username={e.username} className="truncate" />
                       {e.mine && e.voicePrivate
                         ? <Lock size={11} className="text-sub shrink-0" aria-label="your voice is private: only you can listen" />
                         : e.hasVoice && <MicVocal size={12} className="text-main shrink-0" aria-label="voice shared" />}

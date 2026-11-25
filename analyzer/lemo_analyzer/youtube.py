@@ -6,7 +6,9 @@ streams. Audio stays in the local cache."""
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -77,6 +79,31 @@ def clean_title(meta: dict) -> tuple[str, str | None]:
     return t, uploader or None
 
 
+# YouTube words that mean "you're downloading too much from here": nothing is wrong with
+# the song, so it's worth trying again later (the admin waits and retries these).
+BLOCKED = ("not a bot", "HTTP Error 403", "HTTP Error 429", "Too Many Requests", "rate-limited", "rate limited")
+
+
+def blocked(err: str | None) -> bool:
+    return any(b.lower() in (err or "").lower() for b in BLOCKED)
+
+
+def _base() -> list[str]:
+    """yt-dlp needs a JavaScript runtime to solve YouTube's signature challenges; without one
+    the audio links it finds often answer 403. It only looks for deno by itself, so node (or
+    bun) is passed when deno isn't installed. LEMO_YT_COOKIES: a cookies.txt to sign in with."""
+    base = [sys.executable, "-m", "yt_dlp", "--no-playlist", "--no-warnings"]
+    if not shutil.which("deno"):
+        for rt in ("node", "bun"):
+            if path := shutil.which(rt):
+                base += ["--js-runtimes", f"{rt}:{path}"]
+                break
+    cookies = os.environ.get("LEMO_YT_COOKIES")
+    if cookies and Path(cookies).is_file():
+        base += ["--cookies", cookies]
+    return base
+
+
 def fetch(
     vid: str,
     out_dir: Path,
@@ -86,7 +113,7 @@ def fetch(
     on_duration: Callable[[float], None] | None = None,
 ) -> tuple[Path, dict]:
     url = f"https://www.youtube.com/watch?v={vid}"
-    base = [sys.executable, "-m", "yt_dlp", "--no-playlist", "--no-warnings"]
+    base = _base()
     progress(0.0, "reading video info")
     r = subprocess.run([*base, "-J", url], capture_output=True, text=True, timeout=120)
     if r.returncode != 0:

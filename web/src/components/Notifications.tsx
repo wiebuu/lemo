@@ -88,7 +88,7 @@ export function NotificationBell({ className }: { className?: string }) {
       <Tip tip={unread ? `${unread} new` : 'Notifications'}>
         <button ref={btn} type="button" onClick={toggle} aria-label={unread ? `notifications, ${unread} new` : 'notifications'} aria-expanded={!!pos}
           className={cx('relative p-1.5 rounded-md transition-colors shrink-0', pos ? 'text-text' : 'text-sub hover:text-text', className)}>
-          <Bell size={16} strokeWidth={1.75} className={cx(unread > 0 && 'bell-ring')} key={unread} />
+          <Bell size={17} strokeWidth={1.75} className={cx(unread > 0 && 'bell-ring')} key={unread} />
           {unread > 0 && <span className="badge-pop absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-main" />}
         </button>
       </Tip>

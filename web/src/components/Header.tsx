@@ -68,27 +68,34 @@ export function Header({ open }: { open: (p: Panel) => void }) {
           {counts && <LikeButton id={t.id} size={15} />}
         </div>
       )}
-      {!phone && (
-        <Tip tip={s.settings.disco ? 'Disco lights · on' : 'Disco lights'}>
-          <button type="button" aria-label="disco lights" aria-pressed={s.settings.disco}
-            onClick={() => studio.updateSettings({ disco: !s.settings.disco })}
-            className="p-0.5 shrink-0 transition-transform hover:scale-110 active:scale-95">
-            <DjIcon on={s.settings.disco} beating={!s.playing} />
-          </button>
-        </Tip>
-      )}
-      <CourseButton className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
-      {signedIn && (
-        <>
-          <NotificationBell className={cx('transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')} />
-          <div className={cx('-ml-1.5 sm:-ml-2.5 transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')}>
-            <IconToggle tip="Your profile" onClick={() => navigate('/profile')}>
-              <UserRound size={17} />
-            </IconToggle>
-          </div>
-        </>
-      )}
-      <Account />
+      {/* the right-hand icons sit as close together as the nav on the left */}
+      <div className="flex items-center shrink-0">
+        {!phone && (
+          <Tip tip={s.settings.disco ? 'Disco lights · on' : 'Disco lights'}>
+            <button type="button" aria-label="disco lights" aria-pressed={s.settings.disco}
+              onClick={() => studio.updateSettings({ disco: !s.settings.disco })}
+              className="p-[2.5px] mr-[3.5px] shrink-0 transition-transform hover:scale-110 active:scale-95">
+              <DjIcon on={s.settings.disco} beating={!s.playing} size={24} />
+            </button>
+          </Tip>
+        )}
+        <div className={cx('flex items-center transition-all duration-500', s.session && 'opacity-0 pointer-events-none -translate-y-1')}>
+          {/* phones: no room for it (the course is in the account menu and on the home screen) */}
+          {!phone && <CourseButton />}
+          {signedIn && (
+            <>
+              <NotificationBell />
+              <IconToggle tip="Your profile" onClick={() => navigate('/profile')}>
+                <UserRound size={17} />
+              </IconToggle>
+            </>
+          )}
+        </div>
+        {/* every icon is 12px from the next, as in the nav on the left */}
+        <div className="ml-1.5 flex items-center">
+          <Account />
+        </div>
+      </div>
     </header>
   )
 }
@@ -117,12 +124,12 @@ function Account() {
   return (
     <Menu
       tip={u.email ?? 'Your account'}
-      buttonClassName="p-0"
+      buttonClassName="p-0!"
       button={
         u.photoURL ? (
-          <img src={u.photoURL} alt="" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full" />
+          <img src={u.photoURL} alt="" referrerPolicy="no-referrer" className="w-[26px] h-[26px] rounded-full" />
         ) : (
-          <span className="w-7 h-7 rounded-full bg-sub-alt text-text text-xs flex items-center justify-center">{initial}</span>
+          <span className="w-[26px] h-[26px] rounded-full bg-sub-alt text-text text-xs flex items-center justify-center">{initial}</span>
         )
       }
     >
@@ -164,11 +171,11 @@ function courseProgress(): number {
   }
 }
 
-/** The way into the singing course: tinted, so it reads as a place to go, not one more setting. */
-function CourseButton({ className }: { className?: string }) {
+/** The way into the singing course: its own colour, so it reads as a place to go, not one more setting. */
+function CourseButton() {
   const done = courseProgress()
   return (
-    <div className={className}>
+    <div className="flex">
       <Tip preview={<CoursePreview />} tip={
         <span className="block">
           <b className="font-semibold">Singing course</b>
@@ -177,9 +184,8 @@ function CourseButton({ className }: { className?: string }) {
         </span>
       }>
         <button type="button" onClick={() => navigate('/practice')} aria-label="singing course"
-          className="course-btn group h-[29px] flex items-center gap-1.5 rounded-full px-2 sm:px-3 text-[12px] font-medium text-text active:scale-[.97] transition-all">
-          <AudioLines size={15} className="text-flat transition-transform group-hover:scale-110" />
-          <span className="hidden sm:inline">practice</span>
+          className="group p-1.5 shrink-0 rounded-md transition-all active:scale-90">
+          <AudioLines size={17} className="text-flat transition-transform group-hover:scale-110" />
         </button>
       </Tip>
     </div>

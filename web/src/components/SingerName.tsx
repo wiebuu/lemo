@@ -18,7 +18,8 @@ export function SingerName({ name, username, className }: { name: string; userna
   }
   return (
     <span role="link" tabIndex={0} title={`${name}'s profile`} onClick={open} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && open(e)}
-      className={cx(className, 'cursor-pointer hover:underline underline-offset-2 decoration-from-font')}>
+      // always a faint underline (phones have no hover to give it away); it darkens on hover
+      className={cx(className, 'cursor-pointer underline decoration-1 decoration-sub/40 underline-offset-[3px] transition-colors hover:decoration-current focus-visible:decoration-current')}>
       {name}
     </span>
   )

@@ -57,7 +57,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
       {t && (
         <div className="min-w-0 hidden sm:flex items-center gap-3">
           <ChallengeBadge />
-          <Tip tip={<><SongCounts song={counts} />{`Melody from: ${t.melodySource}`}</>}>
+          <Tip className="min-w-0" tip={<><SongCounts song={counts} />{`Melody from: ${t.melodySource}`}</>}>
             <div className="min-w-0 text-right leading-tight">
               <div className="text-sm font-medium text-text truncate">{t.title}</div>
               <div className="text-[11px] text-sub truncate tracking-wide">
@@ -65,7 +65,7 @@ export function Header({ open }: { open: (p: Panel) => void }) {
               </div>
             </div>
           </Tip>
-          {counts && <LikeButton id={t.id} size={15} />}
+          {counts && <LikeButton id={t.id} size={15} className="shrink-0" />}
         </div>
       )}
       {/* the right-hand icons sit as close together as the nav on the left */}

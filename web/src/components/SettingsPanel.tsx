@@ -223,6 +223,7 @@ function AdSettings({ ads }: { ads: AdPrefs }) {
         <p className="text-xs text-sub py-4">No ads anywhere — Google's ad script isn't loaded either (from the next time you open Lemody).</p>
       )}
       <Section title="personalised ads" hint="Google may choose ads based on your visits to this and other sites. You can turn that off with Google, and in Europe and the UK you're asked first.">
+        {consentShown() && <Btn onClick={reopenConsent}>cookie choices</Btn>}
         <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="text-xs text-main hover:underline">Google ad settings</a>
         <a href="/privacy" onClick={go} className="text-xs text-main hover:underline ml-1">privacy policy</a>
       </Section>
@@ -237,4 +238,14 @@ function Toggle({ on, label, onChange }: { on: boolean; label: string; onChange:
       {label}
     </button>
   )
+}
+
+type Googlefc = { callbackQueue?: (() => void)[]; showRevocationMessage?: () => void }
+/** Google's consent message runs here (Europe, the UK and Switzerland): its TCF interface is on the page. */
+const consentShown = () => typeof (window as unknown as { __tcfapi?: unknown }).__tcfapi === 'function'
+/** Opens Google's consent message again, to change or withdraw the choice. */
+function reopenConsent() {
+  const w = window as unknown as { googlefc?: Googlefc }
+  const fc = (w.googlefc = w.googlefc || {})
+  ;(fc.callbackQueue = fc.callbackQueue || []).push(() => fc.showRevocationMessage?.())
 }

@@ -161,7 +161,7 @@ ${faqHtml(HELP_FAQ)}
 <li>You can turn off personalised ads in <a href="https://adssettings.google.com">Google Ads Settings</a>, or opt out of many third-party vendors’ cookies at <a href="https://www.aboutads.info/choices/">aboutads.info</a> and <a href="https://www.youronlinechoices.eu/">youronlinechoices.eu</a>.</li>
 <li>Learn more in <a href="https://policies.google.com/technologies/partner-sites">how Google uses information from sites that use its services</a>.</li>
 </ul>
-<p>In the EEA, the UK and Switzerland, you’re asked for consent before personalised ads are shown, and you can change your choice at any time.</p>
+<p>In the EEA, the UK and Switzerland, Google’s consent message asks you first: you can consent, not consent, or choose purpose by purpose. You can change your choice at any time with “cookie choices” in Settings → ads, or the privacy and cookie settings link Google shows on the page.</p>
 
 <h2>Analytics and logs</h2>
 <p>We don’t use a separate analytics or tracking service. Our hosting and servers keep standard logs (such as IP address, browser and pages requested) for a short time to keep the service secure and working.</p>

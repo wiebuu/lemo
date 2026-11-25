@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { X } from 'lucide-react'
-import { AD_CLIENT, AD_SLOTS, adAllowed, adScriptReady, finishedAdDue, loadAdScript, markFinishedAd, openAdSettings, type AdPage } from '../lib/ads'
-import { cx, useStudio } from './ui'
+import { AD_CLIENT, AD_SLOTS, adAllowed, adScriptReady, loadAdScript, openAdSettings, type AdPage } from '../lib/ads'
+import { cx, usePhone, useStudio } from './ui'
 
 type Status = 'wait' | 'filled' | 'unfilled'
 
@@ -116,66 +115,36 @@ function AdNote({ className }: { className?: string }) {
 }
 
 /**
- * After a song plays to its end: one full screen with an ad, between the song and its
- * results. "Continue" is there from the first moment. Not shown more than once every
- * few minutes, not when the ad can't load (blocked, nothing to show), and never while
- * a test is running.
+ * After a song plays to its end: one banner in the page, between the graph and the
+ * results (the graph makes room for it; nothing is covered and nothing floats). It goes
+ * as soon as the song plays again, a test starts or another song opens. Not shown when
+ * the ad can't load (blocked, nothing to show): then the graph keeps its full height.
  */
-export function SongFinishedAd() {
+export function SongEndAd() {
   const s = useStudio()
-  const [open, setOpen] = useState(false)
+  const phone = usePhone()
+  const [shown, setShown] = useState(false)
   const seen = useRef(s.songEnds)
+  const track = s.track?.id
 
   useEffect(() => {
     if (s.songEnds === seen.current) return
     seen.current = s.songEnds
-    if (!adAllowed(s.settings.ads, 'finished') || !adScriptReady() || !finishedAdDue()) return
-    markFinishedAd()
-    setOpen(true)
+    if (adAllowed(s.settings.ads, 'finished') && adScriptReady()) setShown(true)
   }, [s.songEnds, s.settings.ads])
 
-  // a new test or another song: out of the way
+  // playing again, a test, another song or ads turned off: out of the way
   useEffect(() => {
-    if (s.session || s.playing) setOpen(false)
-  }, [s.session, s.playing])
+    if (s.session || s.playing || !adAllowed(s.settings.ads, 'finished')) setShown(false)
+  }, [s.session, s.playing, s.settings.ads])
+  useEffect(() => setShown(false), [track])
 
-  // nothing came within a few seconds: don't keep an empty screen up
-  useEffect(() => {
-    if (!open) return
-    const t = setTimeout(() => {
-      if (!document.querySelector('.ad-finished .ad-unit[data-status="filled"]')) setOpen(false)
-    }, 5000)
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (e.stopPropagation(), setOpen(false))
-    const toSettings = () => setOpen(false)
-    window.addEventListener('keydown', onKey, true)
-    window.addEventListener('lemody:ad-settings', toSettings)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('keydown', onKey, true)
-      window.removeEventListener('lemody:ad-settings', toSettings)
-    }
-  }, [open])
-
-  if (!open) return null
-  const close = () => setOpen(false)
+  if (!shown) return null
   return (
-    <div role="dialog" aria-label="song finished" className="ad-finished overlay-in fixed inset-0 z-[65] bg-bg flex flex-col items-center justify-center gap-5 px-4 py-[max(1rem,env(safe-area-inset-top))]">
-      <button type="button" onClick={close} aria-label="close" className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 w-9 h-9 rounded-full surface text-sub hover:text-text flex items-center justify-center">
-        <X size={16} />
-      </button>
-      <div className="text-center">
-        <div className="text-[11px] uppercase tracking-[0.14em] text-sub">song finished</div>
-        {s.track && <div className="mt-1 text-text text-lg font-semibold tracking-tight max-w-[22rem] truncate">{s.track.title}</div>}
+    <aside aria-label="advertisement" className="ad-song-end fade-in shrink-0 w-full flex flex-col items-center pt-2 sm:pt-3">
+      <div className="w-full max-w-[728px]">
+        <AdUnit slot={AD_SLOTS.finished} style={{ width: '100%', height: phone ? 50 : 90 }} onStatus={(st) => st === 'unfilled' && setShown(false)} />
       </div>
-      <div className="w-full max-w-[336px] min-h-[280px] flex items-center justify-center">
-        <div className="w-full">
-          <AdUnit slot={AD_SLOTS.finished} style={{ width: '100%', minHeight: 250 }} responsive onStatus={(st) => st === 'unfilled' && close()} />
-        </div>
-      </div>
-      <button type="button" onClick={close} className="rounded-full bg-main text-bg text-sm font-medium px-6 py-2.5 active:scale-95 transition-transform">
-        {s.lastResult ? 'see your results' : 'continue'}
-      </button>
-      <AdNote className="mt-0" />
-    </div>
+    </aside>
   )
 }

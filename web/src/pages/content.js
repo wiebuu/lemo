@@ -36,7 +36,7 @@ const HELP_FAQ = [
   ['Can I challenge a friend?', 'Yes. After a test, press share: you get a picture of your score and a link to the same song. Your friend sees the score to beat while they sing.'],
   ['What’s on my profile?', 'Sign in and your profile shows the days you sang, your time singing, your tests and a chart of your scores. Others can see your name, picture, numbers and activity at your public profile — never which songs you sang, and never your voice.'],
   ['Can I keep a recording of my singing?', 'If a take makes today’s top and you’re signed in, you can play it back and download your cover from there. Other takes stay only in your device’s memory until you close the page.'],
-  ['Can I turn off the ads?', 'Yes, any of them. Open Settings → ads: turn all ads off, turn off one kind (beside the page, at the end of pages, or the screen when a song ends), or turn them off on certain pages only (the start screen, today’s top, profiles, coming soon, guides). Your choice is saved to your account. Ads never show while you sing.'],
+  ['Can I turn off the ads?', 'Yes, any of them. Open Settings → ads: turn all ads off, turn off one kind (beside the page, at the end of pages, or the banner after a song ends), or turn them off on certain pages only (the start screen, today’s top, profiles, coming soon, guides). Your choice is saved to your account. Ads never show while you sing.'],
   ['Can I change how Lemody looks?', 'Yes. Settings → look has fifteen themes, five calm ones and ten colourful ones (sunset, ocean, aurora, …), each in dark or light. You can also show the melody as a line or as blocks, and turn on disco lights that pulse with the beat.'],
   ['Which browsers work?', 'Recent Chrome, Edge, Safari and Firefox, on phones and computers.'],
 ]
@@ -89,7 +89,7 @@ export const ARTICLES = [
 <h2>Learn as you go</h2>
 <p>Short <a href="/guides">guides</a> explain how to read the pitch graph, build a daily practice routine, find your vocal range and improve your singing voice.</p>
 <h2>Free, with ads you control</h2>
-<p>Lemody is free because it shows a few ads from Google. They only sit where they don’t get in the way: beside the page on big screens, at the end of a page, and one screen when a song ends (at most every few minutes). Never while you sing. In Settings → ads you can turn off all of them, one kind, or the ads on certain pages.</p>
+<p>Lemody is free because it shows a few ads from Google. They only sit where they don’t get in the way: beside the page on big screens, at the end of a page, and a banner under the graph when a song ends (gone as soon as you play again). Never while you sing. In Settings → ads you can turn off all of them, one kind, or the ads on certain pages.</p>
 <h2>Who makes it</h2>
 <p>Lemody is made by <a href="https://wiecodes.com/about">Wiecodes</a>, a small independent studio. Write to us any time at ${mail}.</p>`,
   },
@@ -153,7 +153,7 @@ ${faqHtml(HELP_FAQ)}
 <p>You can clear or block cookies in your browser settings. Blocking essential storage may sign you out.</p>
 
 <h2>Advertising (Google AdSense)</h2>
-<p>Lemody is free because it shows ads served by Google AdSense. Ads appear beside the page on big screens, at the end of some pages, and on one screen after a song ends. They never appear while you sing.</p>
+<p>Lemody is free because it shows ads served by Google AdSense. Ads appear beside the page on big screens, at the end of some pages, and in a banner under the graph after a song ends. They never appear while you sing.</p>
 <p><b>Your choice:</b> in Settings → ads you can turn off all ads, one kind of ad, or the ads on certain pages. With all ads off, Google’s ad script isn’t loaded at all (from the next time you open Lemody). Your choice is saved in this browser and, when you’re signed in, in your account.</p>
 <ul>
 <li>Third-party vendors, including Google, use cookies to serve ads based on your earlier visits to this and other websites.</li>

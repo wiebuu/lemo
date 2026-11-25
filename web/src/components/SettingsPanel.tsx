@@ -202,13 +202,13 @@ function AdSettings({ ads }: { ads: AdPrefs }) {
   const pages = Object.keys(AD_PAGE_LABELS) as AdPage[]
   return (
     <>
-      <Section title="ads" hint="Ads from Google keep Lemody free. They only sit where they don't get in the way — beside the page on big screens, at the end of a page, and one screen when a song ends — and never while you sing. Turn off any of them here.">
+      <Section title="ads" hint="Ads from Google keep Lemody free. They only sit where they don't get in the way — beside the page on big screens, at the end of a page, and a banner under the graph when a song ends — and never while you sing. Turn off any of them here.">
         <Choice value={ads.on ? 'on' : 'off'} onChange={(v) => set({ on: v === 'on' })}
           options={[{ value: 'on', label: 'show ads' }, { value: 'off', label: 'no ads' }]} />
       </Section>
       {ads.on ? (
         <>
-          <Section title="kinds of ads" hint="beside the page: big screens only, in the empty space left and right. end of pages: one banner under a page, above its links. when a song ends: one screen between the song and your results, at most every few minutes.">
+          <Section title="kinds of ads" hint="beside the page: big screens only, in the empty space left and right. end of pages: one banner under a page, above its links. after a song ends: one banner under the graph, gone as soon as you play again.">
             {kinds.map((k) => (
               <Toggle key={k} on={ads.kinds[k]} label={AD_KIND_LABELS[k]} onChange={(on) => set({ kinds: { ...ads.kinds, [k]: on } })} />
             ))}

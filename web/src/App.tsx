@@ -20,7 +20,7 @@ import { TopCelebration } from './components/TopCelebration'
 import { LikeAsk } from './components/Like'
 import { PhoneSongName } from './components/SongCounts'
 import { NotificationPopup } from './components/Notifications'
-import { SideAds, SongFinishedAd } from './components/Ads'
+import { SideAds, SongEndAd } from './components/Ads'
 import type { SettingsTab } from './components/SettingsPanel'
 import { navigate, usePath } from './pages/router'
 
@@ -170,6 +170,8 @@ export default function App() {
               )} />
             </ErrorBoundary>
           </div>
+          {/* the song played to its end: one banner here, under the graph (it makes room; nothing is covered) */}
+          <SongEndAd />
           {/* slot under the graph: the results panel after a test, or the lyrics — as tall as the
               lyrics need at their size (each row keeps its own room, so nothing overlaps) */}
           <div className={cx('shrink-0 flex flex-col justify-center',
@@ -212,7 +214,6 @@ export default function App() {
       </footer>
 
       <TopCelebration />
-      <SongFinishedAd />
 
       <LikeAsk />
       {!s.session && <NotificationPopup />}

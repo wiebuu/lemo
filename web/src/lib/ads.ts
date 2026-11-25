@@ -1,6 +1,6 @@
 // Google AdSense: which ads may show where, and loading Google's script.
 // Ads only ever sit where they don't get in the way (beside the page on big screens,
-// at the end of a page, one screen when a song ends) and never while a song is open
+// at the end of a page, a banner under the graph when a song ends) and never while a song is open
 // for singing. Everyone chooses in settings → ads: all off, by kind, or by page.
 
 export const AD_CLIENT = 'ca-pub-8049669752168609'
@@ -33,7 +33,7 @@ export const DEFAULT_AD_PREFS: AdPrefs = {
 export const AD_KIND_LABELS: Record<AdKind, string> = {
   side: 'beside the page',
   inPage: 'end of pages',
-  finished: 'when a song ends',
+  finished: 'after a song ends',
 }
 
 export const AD_PAGE_LABELS: Record<AdPage, string> = {
@@ -92,28 +92,6 @@ export function loadAdScript() {
 
 /** Google's ad script has loaded (not blocked by an ad blocker or the network). */
 export const adScriptReady = () => typeof window !== 'undefined' && window.adsbygoogle?.loaded === true
-
-// ---- the full-screen ad after a song: not too often
-
-const FINISHED_GAP_MS = 4 * 60_000
-const LAST_KEY = 'lemody.ad.finishedAt'
-
-/** At most once every few minutes, so singing song after song isn't interrupted each time. */
-export function finishedAdDue(now = Date.now()): boolean {
-  try {
-    return now - Number(sessionStorage.getItem(LAST_KEY) ?? 0) > FINISHED_GAP_MS
-  } catch {
-    return true
-  }
-}
-
-export function markFinishedAd(now = Date.now()) {
-  try {
-    sessionStorage.setItem(LAST_KEY, String(now))
-  } catch {
-    /* private mode */
-  }
-}
 
 /** Ask the app to open settings at the ads tab (from anywhere, e.g. a site page). */
 export const openAdSettings = () => window.dispatchEvent(new CustomEvent('lemody:ad-settings'))

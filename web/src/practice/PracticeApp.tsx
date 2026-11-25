@@ -3,7 +3,7 @@
 // Phones first: compact type, small controls, the actions in a bar under the thumb.
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Lock, Mic, PencilLine, RotateCcw, SkipForward, Star, Volume2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AudioWaveform, Check, ChevronLeft, ChevronRight, Lock, Mic, MicVocal, PencilLine, RotateCcw, SkipForward, Star, Volume2 } from 'lucide-react'
 import { Wordmark } from '../components/Brand'
 import { cx } from '../components/ui'
 import { go, navigate } from '../pages/router'
@@ -14,7 +14,7 @@ import {
   LESSONS, NOTATIONS, SCALE, STEPS, homeName, introText, label, lessonNotes, lessonSteps, lessonTitle, parseLine,
   starsFor, toSemis, writeLine, type Notation, type StepKind,
 } from './course'
-import { IN_TUNE, Trainer, VoiceIO, loadProgress, saveProgress, type Progress } from './trainer'
+import { IN_TUNE, Trainer, VoiceIO, loadProgress, saveProgress, type MicIssue, type Progress } from './trainer'
 
 type Screen = { k: 'home' } | { k: 'voice'; then?: number } | { k: 'lesson'; i: number } | { k: 'free' }
 
@@ -605,7 +605,7 @@ function Exercise({ trainer: t, p, hold, known, lit, kind, mic, retryMic, hint, 
         mic === 'starting' ? <p className="mt-10 text-center text-[13px] text-sub">Starting the microphone…</p> : <MicProblem message={mic} retry={retryMic} />
       ) : (
         <>
-          <Readout target={cur} cents={t.cents} sung={t.sung} progress={progress} p={p} />
+          <Readout target={cur} cents={t.cents} inTune={t.inTune} sung={t.sung} progress={progress} p={p} issue={t.health.issue} />
 
           {/* the numbers, in one quiet line */}
           <div className="mt-5 grid grid-cols-4 divide-x divide-line text-center">
@@ -615,7 +615,7 @@ function Exercise({ trainer: t, p, hold, known, lit, kind, mic, retryMic, hint, 
             <Figure value={String(counted ? t.hints : t.skipped)} label={counted ? 'hints' : 'skipped'} />
           </div>
 
-          <Stairs p={p} known={known} target={cur} lit={lit} voice={cur !== undefined && t.cents !== null ? cur + t.cents / 100 : null} />
+          <Stairs p={p} known={known} target={cur} lit={lit} cents={t.cents} inTune={t.inTune} />
 
           {/* the two actions: under the thumb on phones, quietly centred on desktop */}
           <div className="h-20 sm:hidden" />
@@ -641,31 +641,32 @@ function Figure({ value, label: l }: { value: string; label: string }) {
 }
 
 /** The note to sing inside a ring that fills while you hold it, and what to do now. */
-function Readout({ target, cents, sung, progress, p }: { target?: number; cents: number | null; sung: number | null; progress: number; p: Progress }) {
-  const inTune = cents !== null && Math.abs(cents) <= IN_TUNE
+function Readout({ target, cents, inTune, sung, progress, p, issue }: { target?: number; cents: number | null; inTune: boolean; sung: number | null; progress: number; p: Progress; issue: MicIssue }) {
   const hint = cents === null ? 'Sing it' : inTune ? (progress > 0.08 ? 'Hold it…' : 'There!')
     : cents < 0 ? (cents < -150 ? 'Much higher' : 'A little higher') : cents > 150 ? 'Much lower' : 'A little lower'
-  const tone = inTune ? 'text-main' : cents === null ? 'text-sub' : cents < 0 ? 'text-flat' : 'text-sharp'
+  // the dot glides after your voice (a semitone each way), and rests where it was between notes
+  const dot = useGlide(cents === null ? null : Math.max(-100, Math.min(100, cents)))
   return (
     <div className="mt-6 flex items-center justify-center gap-5 sm:gap-8">
-      <Ring progress={progress} size={96} large={112}>
+      <Ring progress={progress} dim={!inTune} size={96} large={112}>
         <span className="text-[30px] sm:text-[36px] font-semibold tracking-tight text-text leading-none">{target !== undefined ? <NoteText s={target} p={p} /> : '—'}</span>
       </Ring>
       <div className="w-40 sm:w-48">
-        <div className={cx('text-[15px] sm:text-base font-medium flex items-center gap-1.5', tone)}>
-          {cents !== null && !inTune && <span className="text-lg leading-none">{cents < 0 ? '↑' : '↓'}</span>}
+        <div className={cx('text-[15px] sm:text-base font-medium flex items-center gap-1.5 transition-colors duration-200', inTune ? 'text-main' : cents === null ? 'text-sub' : 'text-text')}>
+          {cents !== null && !inTune && <span className="text-sub leading-none">{cents < 0 ? '↑' : '↓'}</span>}
           {hint}
         </div>
-        <div className="mt-0.5 text-[11px] text-sub font-mono h-4">
-          {sung !== null && cents !== null && <>you {midiToNoteName(sung)} · {cents > 0 ? '+' : ''}{Math.round(cents)}¢</>}
+        <div className="mt-0.5 text-[11px] text-sub font-mono h-4 flex items-center">
+          {sung !== null && cents !== null && <span>you {midiToNoteName(sung)} · {cents > 0 ? '+' : ''}{Math.round(cents)}¢</span>}
+          {issue && <MicHint issue={issue} />}
         </div>
-        {/* a small needle: left = low, right = high, the middle band is in tune */}
+        {/* a small needle: left = low, right = high (a semitone each way), the middle band is in tune */}
         <div className="mt-2.5 relative h-[3px] rounded-full bg-line">
-          <div className="absolute -inset-y-[1px] rounded-full bg-main/35" style={{ left: `${50 - IN_TUNE / 4}%`, right: `${50 - IN_TUNE / 4}%` }} />
+          <div className="absolute inset-y-0 rounded-full bg-main/30" style={{ left: `${50 - IN_TUNE / 2}%`, right: `${50 - IN_TUNE / 2}%` }} />
           <div className="absolute -top-1 -bottom-1 left-1/2 w-px bg-sub/40" />
-          {cents !== null && (
-            <div className={cx('absolute top-1/2 w-2.5 h-2.5 -mt-[5px] -ml-[5px] rounded-full ring-2 ring-bg transition-[left] duration-75', inTune ? 'bg-main' : 'bg-voice')}
-              style={{ left: `${50 + Math.max(-200, Math.min(200, cents)) / 4}%` }} />
+          {dot !== null && (
+            <div className={cx('absolute top-1/2 w-2.5 h-2.5 -mt-[5px] -ml-[5px] rounded-full ring-2 ring-bg transition-[background-color,opacity] duration-200', inTune ? 'bg-main' : 'bg-text', cents === null && 'opacity-30')}
+              style={{ left: `${50 + dot / 2}%` }} />
           )}
         </div>
         <div className="mt-1 flex justify-between text-[9.5px] uppercase tracking-[0.12em] text-sub/60"><span>low</span><span>high</span></div>
@@ -674,14 +675,41 @@ function Readout({ target, cents, sung, progress, p }: { target?: number; cents:
   )
 }
 
+/** Eases a value toward where it's going, frame by frame (the screen redraws every frame while
+    singing) — smooth, never jittery. Holds the last value while there's nothing to follow. */
+function useGlide(x: number | null, seconds = 0.09) {
+  const s = useRef<{ v: number | null; t: number }>({ v: null, t: 0 })
+  const now = performance.now() / 1000
+  const g = s.current
+  if (x !== null) g.v = g.v === null ? x : g.v + (x - g.v) * (1 - Math.exp(-Math.min(0.1, now - g.t) / seconds))
+  g.t = now
+  return g.v
+}
+
+/** A small mark when the sound is the trouble (noise, too soft, too loud); the words on hover. */
+function MicHint({ issue }: { issue: Exclude<MicIssue, null> }) {
+  const why = { noisy: 'Background noise — a quieter spot helps', soft: 'Too soft — sing louder or come closer', loud: 'Too loud — move back from the mic' }[issue]
+  return (
+    <span title={why} aria-label={why} role="status" className="screen-in ml-auto shrink-0 inline-flex items-center gap-1 text-sub">
+      {issue === 'noisy' ? <AudioWaveform size={12} /> : <MicVocal size={12} />}
+      <span className="text-[10px] font-sans">{issue === 'noisy' ? 'noise' : issue}</span>
+    </span>
+  )
+}
+
 /**
- * The scale as a staircase, each step as tall as the note is high. The note to sing is lit;
- * your voice is a line across — bring it to the top of the lit step.
+ * The scale as a staircase, each step as tall as the note is high. The note to sing is lit,
+ * with its in-tune band; your voice is a line — bring it into the band on the lit step.
+ * Near the note the line moves 4× more than the steps would (a few cents shows), so you
+ * can see your voice wobble and settle; further off it falls back to the steps' scale.
  */
-function Stairs({ p, known, target, lit, voice }: { p: Progress; known: number[]; target?: number; lit?: number; voice: number | null }) {
+function Stairs({ p, known, target, lit, cents, inTune }: { p: Progress; known: number[]; target?: number; lit?: number; cents: number | null; inTune: boolean }) {
   const lvl = (s: number) => 14 + (s + 1) * 6.5
   const H = lvl(13.5)
-  const inTune = voice !== null && target !== undefined && Math.abs(voice - target) * 100 <= IN_TUNE
+  const ZOOM = 0.25 // px per cent near the note (the steps: 0.065)
+  const off = (c: number) => Math.sign(c) * (Math.abs(c) <= 100 ? Math.abs(c) * ZOOM : 100 * ZOOM + (Math.abs(c) - 100) * 0.065)
+  // the line glides after your voice and rests (faded) where it was between notes
+  const at = useGlide(target !== undefined && cents !== null ? Math.max(2, Math.min(H + 8, lvl(target) + off(cents))) : null)
   return (
     <div className="mt-7 relative" style={{ height: H }} aria-hidden>
       <div className="absolute inset-0 flex items-end gap-[3px] sm:gap-1">
@@ -692,17 +720,19 @@ function Stairs({ p, known, target, lit, voice }: { p: Progress; known: number[]
             <div key={s} className={cx('flex-1 rounded-t-md relative transition-colors duration-200 border-t',
               on ? 'bg-main/15 border-main' : s === lit ? 'bg-sub-alt border-main/40' : has ? 'bg-sub-alt border-line' : 'bg-sub-alt/40 border-transparent')}
               style={{ height: lvl(s) }}>
-              <span className={cx('absolute top-1 inset-x-0 text-center font-mono text-[10px] sm:text-[11px]', on ? 'text-text' : has ? 'text-sub' : 'text-sub/30')}>
+              {/* where "in tune" is: a soft band around the top of the lit step */}
+              {on && <span className="absolute inset-x-0 bg-main/20 rounded-sm" style={{ top: -IN_TUNE * ZOOM, height: IN_TUNE * ZOOM * 2 }} />}
+              <span className={cx('absolute top-2 inset-x-0 text-center font-mono text-[10px] sm:text-[11px]', on ? 'text-text' : has ? 'text-sub' : 'text-sub/30')}>
                 <NoteText s={s} p={p} />
               </span>
             </div>
           )
         })}
       </div>
-      {voice !== null && (
-        <div className={cx('absolute inset-x-0 transition-[bottom] duration-75 pointer-events-none', inTune ? 'text-main' : 'text-voice')}
-          style={{ bottom: lvl(Math.max(-1.5, Math.min(13.5, voice))) - 1 }}>
-          <div className="h-[1.5px] rounded-full bg-current" style={{ boxShadow: '0 0 8px currentColor' }} />
+      {at !== null && (
+        <div className={cx('absolute inset-x-0 pointer-events-none transition-[color,opacity] duration-200', inTune ? 'text-main' : 'text-text', cents === null && 'opacity-30')}
+          style={{ bottom: at - 1 }}>
+          <div className="h-[2px] rounded-full bg-current" />
           <span className="absolute -top-3.5 left-0 text-[9.5px] font-medium uppercase tracking-[0.1em]">you</span>
         </div>
       )}
@@ -951,7 +981,7 @@ function BackLink({ onClick, children }: { onClick: () => void; children: ReactN
   )
 }
 
-function Ring({ progress, size, large, children }: { progress: number; size: number; large?: number; children: ReactNode }) {
+function Ring({ progress, dim, size, large, children }: { progress: number; /** not in tune right now: the held part waits, faded */ dim?: boolean; size: number; large?: number; children: ReactNode }) {
   const R = 56
   const C = 2 * Math.PI * R
   return (
@@ -960,7 +990,7 @@ function Ring({ progress, size, large, children }: { progress: number; size: num
       <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
         <circle cx="60" cy="60" r={R} fill="var(--sub-alt)" stroke="var(--line)" strokeWidth="2.5" />
         <circle cx="60" cy="60" r={R} fill="none" stroke="var(--main)" strokeWidth="2.5" strokeLinecap="round"
-          strokeDasharray={C} strokeDashoffset={C * (1 - progress)} style={{ transition: 'stroke-dashoffset 80ms linear' }} />
+          strokeDasharray={C} strokeDashoffset={C * (1 - progress)} strokeOpacity={dim ? 0.4 : 1} style={{ transition: 'stroke-dashoffset 80ms linear, stroke-opacity 150ms' }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
     </div>

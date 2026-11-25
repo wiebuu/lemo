@@ -654,9 +654,9 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                 <span className="text-[11px] text-sub">··</span>
                 <span className="min-w-0 truncate text-[14px] text-sub" title={r.title ?? ''}>{r.title ?? 'requested song'}</span>
                 <span className="text-[11px] text-main">requested · within a week</span>
-                <Tip tip="cancel this request">
+                <Tip tip="cancel this request" className="self-center flex">
                   <button type="button" aria-label="cancel this request" onClick={() => onCancelRequest(r.songId)}
-                    className="text-sub hover:text-error self-center p-1 -m-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100">
+                    className="flex items-center justify-center text-sub hover:text-error p-1 -m-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100">
                     <X size={13} />
                   </button>
                 </Tip>
@@ -681,11 +681,11 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
                 <span className="text-[11px] text-sub tabular-nums">
                   {opening === it.id ? <span className="flex items-center gap-1 text-main"><Loader2 size={11} className="animate-spin" />opening</span> : formatTime(it.duration)}
                 </span>
-                <Tip tip="remove from your songs (it stays in Lemody for everyone)">
+                <Tip tip="remove from your songs (it stays in Lemody for everyone)" className="self-center flex">
                   <button
                     type="button"
                     aria-label="remove from your songs"
-                    className="text-sub hover:text-error self-center p-1 -m-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                    className="flex items-center justify-center text-sub hover:text-error p-1 -m-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => onRemove(it.id)}
                   >
                     <Trash2 size={13} />

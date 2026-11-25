@@ -9,6 +9,7 @@ import { persist, type Settings, type SongPrefs } from './persist'
 import { moveOldCopiesToServer } from '../lib/localSongs'
 import { studio } from './studio'
 import { clearLikes, loadLikes } from './library'
+import { COURSE_LOADED, COURSE_SAVED, mergeProgress, storedProgress, writeProgress, type Progress } from '../practice/progress'
 
 export type CloudStatus = { state: 'off' | 'syncing' | 'synced' | 'unavailable'; message?: string }
 
@@ -80,6 +81,38 @@ const pushSettings = (s: Settings, at: number) => later('settings', 1500, () => 
 const pushPrefs = (id: string, prefs: SongPrefs) =>
   later(`prefs:${id}`, 2000, () => call('PUT', `/prefs/${encodeURIComponent(id)}`, { prefs, updatedAt: prefs.updatedAt ?? Date.now() }))
 
+// The singing course's progress, kept with your account like one more saved document.
+const COURSE_DOC = `/prefs/${encodeURIComponent('app:course')}`
+const pushCourse = (p: Partial<Progress>) => later('course', 1500, () => call('PUT', COURSE_DOC, { prefs: p, updatedAt: p.updatedAt ?? Date.now() }))
+
+/** On sign-in: this browser's progress and your account's, merged (nothing done on either is lost). */
+async function syncCourse() {
+  try {
+    const r = await call<{ prefs: Partial<Progress>; updatedAt: number }>('GET', COURSE_DOC)
+    const local = storedProgress()
+    const remote = r ? { ...r.prefs, updatedAt: r.updatedAt } : null
+    const merged = mergeProgress(local, remote)
+    if (!remote && !local) return
+    if (JSON.stringify(merged) !== JSON.stringify(local)) {
+      writeProgress(merged)
+      window.dispatchEvent(new Event(COURSE_LOADED))
+    }
+    // the account is missing something this browser has: send the merged copy (stamped now, so it's taken)
+    if (!remote || JSON.stringify(merged) !== JSON.stringify(remote)) {
+      const next = { ...merged, updatedAt: Math.max(Date.now(), (merged.updatedAt ?? 0) + 1) }
+      writeProgress(next)
+      pushCourse(next)
+    }
+  } catch {
+    /* offline: the local copy is used, and goes up with the next change */
+  }
+}
+
+/** Opening the course: pick up progress made on another device since this one signed in. */
+export function syncCourseNow() {
+  if (status.state !== 'off') void syncCourse()
+}
+
 // ---- downloads ---------------------------------------------------------------------------
 
 /** On opening a song: take your account's copy of its data if it's newer than this browser's. */
@@ -108,7 +141,10 @@ export async function startCloud(uid: string) {
 
   setStatus({ state: 'syncing' })
   void loadLikes()
+  const onCourse = (e: Event) => pushCourse((e as CustomEvent<Progress>).detail)
+  window.addEventListener(COURSE_SAVED, onCourse)
   off = [
+    () => window.removeEventListener(COURSE_SAVED, onCourse),
     events.on('settingsSaved', pushSettings),
     events.on('songSaved', pushPrefs),
     events.on('songOpened', (id) => void pullPrefs(id)),
@@ -129,6 +165,7 @@ export async function startCloud(uid: string) {
     if (me.settings && me.settingsUpdatedAt > localAt) studio.applyCloudSettings(me.settings, me.settingsUpdatedAt)
     else if (localAt > me.settingsUpdatedAt) pushSettings(persist.settings(), localAt)
     if (studio.snap.track) void pullPrefs(studio.snap.track.id)
+    void syncCourse()
     setStatus({ state: 'synced' })
     void moveOldCopiesToServer() // songs once kept on this phone: to the server, then the space is freed
   } catch (e) {

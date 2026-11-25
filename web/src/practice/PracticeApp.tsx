@@ -15,6 +15,8 @@ import {
   starsFor, toSemis, writeLine, type Notation, type StepKind,
 } from './course'
 import { IN_TUNE, Trainer, VoiceIO, loadProgress, saveProgress, type MicIssue, type Progress } from './trainer'
+import { COURSE_LOADED } from './progress'
+import { syncCourseNow } from '../state/cloud'
 
 type Screen = { k: 'home' } | { k: 'voice'; then?: number } | { k: 'lesson'; i: number } | { k: 'free' }
 
@@ -50,6 +52,13 @@ export default function PracticeApp() {
       saveProgress(next)
       return next
     })
+  }, [])
+  // your account's copy arrived (signed in, or signed in on another device since): show it
+  useEffect(() => {
+    const reload = () => setP(loadProgress())
+    window.addEventListener(COURSE_LOADED, reload)
+    syncCourseNow()
+    return () => window.removeEventListener(COURSE_LOADED, reload)
   }, [])
   const voice = useMemo(() => new VoiceIO(), [])
   const [screen, setScreen] = useState<Screen>({ k: 'home' })

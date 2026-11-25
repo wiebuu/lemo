@@ -3,7 +3,6 @@
 
 import { MicError, MicInput, type MicReading } from '../audio/mic'
 import { foldOctave, midiToFreq } from '../lib/music'
-import { defaultNotation, type Notation } from './course'
 
 /** In tune = within this many cents of the note. */
 export const IN_TUNE = 30
@@ -49,27 +48,7 @@ export class MicHealth {
 
 // ---------------------------------------------------------------- what's kept
 
-export interface Progress {
-  notation: Notation
-  /** home note (Sa / Do / 1) as a MIDI note */
-  home: number
-  /** done the "find your voice" step */
-  voiceSet: boolean
-  /** best test result per lesson */
-  best: Record<string, { acc: number; stars: number }>
-  free: { line: string; hold: number; autoplay: boolean }
-}
-
-const KEY = 'lemody.course'
-export function loadProgress(): Progress {
-  const base: Progress = { notation: defaultNotation(), home: 48, voiceSet: false, best: {}, free: { line: '', hold: 1, autoplay: true } }
-  try {
-    return { ...base, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
-  } catch {
-    return base
-  }
-}
-export const saveProgress = (p: Progress) => localStorage.setItem(KEY, JSON.stringify(p))
+export { loadProgress, saveProgress, type Progress } from './progress'
 
 // ---------------------------------------------------------------- mic + speaker
 

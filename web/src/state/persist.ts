@@ -194,7 +194,7 @@ export const persist = {
       const keys: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i)
-        if (k && (k === 'lemo.settings' || k === 'lemo.settings.at' || k.startsWith('lemo.song.'))) keys.push(k)
+        if (k && (k === 'lemo.settings' || k === 'lemo.settings.at' || k === 'lemody.course' || k.startsWith('lemo.song.'))) keys.push(k)
       }
       keys.forEach((k) => localStorage.removeItem(k))
     } catch {

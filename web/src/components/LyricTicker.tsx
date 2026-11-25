@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { itemAt, lyricRows, rowAt, sungPoint, wavePath } from '../lib/lyricTiming'
 import { studio } from '../state/studio'
+import { tidyTitle } from '../lib/titles'
 import { Languages } from 'lucide-react'
 import { cx, Eq, Tip, usePhone, useStudio } from './ui'
-import { MusicLines } from './MusicLines'
 
 /**
  * Three-row karaoke: previous line (faint) · the line being sung · next line (faint).
@@ -20,16 +20,13 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
   const rows = useMemo(() => lyricRows(s.lyricsShown), [s.lyricsShown])
   const [cur, setCur] = useState(() => rowAt(rows, studio.heardTime()))
   const curRef = useRef(cur)
-  // the lyrics are over but the music plays on: the last line moves up and the music's
-  // own lines take the middle (only when the music goes on a few seconds more, so it isn't a flash)
+  // the lyrics are over: they fade away completely, then the song's name and singer
+  // slowly appear in their place (and stay to the end)
   const lastEnd = useMemo(() => {
     const it = rows[rows.length - 1]?.items
     return it?.length ? it[it.length - 1].end : null
   }, [rows])
-  const outroAt = (t: number) => {
-    const dur = studio.snap.track?.duration ?? 0
-    return lastEnd !== null && dur - lastEnd > 4 && t > lastEnd + 1 // stays to the very end once it's there
-  }
+  const outroAt = (t: number) => lastEnd !== null && t > lastEnd + 0.8
   const [outro, setOutro] = useState(() => outroAt(studio.heardTime()))
   const outroRef = useRef(outro)
   const wrap = useRef<HTMLDivElement>(null)
@@ -134,18 +131,14 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
   // Before the first line starts, it already waits in the middle row (not yet sung).
   const next = rows[Math.max(0, cur) + 1] ?? null
   const estimated = s.lyricsShown.some((l) => l.wordsSource === 'estimated')
+  // the song's plain name: no "(From …)", "(feat. …)", "Official Video" …
+  const name = tidyTitle((s.track?.title ?? '').replace(/\s*[([](?:from|feat\.?|ft\.?)\s[^)\]]*[)\]]/gi, ''), s.track?.artist ?? '')
 
   return (
     <div className="relative">
-      {outro ? (
-        <div key="outro" className="lyric-rows flex flex-col items-center" style={{ gap: `${z.gap}rem` }}>
-          {!phone && <SideLine text={middle?.text} z={z} lines={focus ? 2 : 1} align="end" />}
-          {/* no next line any more: the lines get its room too, to move more */}
-          <div className="w-full flex justify-center" style={{ height: `${z.midRow + z.sideLine * 2 + z.gap}rem` }}>
-            <MusicLines className="h-full w-full max-w-[40rem] fade-in" />
-          </div>
-        </div>
-      ) : (
+      {/* one leaves, then the other arrives (the same fade as before the first line) */}
+      <div className="relative">
+      <div aria-hidden={outro} data-shown={!outro} className="stage-swap">
       <div key={cur} className="lyric-rows flex flex-col items-center" style={{ gap: `${z.gap}rem` }}>
         {!phone && <SideLine text={prev?.text} z={z} lines={focus ? 2 : 1} align="end" />}
         <div ref={wrap} className="lyric-ticker w-full overflow-hidden transition-[height] duration-300" style={{ height: `${z.midRow}rem` }}>
@@ -171,7 +164,13 @@ export function LyricTicker({ big, focus, onFix }: { big?: boolean; /** lyrics o
         </div>
         <SideLine text={next?.text} z={z} lines={2} align="start" next />
       </div>
-      )}
+      </div>
+      <div aria-hidden={!outro} data-shown={outro} className="stage-swap absolute inset-0 flex flex-col items-center justify-center text-center px-6"
+        style={{ transitionDuration: outro ? '1.6s' : undefined }}>
+        <div dir="auto" className="text-text font-medium tracking-tight truncate max-w-full" style={{ fontSize: `${z.mid * 0.8}rem`, lineHeight: 1.25 }}>{name.title || s.track?.title}</div>
+        {name.artist && <div dir="auto" className="text-sub truncate max-w-full mt-1" style={{ fontSize: `${z.side}rem` }}>{name.artist}</div>}
+      </div>
+      </div>
       {/* its own row under the lines: never over the lines or the player below */}
       <div className={cx('flex items-center gap-2 text-[11px] text-sub h-4', focus ? 'justify-center mt-4' : 'justify-end mt-1')}>
         {onFix && <FixLink onFix={onFix} />}

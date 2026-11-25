@@ -7,8 +7,8 @@ import type { Attempt, BreathMark, LyricLine, ReferenceNote } from '../lib/types
 import { events } from './events'
 
 export type LyricsScript = 'original' | 'latin' | 'deva' | 'urdu'
-export type ThemeName = 'studio' | 'ink' | 'sage' | 'velvet' | 'mono'
-export const THEMES: ThemeName[] = ['mono', 'studio', 'ink', 'sage', 'velvet']
+export type ThemeName = 'studio' | 'ink' | 'sage' | 'velvet' | 'mono' | 'sunset' | 'ocean' | 'aurora' | 'ember' | 'sakura' | 'lavender' | 'citrus' | 'neon' | 'forest' | 'coffee'
+export const THEMES: ThemeName[] = ['mono', 'studio', 'ink', 'sage', 'velvet', 'sunset', 'ocean', 'aurora', 'ember', 'sakura', 'lavender', 'citrus', 'neon', 'forest', 'coffee']
 /** Themes from earlier versions → their closest current one. */
 const RENAMED: Record<string, ThemeName> = { stage: 'studio', midnight: 'ink', neon: 'velvet', serika: 'mono' }
 /** line = one continuous melody line (default); bars = one block per note. */

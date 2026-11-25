@@ -113,7 +113,17 @@
         var s = JSON.parse(localStorage.getItem('lemo.settings') || '{}') || {}
         var t = s.themePicked ? s.theme : 'mono'
         var c = { studio: ['#131313', '#d8b36f', '#ededea', '#7d7d82', '#1c1c1d'], ink: ['#0d1117', '#8fb4f6', '#e6edf3', '#6f7c8d', '#161c25'], sage: ['#111412', '#a3c9a8', '#e7ece8', '#76837b', '#191e1b'],
-          velvet: ['#151114', '#e3a7b6', '#f0e9ee', '#857784', '#1f181d'], mono: ['#111111', '#f0f0f0', '#eeeeee', '#7a7a7a', '#1a1a1a'] }[t]
+          velvet: ['#151114', '#e3a7b6', '#f0e9ee', '#857784', '#1f181d'], mono: ['#111111', '#f0f0f0', '#eeeeee', '#7a7a7a', '#1a1a1a'],
+          sunset: ['#15100f', '#ff9e72', '#f4eae5', '#8d7b75', '#211816'],
+          ocean: ['#0a1316', '#5fd6c9', '#e2f1f3', '#6b8a91', '#112128'],
+          aurora: ['#0b1014', '#6ff0b5', '#e4eef2', '#6e8189', '#141c23'],
+          ember: ['#140f0c', '#ffb44d', '#f2e8df', '#8d7d70', '#211913'],
+          sakura: ['#141012', '#ffb3c7', '#f5eaee', '#8c7b83', '#1f181c'],
+          lavender: ['#13111a', '#b8a3ff', '#ece8f5', '#827c96', '#1d1a27'],
+          citrus: ['#121310', '#f2e26a', '#f0f1e6', '#84877a', '#1c1e18'],
+          neon: ['#0f0b17', '#ff63d4', '#f1eafc', '#8a7fa0', '#1a1427'],
+          forest: ['#0e130f', '#c6e27c', '#e8efe6', '#748676', '#172019'],
+          coffee: ['#120e0c', '#e0bf9f', '#efe6de', '#8a7b70', '#1d1714'] }[t]
         if (c) {
           var b = document.getElementById('boot').style
           ;['--bg', '--main', '--text', '--sub', '--track'].forEach(function (k, i) { b.setProperty(k, c[i]) })

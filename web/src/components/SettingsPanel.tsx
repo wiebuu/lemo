@@ -31,27 +31,15 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
       {tab === 'look' && (
         <>
           <Section title="theme">
-            <div className="flex flex-wrap gap-2">
-              {THEMES.map((t) => (
-                <Tip key={t} tip={SWATCH[t].mood}>
-                  <button type="button" onClick={() => studio.updateSettings({ theme: t, themePicked: true })} aria-label={`${t} theme`}
-                    className={cx('rounded-xl p-1 transition-all', st.theme === t ? 'ring-grad bg-sub-alt/60' : 'hover:bg-sub-alt/60')}>
-                    <svg width="56" height="34" viewBox="0 0 56 34" className="rounded-md block">
-                      <defs>
-                        <linearGradient id={`sw-${t}`} x1="0" x2="1" y1="0" y2="0">
-                          <stop offset="0" stopColor={SWATCH[t].main} />
-                          <stop offset="1" stopColor={SWATCH[t].main2} />
-                        </linearGradient>
-                      </defs>
-                      <rect width="56" height="34" fill={SWATCH[t].bg} />
-                      <path d="M6 24 C14 24 14 10 22 10 S32 26 40 22 S48 12 50 12" fill="none" stroke={`url(#sw-${t})`} strokeWidth="2.5" strokeLinecap="round" />
-                      <path d="M6 20 C14 20 16 14 24 14 S34 22 50 16" fill="none" stroke={SWATCH[t].text} strokeOpacity=".45" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    <span className="block text-[10px] text-sub mt-1">{t}</span>
-                  </button>
-                </Tip>
-              ))}
-            </div>
+            {/* the quiet ones (one accent on a neutral dark), then the colourful ones (two colours, each from something) */}
+            {[THEMES.slice(0, 5), THEMES.slice(5)].map((group, g) => (
+              <div key={g} className={cx('w-full', g > 0 && 'mt-3')}>
+                <div className="text-[10px] uppercase tracking-[0.12em] text-sub/70 mb-1.5">{g ? 'colourful' : 'calm'}</div>
+                <div className="flex flex-wrap gap-2">
+                  {group.map((t) => <ThemeSwatch key={t} t={t} on={st.theme === t} />)}
+                </div>
+              </div>
+            ))}
           </Section>
           <Section title="original melody" hint="one continuous line to follow, or one block per note.">
             <Choice<MelodyView> value={st.melodyView} onChange={(melodyView) => studio.updateSettings({ melodyView })}
@@ -157,10 +145,42 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
   )
 }
 
+function ThemeSwatch({ t, on }: { t: ThemeName; on: boolean }) {
+  return (
+    <Tip tip={SWATCH[t].mood}>
+      <button type="button" onClick={() => studio.updateSettings({ theme: t, themePicked: true })} aria-label={`${t} theme`}
+        className={cx('rounded-xl p-1 transition-all', on ? 'ring-grad bg-sub-alt/60' : 'hover:bg-sub-alt/60')}>
+        <svg width="56" height="34" viewBox="0 0 56 34" className="rounded-md block">
+          <defs>
+            <linearGradient id={`sw-${t}`} x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stopColor={SWATCH[t].main} />
+              <stop offset="1" stopColor={SWATCH[t].main2} />
+            </linearGradient>
+          </defs>
+          <rect width="56" height="34" fill={SWATCH[t].bg} />
+          <path d="M6 24 C14 24 14 10 22 10 S32 26 40 22 S48 12 50 12" fill="none" stroke={`url(#sw-${t})`} strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M6 20 C14 20 16 14 24 14 S34 22 50 16" fill="none" stroke={SWATCH[t].text} strokeOpacity=".45" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+        <span className="block text-[10px] text-sub mt-1">{t}</span>
+      </button>
+    </Tip>
+  )
+}
+
 const SWATCH: Record<ThemeName, { bg: string; main: string; main2: string; text: string; mood: string }> = {
   studio: { bg: '#131313', main: '#d8b36f', main2: '#c99a62', text: '#ededea', mood: 'Studio — graphite and brass.' },
   ink: { bg: '#0d1117', main: '#8fb4f6', main2: '#a3a9f2', text: '#e6edf3', mood: 'Ink — blue-black and periwinkle.' },
   sage: { bg: '#111412', main: '#a3c9a8', main2: '#8bbcae', text: '#e7ece8', mood: 'Sage — green-grey and soft sage.' },
   velvet: { bg: '#151114', main: '#e3a7b6', main2: '#cfa5d6', text: '#f0e9ee', mood: 'Velvet — aubergine and dusty rose.' },
   mono: { bg: '#111111', main: '#f0f0f0', main2: '#c4c4c4', text: '#eeeeee', mood: 'Mono — no colour, just light on charcoal. The default.' },
+  sunset: { bg: '#15100f', main: '#ff9e72', main2: '#f2789a', text: '#f4eae5', mood: 'Sunset — dusk sky, coral fading into pink.' },
+  ocean: { bg: '#0a1316', main: '#5fd6c9', main2: '#5aa9e8', text: '#e2f1f3', mood: 'Ocean — deep water, aqua and sea blue.' },
+  aurora: { bg: '#0b1014', main: '#6ff0b5', main2: '#a194ff', text: '#e4eef2', mood: 'Aurora — northern lights, green into violet.' },
+  ember: { bg: '#140f0c', main: '#ffb44d', main2: '#ff7552', text: '#f2e8df', mood: 'Ember — a campfire, amber and flame.' },
+  sakura: { bg: '#141012', main: '#ffb3c7', main2: '#c8b6ff', text: '#f5eaee', mood: 'Sakura — cherry blossom at night, pink and lilac.' },
+  lavender: { bg: '#13111a', main: '#b8a3ff', main2: '#ef9fd6', text: '#ece8f5', mood: 'Lavender — a field at dusk, violet and orchid.' },
+  citrus: { bg: '#121310', main: '#f2e26a', main2: '#a9e06c', text: '#f0f1e6', mood: 'Citrus — lemon and lime, bright and fresh.' },
+  neon: { bg: '#0f0b17', main: '#ff63d4', main2: '#5ff0ff', text: '#f1eafc', mood: 'Neon — a retro arcade, magenta and cyan.' },
+  forest: { bg: '#0e130f', main: '#c6e27c', main2: '#7fd093', text: '#e8efe6', mood: 'Forest — moss and fireflies, lime and leaf.' },
+  coffee: { bg: '#120e0c', main: '#e0bf9f', main2: '#c4916d', text: '#efe6de', mood: 'Coffee — espresso and cream, caramel and cocoa.' },
 }

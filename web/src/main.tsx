@@ -14,6 +14,7 @@ import { installFeedback } from './state/feedback'
 
 // Apply the saved theme before first paint (the canvas reads its colours on creation).
 document.documentElement.dataset.theme = persist.settings().theme
+document.documentElement.dataset.mode = persist.settings().mode
 installGuards()
 installStaleBuildReload()
 fetchPartsEarly()

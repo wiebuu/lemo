@@ -1,12 +1,30 @@
+import { useId } from 'react'
 import { cx } from './ui'
 
 /** The mark: a sung line — nothing else. */
 export const WAVE_PATH = 'M2 14 C7 14 8 5 13 5 S20 19 26 19 S33 8 38 8 S44 13 46 13'
 
+/** The accent as a left-to-right gradient for an SVG stroke (--main into --main-2: a sheen in the
+    calm themes, two colours in the colourful ones). Returns the defs and the paint to use. */
+export function useAccentStroke(): [React.ReactNode, string] {
+  const id = 'acc' + useId().replace(/:/g, '')
+  return [
+    <defs key="d">
+      <linearGradient id={id} x1="0" x2="1" y1="0" y2="0">
+        <stop offset="0" style={{ stopColor: 'var(--main)' }} />
+        <stop offset="1" style={{ stopColor: 'var(--main-2)' }} />
+      </linearGradient>
+    </defs>,
+    `url(#${id})`,
+  ]
+}
+
 export function Wave({ className }: { className?: string }) {
+  const [defs, paint] = useAccentStroke()
   return (
     <svg viewBox="0 0 48 24" className={cx('overflow-visible', className)} aria-hidden>
-      <path d={WAVE_PATH} fill="none" stroke="var(--main)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      {defs}
+      <path d={WAVE_PATH} fill="none" stroke={paint} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

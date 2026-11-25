@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ArrowRight, AudioWaveform, Check, ChevronLeft, ChevronRight, Lock, Mic, MicVocal, PencilLine, RotateCcw, SkipForward, Star, Volume2 } from 'lucide-react'
-import { Wordmark } from '../components/Brand'
+import { Wordmark, useAccentStroke } from '../components/Brand'
 import { cx } from '../components/ui'
 import { back, navigate } from '../pages/router'
 import { SiteFooter } from '../pages/Footer'
@@ -150,7 +150,7 @@ function CourseMap({ p, update, open, free, voice }: { p: Progress; update: (x: 
       <Eyebrow>Singing course</Eyebrow>
       <div className="mt-1 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-6">
         <div>
-          <h1 className="text-[26px] sm:text-[36px] font-semibold tracking-[-0.035em] leading-[1.05] text-text">Learn to <span className="text-main">sing</span> in tune</h1>
+          <h1 className="text-[26px] sm:text-[36px] font-semibold tracking-[-0.035em] leading-[1.05] text-text">Learn to <span className="accent-text">sing</span> in tune</h1>
           <p className="mt-1 text-[13px] text-sub">Hear a note, sing it, hold it. One new note each lesson.</p>
         </div>
         <NotationSwitch value={p.notation} onChange={(notation) => update({ notation })} />
@@ -241,6 +241,7 @@ function through(pts: [number, number][]): string {
  * faint; each lesson done steadies it, until (all done) it's the start screen's own clean line.
  */
 function SungLine({ skill }: { skill: number }) {
+  const [defs, paint] = useAccentStroke()
   const d = useMemo(() => {
     if (skill >= 1) return MELODY
     const N = 64
@@ -263,7 +264,8 @@ function SungLine({ skill }: { skill: number }) {
       {[0, 1, 2, 3, 4].map((k) => (
         <line key={k} x1="0" x2="640" y1={5 + k * 9} y2={5 + k * 9} stroke="var(--text)" strokeOpacity=".07" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       ))}
-      <path d={d} fill="none" stroke="var(--main)" strokeOpacity={0.45 + 0.55 * skill} strokeWidth={1.5 + 0.5 * skill}
+      {defs}
+      <path d={d} fill="none" stroke={paint} strokeOpacity={0.45 + 0.55 * skill} strokeWidth={1.5 + 0.5 * skill}
         strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ transition: 'stroke-opacity .6s, stroke-width .6s' }} />
     </svg>
   )

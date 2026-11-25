@@ -67,8 +67,9 @@ export function IconBtn({
   )
 }
 
+/** A hairline between groups in a toolbar. */
 export function Divider() {
-  return <span className="w-[3px] h-4 rounded bg-bg shrink-0" />
+  return <span className="w-px h-3.5 bg-line shrink-0 mx-0.5" />
 }
 
 export function Modal({ title, onClose, children, wide, tabs }: {

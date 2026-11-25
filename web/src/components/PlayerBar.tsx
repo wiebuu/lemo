@@ -118,7 +118,9 @@ export function PlayerBar() {
           )}
         </div>
 
-        <div className="flex items-center gap-0.5 sm:gap-1">
+        {/* the test button sits in the exact middle: the left and right halves get equal room */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center justify-end gap-0.5 sm:gap-1">
           <IconToggle tip="Previous phrase (←)" onClick={() => studio.seekPhrase(-1)} disabled={disabled} why="Load a song first.">
             <SkipBack size={18} />
           </IconToggle>
@@ -133,10 +135,12 @@ export function PlayerBar() {
             disabled={disabled}
             data-sfx="own"
             aria-label={s.buffering ? 'loading — tap to pause' : 'play / pause (space)'}
-            className="mx-1 w-12 h-12 rounded-full flex items-center justify-center bg-main text-bg hover:brightness-110 active:scale-95 transition-all disabled:opacity-35"
+            // just listening: a quiet round button (the test, next to it, is the one to press)
+            className="ml-0.5 w-11 h-11 shrink-0 rounded-full flex items-center justify-center surface text-text hover:text-main active:scale-95 transition-all disabled:opacity-35"
           >
-            {s.buffering ? <LoaderCircle size={22} className="animate-spin" /> : s.playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+            {s.buffering ? <LoaderCircle size={20} className="animate-spin" /> : s.playing ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" className="translate-x-[1.5px]" />}
           </button>
+          </div>
           <Tip tip={s.session ? 'End the test and see your results (T)' : s.lastResult ? 'Start a new test from the same spot (T)' : 'Start a test — sing along and get scored (T)'}>
             <button
               type="button"
@@ -144,14 +148,16 @@ export function PlayerBar() {
               disabled={disabled}
               data-sfx="own"
               aria-label={s.session ? 'end test' : 'start test'}
+              // the main button: sing and get scored — the biggest, filled
               className={cx(
-                'mr-1 w-11 h-11 rounded-full flex items-center justify-center ring-1 transition-colors',
-                s.session ? 'bg-error/15 text-error ring-error/40 hover:bg-error/25' : 'bg-main-2/10 text-main-2 ring-main-2/35 hover:bg-main-2/20',
+                'w-12 h-12 shrink-0 rounded-full flex items-center justify-center active:scale-95 transition-all disabled:opacity-35',
+                s.session ? 'bg-error text-bg hover:brightness-110' : 'bg-main text-bg hover:brightness-110',
               )}
             >
-              {s.session ? <Square size={15} fill="currentColor" /> : <Circle size={15} fill="currentColor" />}
+              {s.session ? <Square size={14} fill="currentColor" /> : <Circle size={15} fill="currentColor" className={cx(!disabled && 'rec-pulse')} />}
             </button>
           </Tip>
+          <div className="flex items-center justify-start gap-0.5 sm:gap-1">
           <span className="hidden sm:inline-flex">
             <IconToggle tip="Start a test from the beginning of the song" onClick={() => studio.startTestFromBeginning()}
               disabled={disabled || s.session} why={s.session ? 'End the current test first.' : 'Load a song first.'}>
@@ -164,6 +170,7 @@ export function PlayerBar() {
           <IconToggle tip="Next phrase (→)" onClick={() => studio.seekPhrase(1)} disabled={disabled} why="Load a song first.">
             <SkipForward size={18} />
           </IconToggle>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-1 text-xs">

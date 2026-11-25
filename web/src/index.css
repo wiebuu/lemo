@@ -5,194 +5,10 @@
 @import '@fontsource/geist-mono/500.css';
 @import 'tailwindcss';
 
-/* Themes — restrained palettes: a neutral dark base and one refined accent.
-   --main-2 is a close shade of the accent (never a different hue family), so
-   the few gradients read as a sheen, not a rainbow. "mono" is the default. */
-:root[data-theme='studio'] {
-  --bg: #131313;
-  --sub-alt: #1c1c1d;
-  --text: #ededea;
-  --sub: #7d7d82;
-  --main: #d8b36f;
-  --main-2: #c99a62;
-  --voice: #7ccbc2; /* your line on the graph — always unlike the original's */
-  --error: #e5675f;
-  --sharp: #e3a368;
-  --flat: #7da6d9;
-  color-scheme: dark;
-}
-/* ink — blue-black, soft periwinkle */
-:root[data-theme='ink'] {
-  --bg: #0d1117;
-  --sub-alt: #161c25;
-  --text: #e6edf3;
-  --sub: #6f7c8d;
-  --main: #8fb4f6;
-  --main-2: #a3a9f2;
-  --voice: #f2c27d; /* your line on the graph — always unlike the original's */
-  --error: #f47067;
-  --sharp: #f0b072;
-  --flat: #79c0ff;
-}
-/* sage — green-grey, muted sage */
-:root[data-theme='sage'] {
-  --bg: #111412;
-  --sub-alt: #191e1b;
-  --text: #e7ece8;
-  --sub: #76837b;
-  --main: #a3c9a8;
-  --main-2: #8bbcae;
-  --voice: #efb388; /* your line on the graph — always unlike the original's */
-  --error: #e57373;
-  --sharp: #e0b070;
-  --flat: #82aadf;
-}
-/* velvet — aubergine, dusty rose */
-:root[data-theme='velvet'] {
-  --bg: #151114;
-  --sub-alt: #1f181d;
-  --text: #f0e9ee;
-  --sub: #857784;
-  --main: #e3a7b6;
-  --main-2: #cfa5d6;
-  --voice: #8fd3c5; /* your line on the graph — always unlike the original's */
-  --error: #ef7a7a;
-  --sharp: #f0b27a;
-  --flat: #93b2ea;
-}
-/* Colourful themes, each inspired by something: here --main-2 may be a second hue, so the
-   few gradients read as a mix of two colours. */
-/* sunset — dusk sky, coral fading into pink */
-:root[data-theme='sunset'] {
-  --bg: #15100f;
-  --sub-alt: #211816;
-  --text: #f4eae5;
-  --sub: #8d7b75;
-  --main: #ff9e72;
-  --main-2: #f2789a;
-  --voice: #8fd0e8; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* ocean — deep water, aqua and sea blue */
-:root[data-theme='ocean'] {
-  --bg: #0a1316;
-  --sub-alt: #112128;
-  --text: #e2f1f3;
-  --sub: #6b8a91;
-  --main: #5fd6c9;
-  --main-2: #5aa9e8;
-  --voice: #f5c27a; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* aurora — northern lights, green into violet */
-:root[data-theme='aurora'] {
-  --bg: #0b1014;
-  --sub-alt: #141c23;
-  --text: #e4eef2;
-  --sub: #6e8189;
-  --main: #6ff0b5;
-  --main-2: #a194ff;
-  --voice: #ffb38a; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* ember — a campfire, amber and flame */
-:root[data-theme='ember'] {
-  --bg: #140f0c;
-  --sub-alt: #211913;
-  --text: #f2e8df;
-  --sub: #8d7d70;
-  --main: #ffb44d;
-  --main-2: #ff7552;
-  --voice: #7fc8f0; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* sakura — cherry blossom at night, pink and lilac */
-:root[data-theme='sakura'] {
-  --bg: #141012;
-  --sub-alt: #1f181c;
-  --text: #f5eaee;
-  --sub: #8c7b83;
-  --main: #ffb3c7;
-  --main-2: #c8b6ff;
-  --voice: #9ed9b4; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* lavender — a field at dusk, violet and orchid */
-:root[data-theme='lavender'] {
-  --bg: #13111a;
-  --sub-alt: #1d1a27;
-  --text: #ece8f5;
-  --sub: #827c96;
-  --main: #b8a3ff;
-  --main-2: #ef9fd6;
-  --voice: #9fe3c4; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* citrus — lemon and lime, bright and fresh */
-:root[data-theme='citrus'] {
-  --bg: #121310;
-  --sub-alt: #1c1e18;
-  --text: #f0f1e6;
-  --sub: #84877a;
-  --main: #f2e26a;
-  --main-2: #a9e06c;
-  --voice: #9ab8ff; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* neon — a retro arcade, magenta and cyan */
-:root[data-theme='neon'] {
-  --bg: #0f0b17;
-  --sub-alt: #1a1427;
-  --text: #f1eafc;
-  --sub: #8a7fa0;
-  --main: #ff63d4;
-  --main-2: #5ff0ff;
-  --voice: #ffe066; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* forest — moss and fireflies, lime and leaf */
-:root[data-theme='forest'] {
-  --bg: #0e130f;
-  --sub-alt: #172019;
-  --text: #e8efe6;
-  --sub: #748676;
-  --main: #c6e27c;
-  --main-2: #7fd093;
-  --voice: #e8a8d8; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* coffee — espresso and cream, caramel and cocoa */
-:root[data-theme='coffee'] {
-  --bg: #120e0c;
-  --sub-alt: #1d1714;
-  --text: #efe6de;
-  --sub: #8a7b70;
-  --main: #e0bf9f;
-  --main-2: #c4916d;
-  --voice: #9cc7e8; /* your line on the graph — always unlike the original's */
-  --error: #f47a72;
-  --sharp: #f0b072;
-  --flat: #86aee8;
-}
-/* mono — no colour at all, white on charcoal */
+/* Themes — each in a dark and a light mode (<html data-theme data-mode>). The backgrounds stay
+   near-neutral (a hint of the theme, no more); the colour lives in the accents. The calm themes'
+   --main-2 is a close shade (a sheen); the colourful ones mix in a second hue. */
+/* Mono — no colour, just light on charcoal (or ink on paper). The default. */
 :root,
 :root[data-theme='mono'] {
   --bg: #111111;
@@ -201,10 +17,402 @@
   --sub: #7a7a7a;
   --main: #f0f0f0;
   --main-2: #c4c4c4;
-  --voice: #ffffff; /* your line: bright white, over the original's grey */
-  --error: #ff6b6b;
-  --sharp: #e9a06a;
-  --flat: #7fa7e0;
+  --voice: #ffffff; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-mode='light'], :root[data-theme='mono'][data-mode='light'] {
+  --bg: #f2f2f0;
+  --sub-alt: #e6e6e3;
+  --text: #161616;
+  --sub: #666666;
+  --main: #1c1c1c;
+  --main-2: #4a4a4a;
+  --voice: #000000; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Studio — graphite and brass. */
+:root[data-theme='studio'] {
+  --bg: #131313;
+  --sub-alt: #1c1c1d;
+  --text: #ededea;
+  --sub: #7d7d82;
+  --main: #d8b36f;
+  --main-2: #c99a62;
+  --voice: #7ccbc2; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='studio'][data-mode='light'] {
+  --bg: #f3f2ef;
+  --sub-alt: #e7e5e0;
+  --text: #1c1a16;
+  --sub: #686459;
+  --main: #86601c;
+  --main-2: #9a6a3a;
+  --voice: #1d7a71; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Ink — blue-black and periwinkle. */
+:root[data-theme='ink'] {
+  --bg: #111316;
+  --sub-alt: #1a1d22;
+  --text: #e6edf3;
+  --sub: #76808c;
+  --main: #8fb4f6;
+  --main-2: #a3a9f2;
+  --voice: #f2c27d; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='ink'][data-mode='light'] {
+  --bg: #f1f2f4;
+  --sub-alt: #e4e7eb;
+  --text: #141a22;
+  --sub: #5d6876;
+  --main: #2d5cb4;
+  --main-2: #5650c0;
+  --voice: #a8600c; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Sage — green-grey and soft sage. */
+:root[data-theme='sage'] {
+  --bg: #121413;
+  --sub-alt: #1b1e1c;
+  --text: #e7ece8;
+  --sub: #78837c;
+  --main: #a3c9a8;
+  --main-2: #8bbcae;
+  --voice: #efb388; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='sage'][data-mode='light'] {
+  --bg: #f1f2f0;
+  --sub-alt: #e4e7e4;
+  --text: #161c18;
+  --sub: #606c65;
+  --main: #3a7446;
+  --main-2: #2c776b;
+  --voice: #a9552d; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Velvet — aubergine and dusty rose. */
+:root[data-theme='velvet'] {
+  --bg: #141214;
+  --sub-alt: #1e1b1e;
+  --text: #f0e9ee;
+  --sub: #857984;
+  --main: #e3a7b6;
+  --main-2: #cfa5d6;
+  --voice: #8fd3c5; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='velvet'][data-mode='light'] {
+  --bg: #f3f1f2;
+  --sub-alt: #e8e3e6;
+  --text: #1f171d;
+  --sub: #726574;
+  --main: #a23f62;
+  --main-2: #84469a;
+  --voice: #1c766b; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Sunset — dusk sky, coral fading into pink. */
+:root[data-theme='sunset'] {
+  --bg: #141212;
+  --sub-alt: #1e1b1b;
+  --text: #f4eae5;
+  --sub: #8a7d79;
+  --main: #ff9e72;
+  --main-2: #f2789a;
+  --voice: #8fd0e8; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='sunset'][data-mode='light'] {
+  --bg: #f4f2f1;
+  --sub-alt: #e9e4e2;
+  --text: #201815;
+  --sub: #71645d;
+  --main: #b94a28;
+  --main-2: #b73663;
+  --voice: #1e6890; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Ocean — deep water, aqua and sea blue. */
+:root[data-theme='ocean'] {
+  --bg: #111415;
+  --sub-alt: #1a1e1f;
+  --text: #e2f1f3;
+  --sub: #728589;
+  --main: #5fd6c9;
+  --main-2: #5aa9e8;
+  --voice: #f5c27a; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='ocean'][data-mode='light'] {
+  --bg: #f0f3f3;
+  --sub-alt: #e2e8e9;
+  --text: #10191c;
+  --sub: #5a6f74;
+  --main: #0b7069;
+  --main-2: #1d5e9e;
+  --voice: #9c5a0c; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Aurora — northern lights, green into violet. */
+:root[data-theme='aurora'] {
+  --bg: #111314;
+  --sub-alt: #1a1d1f;
+  --text: #e4eef2;
+  --sub: #74838a;
+  --main: #6ff0b5;
+  --main-2: #a194ff;
+  --voice: #ffb38a; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='aurora'][data-mode='light'] {
+  --bg: #f0f3f2;
+  --sub-alt: #e2e8e7;
+  --text: #121a1c;
+  --sub: #5b6b6e;
+  --main: #157a50;
+  --main-2: #5b48bc;
+  --voice: #a9532a; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Ember — a campfire, amber and flame. */
+:root[data-theme='ember'] {
+  --bg: #141211;
+  --sub-alt: #1e1b19;
+  --text: #f2e8df;
+  --sub: #8a7e74;
+  --main: #ffb44d;
+  --main-2: #ff7552;
+  --voice: #7fc8f0; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='ember'][data-mode='light'] {
+  --bg: #f4f2ef;
+  --sub-alt: #e9e4dd;
+  --text: #201811;
+  --sub: #726557;
+  --main: #9c560a;
+  --main-2: #b83a26;
+  --voice: #1d6696; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Sakura — cherry blossom at night, pink and lilac. */
+:root[data-theme='sakura'] {
+  --bg: #141213;
+  --sub-alt: #1e1b1d;
+  --text: #f5eaee;
+  --sub: #897d83;
+  --main: #ffb3c7;
+  --main-2: #c8b6ff;
+  --voice: #9ed9b4; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='sakura'][data-mode='light'] {
+  --bg: #f4f1f2;
+  --sub-alt: #e9e3e6;
+  --text: #22181c;
+  --sub: #75646c;
+  --main: #b03a61;
+  --main-2: #644cb8;
+  --voice: #1c7550; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Lavender — a field at dusk, violet and orchid. */
+:root[data-theme='lavender'] {
+  --bg: #131216;
+  --sub-alt: #1c1b20;
+  --text: #ece8f5;
+  --sub: #807b8f;
+  --main: #b8a3ff;
+  --main-2: #ef9fd6;
+  --voice: #9fe3c4; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='lavender'][data-mode='light'] {
+  --bg: #f2f1f4;
+  --sub-alt: #e6e3ec;
+  --text: #1b1724;
+  --sub: #6a647a;
+  --main: #5d44c2;
+  --main-2: #a0347e;
+  --voice: #16745d; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Citrus — lemon and lime, bright and fresh. */
+:root[data-theme='citrus'] {
+  --bg: #131311;
+  --sub-alt: #1c1d1a;
+  --text: #f0f1e6;
+  --sub: #83857a;
+  --main: #f2e26a;
+  --main-2: #a9e06c;
+  --voice: #9ab8ff; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='citrus'][data-mode='light'] {
+  --bg: #f3f3ef;
+  --sub-alt: #e7e7df;
+  --text: #1b1c14;
+  --sub: #686a5c;
+  --main: #6d6000;
+  --main-2: #3a7418;
+  --voice: #3556b8; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Neon — a retro arcade, magenta and cyan. */
+:root[data-theme='neon'] {
+  --bg: #131216;
+  --sub-alt: #1d1b21;
+  --text: #f1eafc;
+  --sub: #857e96;
+  --main: #ff63d4;
+  --main-2: #5ff0ff;
+  --voice: #ffe066; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='neon'][data-mode='light'] {
+  --bg: #f2f1f4;
+  --sub-alt: #e6e2ec;
+  --text: #1a1424;
+  --sub: #696280;
+  --main: #b0218c;
+  --main-2: #0b7189;
+  --voice: #8a5a00; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Forest — moss and fireflies, lime and leaf. */
+:root[data-theme='forest'] {
+  --bg: #121412;
+  --sub-alt: #1b1e1b;
+  --text: #e8efe6;
+  --sub: #788577;
+  --main: #c6e27c;
+  --main-2: #7fd093;
+  --voice: #e8a8d8; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='forest'][data-mode='light'] {
+  --bg: #f1f3f0;
+  --sub-alt: #e3e8e1;
+  --text: #151b16;
+  --sub: #5f6c5c;
+  --main: #506c10;
+  --main-2: #2a7444;
+  --voice: #9a3f84; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
+}
+/* Coffee — espresso and cream, caramel and cocoa. */
+:root[data-theme='coffee'] {
+  --bg: #141211;
+  --sub-alt: #1e1b19;
+  --text: #efe6de;
+  --sub: #887b72;
+  --main: #e0bf9f;
+  --main-2: #c4916d;
+  --voice: #9cc7e8; /* your line on the graph — always unlike the original's */
+  --error: #f47a72;
+  --sharp: #f0b072;
+  --flat: #86aee8;
+  color-scheme: dark;
+}
+:root[data-theme='coffee'][data-mode='light'] {
+  --bg: #f4f2ef;
+  --sub-alt: #e9e4de;
+  --text: #1f1814;
+  --sub: #71645a;
+  --main: #7e5230;
+  --main-2: #965834;
+  --voice: #2a6590; /* your line on the graph — always unlike the original's */
+  --error: #b83229;
+  --sharp: #a85d16;
+  --flat: #2c5fae;
+  color-scheme: light;
 }
 
 /* derived from each theme */
@@ -253,6 +461,20 @@ body {
 }
 .bg-grad {
   background: var(--grad);
+}
+/* the accent in words that carry it ("singing"): one colour, or in the colourful themes a mix of two */
+.accent-text {
+  color: var(--main);
+}
+:root:is([data-theme='sunset'], [data-theme='ocean'], [data-theme='aurora'], [data-theme='ember'], [data-theme='sakura'], [data-theme='lavender'], [data-theme='citrus'], [data-theme='neon'], [data-theme='forest'], [data-theme='coffee']) .accent-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* colourful themes: filled accents (sign in, the picked chip, main buttons) show both colours */
+:root:is([data-theme='sunset'], [data-theme='ocean'], [data-theme='aurora'], [data-theme='ember'], [data-theme='sakura'], [data-theme='lavender'], [data-theme='citrus'], [data-theme='neon'], [data-theme='forest'], [data-theme='coffee']) .bg-main {
+  background-image: var(--grad);
 }
 /* a hairline in the accent colour */
 .ring-grad {
@@ -901,3 +1123,14 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
 
 /* the way into the singing course: tinted with the "low" and "high" pitch colours, so it
    has colour in every theme (even mono) and reads as a place to go, not a setting */
+
+/* the start-test dot breathes softly, so it reads as "record" (still for reduced motion) */
+.rec-pulse {
+  animation: rec-pulse 2.2s ease-in-out infinite;
+}
+@keyframes rec-pulse {
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-pulse { animation: none; }
+}

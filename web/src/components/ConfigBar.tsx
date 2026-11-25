@@ -48,7 +48,7 @@ export function ConfigBar() {
 
   return (
     <div className="flex justify-center">
-      <div className="surface rounded-full px-2 sm:px-3 py-0.5 text-xs flex items-center gap-0.5 sm:gap-2 max-w-full overflow-x-auto [scrollbar-width:none]">
+      <div className="px-1 py-0.5 text-xs flex items-center gap-0.5 sm:gap-1.5 max-w-full overflow-x-auto [scrollbar-width:none]">
         <Menu
           tip={speedWhy ?? 'Speed — slow the song down to learn it. The pitch stays the same.'}
           disabled={!!speedWhy}

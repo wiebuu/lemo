@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { studio } from '../state/studio'
-import { SFX_PACKS, THEMES, type LineDetail, type MelodyView, type SfxPack, type ThemeName } from '../state/persist'
+import { SFX_PACKS, THEMES, type LineDetail, type MelodyView, type SfxPack, type ThemeMode, type ThemeName } from '../state/persist'
 import { sfx } from '../lib/sfx'
 import { WiecodesCredit } from './Credit'
 import { go } from '../pages/router'
@@ -30,13 +30,17 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
       <div key={tab} className="fade-in">
       {tab === 'look' && (
         <>
+          <Section title="mode">
+            <Choice<ThemeMode> value={st.mode} onChange={(mode) => studio.updateSettings({ mode })}
+              options={[{ value: 'dark', label: 'dark' }, { value: 'light', label: 'light' }]} />
+          </Section>
           <Section title="theme">
             {/* the quiet ones (one accent on a neutral dark), then the colourful ones (two colours, each from something) */}
             {[THEMES.slice(0, 5), THEMES.slice(5)].map((group, g) => (
               <div key={g} className={cx('w-full', g > 0 && 'mt-3')}>
                 <div className="text-[10px] uppercase tracking-[0.12em] text-sub/70 mb-1.5">{g ? 'colourful' : 'calm'}</div>
                 <div className="flex flex-wrap gap-2">
-                  {group.map((t) => <ThemeSwatch key={t} t={t} on={st.theme === t} />)}
+                  {group.map((t) => <ThemeSwatch key={t} t={t} on={st.theme === t} mode={st.mode} />)}
                 </div>
               </div>
             ))}
@@ -145,21 +149,22 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
   )
 }
 
-function ThemeSwatch({ t, on }: { t: ThemeName; on: boolean }) {
+function ThemeSwatch({ t, on, mode }: { t: ThemeName; on: boolean; mode: ThemeMode }) {
+  const c = SWATCH[t][mode]
   return (
     <Tip tip={SWATCH[t].mood}>
       <button type="button" onClick={() => studio.updateSettings({ theme: t, themePicked: true })} aria-label={`${t} theme`}
         className={cx('rounded-xl p-1 transition-all', on ? 'ring-grad bg-sub-alt/60' : 'hover:bg-sub-alt/60')}>
-        <svg width="56" height="34" viewBox="0 0 56 34" className="rounded-md block">
+        <svg width="56" height="34" viewBox="0 0 56 34" className="rounded-md block border border-line">
           <defs>
             <linearGradient id={`sw-${t}`} x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0" stopColor={SWATCH[t].main} />
-              <stop offset="1" stopColor={SWATCH[t].main2} />
+              <stop offset="0" stopColor={c.main} />
+              <stop offset="1" stopColor={c.main2} />
             </linearGradient>
           </defs>
-          <rect width="56" height="34" fill={SWATCH[t].bg} />
+          <rect width="56" height="34" fill={c.bg} />
           <path d="M6 24 C14 24 14 10 22 10 S32 26 40 22 S48 12 50 12" fill="none" stroke={`url(#sw-${t})`} strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M6 20 C14 20 16 14 24 14 S34 22 50 16" fill="none" stroke={SWATCH[t].text} strokeOpacity=".45" strokeWidth="2" strokeLinecap="round" />
+          <path d="M6 20 C14 20 16 14 24 14 S34 22 50 16" fill="none" stroke={c.text} strokeOpacity=".45" strokeWidth="2" strokeLinecap="round" />
         </svg>
         <span className="block text-[10px] text-sub mt-1">{t}</span>
       </button>
@@ -167,20 +172,21 @@ function ThemeSwatch({ t, on }: { t: ThemeName; on: boolean }) {
   )
 }
 
-const SWATCH: Record<ThemeName, { bg: string; main: string; main2: string; text: string; mood: string }> = {
-  studio: { bg: '#131313', main: '#d8b36f', main2: '#c99a62', text: '#ededea', mood: 'Studio — graphite and brass.' },
-  ink: { bg: '#0d1117', main: '#8fb4f6', main2: '#a3a9f2', text: '#e6edf3', mood: 'Ink — blue-black and periwinkle.' },
-  sage: { bg: '#111412', main: '#a3c9a8', main2: '#8bbcae', text: '#e7ece8', mood: 'Sage — green-grey and soft sage.' },
-  velvet: { bg: '#151114', main: '#e3a7b6', main2: '#cfa5d6', text: '#f0e9ee', mood: 'Velvet — aubergine and dusty rose.' },
-  mono: { bg: '#111111', main: '#f0f0f0', main2: '#c4c4c4', text: '#eeeeee', mood: 'Mono — no colour, just light on charcoal. The default.' },
-  sunset: { bg: '#15100f', main: '#ff9e72', main2: '#f2789a', text: '#f4eae5', mood: 'Sunset — dusk sky, coral fading into pink.' },
-  ocean: { bg: '#0a1316', main: '#5fd6c9', main2: '#5aa9e8', text: '#e2f1f3', mood: 'Ocean — deep water, aqua and sea blue.' },
-  aurora: { bg: '#0b1014', main: '#6ff0b5', main2: '#a194ff', text: '#e4eef2', mood: 'Aurora — northern lights, green into violet.' },
-  ember: { bg: '#140f0c', main: '#ffb44d', main2: '#ff7552', text: '#f2e8df', mood: 'Ember — a campfire, amber and flame.' },
-  sakura: { bg: '#141012', main: '#ffb3c7', main2: '#c8b6ff', text: '#f5eaee', mood: 'Sakura — cherry blossom at night, pink and lilac.' },
-  lavender: { bg: '#13111a', main: '#b8a3ff', main2: '#ef9fd6', text: '#ece8f5', mood: 'Lavender — a field at dusk, violet and orchid.' },
-  citrus: { bg: '#121310', main: '#f2e26a', main2: '#a9e06c', text: '#f0f1e6', mood: 'Citrus — lemon and lime, bright and fresh.' },
-  neon: { bg: '#0f0b17', main: '#ff63d4', main2: '#5ff0ff', text: '#f1eafc', mood: 'Neon — a retro arcade, magenta and cyan.' },
-  forest: { bg: '#0e130f', main: '#c6e27c', main2: '#7fd093', text: '#e8efe6', mood: 'Forest — moss and fireflies, lime and leaf.' },
-  coffee: { bg: '#120e0c', main: '#e0bf9f', main2: '#c4916d', text: '#efe6de', mood: 'Coffee — espresso and cream, caramel and cocoa.' },
+type Swatch = { bg: string; main: string; main2: string; text: string }
+const SWATCH: Record<ThemeName, { mood: string; dark: Swatch; light: Swatch }> = {
+  mono: { mood: 'Mono — no colour, just light on charcoal (or ink on paper). The default.', dark: { bg: '#111111', main: '#f0f0f0', main2: '#c4c4c4', text: '#eeeeee' }, light: { bg: '#f2f2f0', main: '#1c1c1c', main2: '#4a4a4a', text: '#161616' } },
+  studio: { mood: 'Studio — graphite and brass.', dark: { bg: '#131313', main: '#d8b36f', main2: '#c99a62', text: '#ededea' }, light: { bg: '#f3f2ef', main: '#86601c', main2: '#9a6a3a', text: '#1c1a16' } },
+  ink: { mood: 'Ink — blue-black and periwinkle.', dark: { bg: '#111316', main: '#8fb4f6', main2: '#a3a9f2', text: '#e6edf3' }, light: { bg: '#f1f2f4', main: '#2d5cb4', main2: '#5650c0', text: '#141a22' } },
+  sage: { mood: 'Sage — green-grey and soft sage.', dark: { bg: '#121413', main: '#a3c9a8', main2: '#8bbcae', text: '#e7ece8' }, light: { bg: '#f1f2f0', main: '#3a7446', main2: '#2c776b', text: '#161c18' } },
+  velvet: { mood: 'Velvet — aubergine and dusty rose.', dark: { bg: '#141214', main: '#e3a7b6', main2: '#cfa5d6', text: '#f0e9ee' }, light: { bg: '#f3f1f2', main: '#a23f62', main2: '#84469a', text: '#1f171d' } },
+  sunset: { mood: 'Sunset — dusk sky, coral fading into pink.', dark: { bg: '#141212', main: '#ff9e72', main2: '#f2789a', text: '#f4eae5' }, light: { bg: '#f4f2f1', main: '#b94a28', main2: '#b73663', text: '#201815' } },
+  ocean: { mood: 'Ocean — deep water, aqua and sea blue.', dark: { bg: '#111415', main: '#5fd6c9', main2: '#5aa9e8', text: '#e2f1f3' }, light: { bg: '#f0f3f3', main: '#0b7069', main2: '#1d5e9e', text: '#10191c' } },
+  aurora: { mood: 'Aurora — northern lights, green into violet.', dark: { bg: '#111314', main: '#6ff0b5', main2: '#a194ff', text: '#e4eef2' }, light: { bg: '#f0f3f2', main: '#157a50', main2: '#5b48bc', text: '#121a1c' } },
+  ember: { mood: 'Ember — a campfire, amber and flame.', dark: { bg: '#141211', main: '#ffb44d', main2: '#ff7552', text: '#f2e8df' }, light: { bg: '#f4f2ef', main: '#9c560a', main2: '#b83a26', text: '#201811' } },
+  sakura: { mood: 'Sakura — cherry blossom at night, pink and lilac.', dark: { bg: '#141213', main: '#ffb3c7', main2: '#c8b6ff', text: '#f5eaee' }, light: { bg: '#f4f1f2', main: '#b03a61', main2: '#644cb8', text: '#22181c' } },
+  lavender: { mood: 'Lavender — a field at dusk, violet and orchid.', dark: { bg: '#131216', main: '#b8a3ff', main2: '#ef9fd6', text: '#ece8f5' }, light: { bg: '#f2f1f4', main: '#5d44c2', main2: '#a0347e', text: '#1b1724' } },
+  citrus: { mood: 'Citrus — lemon and lime, bright and fresh.', dark: { bg: '#131311', main: '#f2e26a', main2: '#a9e06c', text: '#f0f1e6' }, light: { bg: '#f3f3ef', main: '#6d6000', main2: '#3a7418', text: '#1b1c14' } },
+  neon: { mood: 'Neon — a retro arcade, magenta and cyan.', dark: { bg: '#131216', main: '#ff63d4', main2: '#5ff0ff', text: '#f1eafc' }, light: { bg: '#f2f1f4', main: '#b0218c', main2: '#0b7189', text: '#1a1424' } },
+  forest: { mood: 'Forest — moss and fireflies, lime and leaf.', dark: { bg: '#121412', main: '#c6e27c', main2: '#7fd093', text: '#e8efe6' }, light: { bg: '#f1f3f0', main: '#506c10', main2: '#2a7444', text: '#151b16' } },
+  coffee: { mood: 'Coffee — espresso and cream, caramel and cocoa.', dark: { bg: '#141211', main: '#e0bf9f', main2: '#c4916d', text: '#efe6de' }, light: { bg: '#f4f2ef', main: '#7e5230', main2: '#965834', text: '#1f1814' } },
 }

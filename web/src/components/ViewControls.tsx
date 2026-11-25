@@ -37,7 +37,7 @@ export function ViewControls({ round }: { /** results row: round icon buttons li
   // results row: just the graph / lyrics toggle, beside ✕ (the size is a pinch away, and in the pill before singing)
   if (round) return toggle
   return (
-    <div className="surface rounded-full px-2 sm:px-3 py-0.5 text-xs flex items-center gap-0.5 sm:gap-2 shrink-0">
+    <div className="px-1 py-0.5 text-xs flex items-center gap-0.5 sm:gap-1.5 shrink-0">
       {size}
       <Divider />
       {toggle}

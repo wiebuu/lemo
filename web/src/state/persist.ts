@@ -8,6 +8,8 @@ import { events } from './events'
 
 export type LyricsScript = 'original' | 'latin' | 'deva' | 'urdu'
 export type ThemeName = 'studio' | 'ink' | 'sage' | 'velvet' | 'mono' | 'sunset' | 'ocean' | 'aurora' | 'ember' | 'sakura' | 'lavender' | 'citrus' | 'neon' | 'forest' | 'coffee'
+/** Every theme comes in both. */
+export type ThemeMode = 'dark' | 'light'
 export const THEMES: ThemeName[] = ['mono', 'studio', 'ink', 'sage', 'velvet', 'sunset', 'ocean', 'aurora', 'ember', 'sakura', 'lavender', 'citrus', 'neon', 'forest', 'coffee']
 /** Themes from earlier versions → their closest current one. */
 const RENAMED: Record<string, ThemeName> = { stage: 'studio', midnight: 'ink', neon: 'velvet', serika: 'mono' }
@@ -29,6 +31,8 @@ export interface GraphLayers {
 
 export interface Settings {
   theme: ThemeName
+  /** dark or light: the same theme, its background and tones turned around */
+  mode: ThemeMode
   /** true once the user picked a theme themselves (so defaults can improve for everyone else). */
   themePicked: boolean
   toleranceCents: number
@@ -77,6 +81,7 @@ export const LYRICS_SCALE = { min: 0.8, max: 1.5, step: 0.05 }
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'mono',
+  mode: 'dark',
   themePicked: false,
   toleranceCents: 50,
   latencyMs: null,
@@ -156,6 +161,7 @@ export const persist = {
       ...DEFAULT_SETTINGS,
       ...saved,
       theme: pickTheme(saved),
+      mode: saved.mode === 'light' ? 'light' : 'dark',
       melodyView: saved.melodyView === 'bars' ? 'bars' : 'line',
       lineDetail: (['smooth', 'natural', 'detailed'] as const).includes(saved.lineDetail as LineDetail) ? saved.lineDetail! : 'smooth',
       weights: { ...DEFAULT_WEIGHTS, ...(saved.weights ?? {}) },

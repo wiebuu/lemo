@@ -11,7 +11,7 @@ import { takeChallenge, takeLinkedSong } from './lib/linkedSong'
 import { FocusLyrics, Lyrics } from './components/Lyrics'
 import { PlayerBar } from './components/PlayerBar'
 import { ResultsPanel, VoiceSwitch } from './components/Results'
-import { BusyCard, cx, Modal, Tip, usePhone, useStudio } from './components/ui'
+import { BusyCard, cx, Divider, Modal, Tip, usePhone, useStudio } from './components/ui'
 import { Keyboard } from 'lucide-react'
 import { useLyricsPinch, ViewControls } from './components/ViewControls'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -41,7 +41,11 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = s.settings.theme
-  }, [s.settings.theme])
+    document.documentElement.dataset.mode = s.settings.mode
+    // the phone's status bar / browser chrome follows the background
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()
+    if (bg) document.querySelector('meta[name=theme-color]')?.setAttribute('content', bg)
+  }, [s.settings.theme, s.settings.mode])
 
   useEffect(() => () => studio.dispose(), [])
 
@@ -123,9 +127,13 @@ export default function App() {
             <div>
               {/* the settings bar and, right beside it, the view (lyrics size, graph / lyrics only)
                   in its own pill: centred together */}
-              <div className="pb-1 flex justify-center items-center gap-2">
-                <div className="min-w-0"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div>
-                <ViewControls />
+              <div className="pt-2.5 sm:pt-4 pb-1 flex justify-center">
+                {/* one soft pill behind the whole bar: a faint fill, no border */}
+                <div className="max-w-full min-w-0 flex items-center gap-1 rounded-full bg-sub-alt/60 px-2 sm:px-3">
+                  <div className="min-w-0"><ErrorBoundary label="settings bar"><ConfigBar /></ErrorBoundary></div>
+                  <Divider />
+                  <ViewControls />
+                </div>
               </div>
             </div>
           </div>

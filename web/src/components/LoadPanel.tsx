@@ -10,6 +10,7 @@ import { countsLine, inLanguage, languageName, languagesIn, shortCount, SORTS, s
 import { setCatalog as shareCatalog, useLikes } from '../state/library'
 import { cloudSongs, refreshCloudSongs } from '../state/cloud'
 import { events } from '../state/events'
+import { useAccentStroke } from './Brand'
 import { formatTime } from '../lib/music'
 import { go } from '../pages/router'
 import { studio } from '../state/studio'
@@ -911,18 +912,20 @@ function ListSkeleton({ fill }: { fill?: boolean }) {
 
 /** The start screen's headline, under a staff with a melody drifting across it — and the way into search. */
 function Hero({ onSearch }: { onSearch: () => void }) {
+  const [defs, paint] = useAccentStroke()
   return (
     <div className="hero mb-5 sm:mb-7 shrink-0 fade-in">
       <svg viewBox="0 0 640 46" className="hero-staff w-full h-6 mb-3 sm:h-9 sm:mb-4" aria-hidden preserveAspectRatio="none">
         {[0, 1, 2, 3, 4].map((i) => (
           <line key={i} x1="0" x2="640" y1={5 + i * 9} y2={5 + i * 9} stroke="var(--text)" strokeOpacity=".07" strokeWidth="1" vectorEffect="non-scaling-stroke" />
         ))}
+        {defs}
         <path d="M0 34 C60 34 70 16 120 16 S190 38 250 30 S330 8 390 12 S470 34 520 22 S600 10 640 14"
-          fill="none" stroke="var(--main)" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          fill="none" stroke={paint} strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2.5">
         <h1 className="hero-title text-[28px] sm:text-[44px] leading-[1.05] font-semibold text-text tracking-[-0.035em]">
-          What are we <span className="text-main">singing</span> today?
+          What are we <span className="accent-text">singing</span> today?
         </h1>
         <div className="flex items-center gap-4 sm:gap-5 -ml-0.5 sm:ml-0 sm:mb-1.5">
           <button type="button" onClick={onSearch} aria-label="search songs, upload one or paste a link"

@@ -1417,6 +1417,7 @@ export class Studio {
     const fixed = persist.settings() // re-read: validates / fills anything missing
     this.set({ settings: fixed })
     document.documentElement.dataset.theme = fixed.theme
+    document.documentElement.dataset.mode = fixed.mode
     requestAnimationFrame(() => this.renderer?.refreshTheme())
     this.applyVolumes()
     this.set({ lyricsShown: this.inScript(this.snap.lyrics) })
@@ -1441,7 +1442,7 @@ export class Studio {
       this.scriptRetried.clear()
       this.set({ lyricsShown: this.inScript(this.snap.lyrics) })
     }
-    if ('theme' in patch) requestAnimationFrame(() => this.renderer?.refreshTheme())
+    if ('theme' in patch || 'mode' in patch) requestAnimationFrame(() => this.renderer?.refreshTheme())
     this.applyVolumes()
     this.renderOnce()
   }

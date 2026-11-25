@@ -112,18 +112,38 @@
       try {
         var s = JSON.parse(localStorage.getItem('lemo.settings') || '{}') || {}
         var t = s.themePicked ? s.theme : 'mono'
-        var c = { studio: ['#131313', '#d8b36f', '#ededea', '#7d7d82', '#1c1c1d'], ink: ['#0d1117', '#8fb4f6', '#e6edf3', '#6f7c8d', '#161c25'], sage: ['#111412', '#a3c9a8', '#e7ece8', '#76837b', '#191e1b'],
-          velvet: ['#151114', '#e3a7b6', '#f0e9ee', '#857784', '#1f181d'], mono: ['#111111', '#f0f0f0', '#eeeeee', '#7a7a7a', '#1a1a1a'],
-          sunset: ['#15100f', '#ff9e72', '#f4eae5', '#8d7b75', '#211816'],
-          ocean: ['#0a1316', '#5fd6c9', '#e2f1f3', '#6b8a91', '#112128'],
-          aurora: ['#0b1014', '#6ff0b5', '#e4eef2', '#6e8189', '#141c23'],
-          ember: ['#140f0c', '#ffb44d', '#f2e8df', '#8d7d70', '#211913'],
-          sakura: ['#141012', '#ffb3c7', '#f5eaee', '#8c7b83', '#1f181c'],
-          lavender: ['#13111a', '#b8a3ff', '#ece8f5', '#827c96', '#1d1a27'],
-          citrus: ['#121310', '#f2e26a', '#f0f1e6', '#84877a', '#1c1e18'],
-          neon: ['#0f0b17', '#ff63d4', '#f1eafc', '#8a7fa0', '#1a1427'],
-          forest: ['#0e130f', '#c6e27c', '#e8efe6', '#748676', '#172019'],
-          coffee: ['#120e0c', '#e0bf9f', '#efe6de', '#8a7b70', '#1d1714'] }[t]
+        var c = {
+          'mono-dark': ['#111111', '#f0f0f0', '#eeeeee', '#7a7a7a', '#1a1a1a'],
+          'mono-light': ['#f2f2f0', '#1c1c1c', '#161616', '#666666', '#e6e6e3'],
+          'studio-dark': ['#131313', '#d8b36f', '#ededea', '#7d7d82', '#1c1c1d'],
+          'studio-light': ['#f3f2ef', '#86601c', '#1c1a16', '#686459', '#e7e5e0'],
+          'ink-dark': ['#111316', '#8fb4f6', '#e6edf3', '#76808c', '#1a1d22'],
+          'ink-light': ['#f1f2f4', '#2d5cb4', '#141a22', '#5d6876', '#e4e7eb'],
+          'sage-dark': ['#121413', '#a3c9a8', '#e7ece8', '#78837c', '#1b1e1c'],
+          'sage-light': ['#f1f2f0', '#3a7446', '#161c18', '#606c65', '#e4e7e4'],
+          'velvet-dark': ['#141214', '#e3a7b6', '#f0e9ee', '#857984', '#1e1b1e'],
+          'velvet-light': ['#f3f1f2', '#a23f62', '#1f171d', '#726574', '#e8e3e6'],
+          'sunset-dark': ['#141212', '#ff9e72', '#f4eae5', '#8a7d79', '#1e1b1b'],
+          'sunset-light': ['#f4f2f1', '#b94a28', '#201815', '#71645d', '#e9e4e2'],
+          'ocean-dark': ['#111415', '#5fd6c9', '#e2f1f3', '#728589', '#1a1e1f'],
+          'ocean-light': ['#f0f3f3', '#0b7069', '#10191c', '#5a6f74', '#e2e8e9'],
+          'aurora-dark': ['#111314', '#6ff0b5', '#e4eef2', '#74838a', '#1a1d1f'],
+          'aurora-light': ['#f0f3f2', '#157a50', '#121a1c', '#5b6b6e', '#e2e8e7'],
+          'ember-dark': ['#141211', '#ffb44d', '#f2e8df', '#8a7e74', '#1e1b19'],
+          'ember-light': ['#f4f2ef', '#9c560a', '#201811', '#726557', '#e9e4dd'],
+          'sakura-dark': ['#141213', '#ffb3c7', '#f5eaee', '#897d83', '#1e1b1d'],
+          'sakura-light': ['#f4f1f2', '#b03a61', '#22181c', '#75646c', '#e9e3e6'],
+          'lavender-dark': ['#131216', '#b8a3ff', '#ece8f5', '#807b8f', '#1c1b20'],
+          'lavender-light': ['#f2f1f4', '#5d44c2', '#1b1724', '#6a647a', '#e6e3ec'],
+          'citrus-dark': ['#131311', '#f2e26a', '#f0f1e6', '#83857a', '#1c1d1a'],
+          'citrus-light': ['#f3f3ef', '#6d6000', '#1b1c14', '#686a5c', '#e7e7df'],
+          'neon-dark': ['#131216', '#ff63d4', '#f1eafc', '#857e96', '#1d1b21'],
+          'neon-light': ['#f2f1f4', '#b0218c', '#1a1424', '#696280', '#e6e2ec'],
+          'forest-dark': ['#121412', '#c6e27c', '#e8efe6', '#788577', '#1b1e1b'],
+          'forest-light': ['#f1f3f0', '#506c10', '#151b16', '#5f6c5c', '#e3e8e1'],
+          'coffee-dark': ['#141211', '#e0bf9f', '#efe6de', '#887b72', '#1e1b19'],
+          'coffee-light': ['#f4f2ef', '#7e5230', '#1f1814', '#71645a', '#e9e4de'],
+        }[t + '-' + (s.mode === 'light' ? 'light' : 'dark')]
         if (c) {
           var b = document.getElementById('boot').style
           ;['--bg', '--main', '--text', '--sub', '--track'].forEach(function (k, i) { b.setProperty(k, c[i]) })

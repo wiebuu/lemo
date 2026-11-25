@@ -12,6 +12,10 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ARTICLES, FOOTER, KARAOKE_LANGS, SITE, UPDATED, UPDATED_ISO } from '../src/pages/content.js'
 
+// Google AdSense (the same account and ad units as src/lib/ads.ts)
+const AD_CLIENT = 'ca-pub-8049669752168609'
+const AD_SLOTS = { side: '9700012490', inPage: '1462429821' }
+
 const here = dirname(fileURLToPath(import.meta.url))
 const dist = join(here, '..', 'dist')
 const queue = join(here, '..', '..', 'analyzer', 'featured.json')
@@ -55,6 +59,8 @@ function page({ path, title, description, h1, body, jsonld, type = 'website' }) 
 <meta name="description" content="${esc(description)}">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="${url}">
+<meta name="google-adsense-account" content="${AD_CLIENT}">
+<script>try{var A=(JSON.parse(localStorage.getItem('lemo.settings')||'{}')||{}).ads}catch(e){}if(!A||A.on!==false){var g=document.createElement('script');g.async=true;g.crossOrigin='anonymous';g.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}';document.head.appendChild(g)}</script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -124,6 +130,14 @@ ul.songs li[hidden],.guide-list li[hidden]{display:none}
 .pager span{width:24px;text-align:center;color:var(--sub)}
 #ck{position:fixed;z-index:50;left:50%;bottom:12px;transform:translateX(-50%);width:calc(100% - 32px);max-width:440px;display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;font-size:12px;color:var(--sub)}
 #ck[hidden]{display:none}
+.ad-label{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);opacity:.7;text-align:center;margin-bottom:4px}
+.ad-rail{position:fixed;top:96px;width:160px}
+.ad-rail.l{left:calc(50% - 580px)}.ad-rail.r{right:calc(50% - 580px)}
+.ad-in{margin:48px 0 0}
+.ad-note{display:block;margin:4px auto 0;background:none;border:0;color:var(--sub);opacity:.7;font:10px inherit;text-decoration:none;text-align:center}
+.ad-box:not([data-on]) .ad-label,.ad-box:not([data-on]) .ad-note{visibility:hidden}
+.ad-box:not([data-on]) ins{opacity:0}
+ins.adsbygoogle[data-ad-status=unfilled],.ad-box[hidden]{display:none!important}
 #ck span{flex:1}#ck a{color:var(--sub)}
 #ck button{border:0;border-radius:999px;background:var(--text);color:var(--bg);font:600 12px inherit;padding:6px 14px;cursor:pointer}
 </style>
@@ -137,9 +151,19 @@ ul.songs li[hidden],.guide-list li[hidden]{display:none}
 <main>
 <h1>${h1}</h1>
 ${body}
+<aside class="ad-box ad-in" aria-label="advertisement" hidden><div class="ad-label">Advertisement</div><ins class="adsbygoogle" style="display:block" data-ad-client="${AD_CLIENT}" data-ad-slot="${AD_SLOTS.inPage}" data-ad-format="auto" data-full-width-responsive="true"></ins><a class="ad-note" href="/">ads keep Lemody free · change them in the app’s settings → ads</a></aside>
 </main>
 <footer>${FOOTER.map(([href, label]) => `<a href="${href}">${esc(label)}</a>`).join('')}<br>© ${new Date().getFullYear()} Lemody · made by <a href="https://wiecodes.com/about">Wiecodes</a></footer>
 </div>
+<aside class="ad-box ad-rail l" aria-label="advertisement" hidden><div class="ad-label">Advertisement</div><ins class="adsbygoogle" style="display:block;width:160px;height:600px" data-ad-client="${AD_CLIENT}" data-ad-slot="${AD_SLOTS.side}"></ins></aside>
+<aside class="ad-box ad-rail r" aria-label="advertisement" hidden><div class="ad-label">Advertisement</div><ins class="adsbygoogle" style="display:block;width:160px;height:600px" data-ad-client="${AD_CLIENT}" data-ad-slot="${AD_SLOTS.side}"></ins></aside>
+<script>
+/* ads (settings → ads in the app): beside the page on big screens, and one at the end of the page; nothing shows until Google fills it */
+(function(){var a;try{a=(JSON.parse(localStorage.getItem('lemo.settings')||'{}')||{}).ads}catch(e){}a=a||{};var k=a.kinds||{},p=a.pages||{};if(a.on===false||p.guides===false)return
+function show(box){box.hidden=false;var ins=box.querySelector('ins');new MutationObserver(function(){var st=ins.getAttribute('data-ad-status');if(st==='filled')box.setAttribute('data-on','');else if(st)box.hidden=true}).observe(ins,{attributes:true,attributeFilter:['data-ad-status']});try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(e){}}
+if(k.inPage!==false)show(document.querySelector('.ad-in'))
+if(k.side!==false&&matchMedia('(min-width:1192px) and (min-height:736px) and (pointer:fine)').matches)document.querySelectorAll('.ad-rail').forEach(show)})();
+</script>
 <div id="ck" hidden><span>Lemody uses cookies for sign-in and ads. <a href="/privacy">Privacy</a></span><button type="button">OK</button></div>
 <script>
 /* long lists: 20 at a time (every link stays in the page for search engines) */

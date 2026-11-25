@@ -19,6 +19,16 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
+    <!-- Google AdSense: the account, and its script — not loaded when someone turned all ads off (settings → ads) -->
+    <meta name="google-adsense-account" content="ca-pub-8049669752168609" />
+    <script>
+      try { var a = (JSON.parse(localStorage.getItem('lemo.settings') || '{}') || {}).ads } catch (e) {}
+      if (!a || a.on !== false) {
+        var g = document.createElement('script'); g.async = true; g.crossOrigin = 'anonymous'
+        g.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8049669752168609'
+        document.head.appendChild(g)
+      }
+    </script>
     <link rel="canonical" href="https://www.lemodysounds.online/" />
 
     <!-- when the link is shared (WhatsApp, Instagram, Facebook, LinkedIn, iMessage, X, Discord, …) -->

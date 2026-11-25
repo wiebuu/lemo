@@ -8,6 +8,8 @@ import { ComingPage } from './Coming'
 import { ProfilePage, UserPage } from './Profile'
 import { back, go, navigate } from './router'
 import { ARTICLES, SITE, UPDATED, type Article } from './content.js'
+import { InPageAd, SideAds } from '../components/Ads'
+import { adPageFor } from '../lib/ads'
 
 export const PAGES: Record<string, { title: string; seoTitle?: string; description?: string; body: () => ReactNode; /** smaller text and spacing on phones (lists and numbers, not reading) */ compact?: boolean; /** the page draws its own heading */ bare?: boolean; /** a wider column (profiles) */ wide?: boolean }> = {
   '/top': { title: 'Today’s top', body: TopPage, compact: true },
@@ -47,6 +49,7 @@ function useHead(path: string, page: (typeof PAGES)[string] | undefined) {
 export function SitePage({ path }: { path: string }) {
   const page = useMemo(() => pageFor(path), [path])
   const scroller = useRef<HTMLDivElement>(null)
+  const adPage = page ? adPageFor(path) : undefined
   useHead(path, page)
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 })
@@ -71,6 +74,7 @@ export function SitePage({ path }: { path: string }) {
             <article className={page.compact ? 'prose-lemody prose-compact' : 'prose-lemody'}>
               {!page.bare && <h1>{page.title}</h1>}
               <page.body />
+              {adPage && <InPageAd key={path} page={adPage} />}
             </article>
           ) : (
             <div className="text-center py-16">
@@ -82,6 +86,7 @@ export function SitePage({ path }: { path: string }) {
         </main>
         <SiteFooter className="pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 border-t border-line" />
       </div>
+      {adPage && <SideAds key={path} page={adPage} column={page?.wide ? 896 : 672} />}
     </div>
   )
 }

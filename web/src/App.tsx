@@ -20,6 +20,9 @@ import { TopCelebration } from './components/TopCelebration'
 import { LikeAsk } from './components/Like'
 import { PhoneSongName } from './components/SongCounts'
 import { NotificationPopup } from './components/Notifications'
+import { SideAds, SongFinishedAd } from './components/Ads'
+import type { SettingsTab } from './components/SettingsPanel'
+import { navigate, usePath } from './pages/router'
 
 // Opened now and then: each loads the first time it's needed, not with the app.
 const HeadphoneNote = lazy(early(() => import('./components/HeadphoneNote').then((m) => ({ default: m.HeadphoneNote }))))
@@ -33,7 +36,9 @@ const Tutorial = lazy(early(() => import('./components/Tutorial').then((m) => ({
 export default function App() {
   const s = useStudio()
   const phone = usePhone()
+  const path = usePath()
   const [panel, setPanel] = useState<Panel>(null)
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('look')
   const headphones = useHeadphoneNotice(s.session)
   const close = useCallback(() => setPanel(null), [])
   const results = !!s.lastResult && !s.session
@@ -48,6 +53,17 @@ export default function App() {
   }, [s.settings.theme, s.settings.mode])
 
   useEffect(() => () => studio.dispose(), [])
+
+  // "change ads" (under an ad, on any page): settings, at the ads tab
+  useEffect(() => {
+    const open = () => {
+      navigate('/')
+      setSettingsTab('ads')
+      setPanel('settings')
+    }
+    window.addEventListener('lemody:ad-settings', open)
+    return () => window.removeEventListener('lemody:ad-settings', open)
+  }, [])
 
   // came from a song page (/sing/…): open that song
   useEffect(() => {
@@ -171,6 +187,8 @@ export default function App() {
       ) : (
         <main className="flex-1 min-h-0 flex flex-col py-3 sm:py-6">
           <LoadPanel inline onDone={() => {}} />
+          {/* big screens: ads in the empty space beside the start screen (never with a song open) */}
+          {path === '/' && <SideAds page="start" column={768} />}
         </main>
       )}
 
@@ -194,6 +212,7 @@ export default function App() {
       </footer>
 
       <TopCelebration />
+      <SongFinishedAd />
 
       <LikeAsk />
       {!s.session && <NotificationPopup />}
@@ -228,7 +247,7 @@ export default function App() {
         </Modal>
       )}
       <Suspense fallback={<PanelLoading />}>
-      {panel === 'settings' && <SettingsPanel onClose={close} onCalibrate={() => setPanel('calibrate')} onTutorial={() => setPanel('tutorial')} />}
+      {panel === 'settings' && <SettingsPanel initialTab={settingsTab} onClose={() => { close(); setSettingsTab('look') }} onCalibrate={() => setPanel('calibrate')} onTutorial={() => setPanel('tutorial')} />}
       {panel === 'lyrics' && s.track && <LyricsEditor onClose={close} />}
       {panel === 'fixlyrics' && s.track && <FixLyrics onClose={close} onEditor={() => setPanel('lyrics')} />}
       {panel === 'tutorial' && <Tutorial onClose={close} />}

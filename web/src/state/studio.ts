@@ -39,6 +39,8 @@ import { packFrames, TOP_EASY_MIN_SCORE, TOP_MIN_SECONDS, unpackFrames, wavOf } 
 export type MicState = 'off' | 'starting' | 'on' | 'error'
 
 export interface Snapshot {
+  /** Counts the times a song played to its very end (the full-screen ad after a song follows it). */
+  songEnds: number
   track: ReferenceTrack | null
   caps: { canSpeed: boolean; canTranspose: boolean; hasGuide: boolean } | null
   busy: string | null
@@ -211,7 +213,7 @@ export class Studio {
   }
 
   snap: Snapshot = {
-    track: null, caps: null, busy: null, busyProgress: null, busyDetail: null, playing: false, buffering: false, loadedTime: 0, speed: 1, transpose: 0, loop: null, metronome: false,
+    songEnds: 0, track: null, caps: null, busy: null, busyProgress: null, busyDetail: null, playing: false, buffering: false, loadedTime: 0, speed: 1, transpose: 0, loop: null, metronome: false,
     phrases: [], phrase: -1, breaths: [], lyrics: [], lyricPos: { line: -1, word: -1 }, mic: 'off', micError: null,
     muted: false, voiceIssue: null, settings: persist.settings(), attempts: [], lastResult: null, challenge: null, offsetMs: 0, error: null,
     canReplay: false, replay: false, listenSource: 'me', voiceFx: NO_FX, voiceFxBusy: false, session: false, lyricsShown: [], lyricsStatus: null, lyricsNote: null, toast: null, reviewAspect: 'pitch', resultsView: 'results', focus: null, resultMode: null,
@@ -257,6 +259,7 @@ export class Studio {
       e.onEnded = () => {
         this.set({ playing: false })
         this.endSession()
+        this.set({ songEnds: this.snap.songEnds + 1 })
       }
       e.subscribe(() => {
         const loadedTime = Math.round(e.loadedTime * 4) / 4

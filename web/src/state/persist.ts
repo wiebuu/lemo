@@ -5,6 +5,7 @@ import { DEFAULT_WEIGHTS, type Weights } from '../lib/evaluation'
 import type { Attempt, BreathMark, LyricLine, ReferenceNote } from '../lib/types'
 
 import { events } from './events'
+import { cleanAdPrefs, DEFAULT_AD_PREFS, type AdPrefs } from '../lib/ads'
 
 export type LyricsScript = 'original' | 'latin' | 'deva' | 'urdu'
 export type ThemeName = 'studio' | 'ink' | 'sage' | 'velvet' | 'mono' | 'sunset' | 'ocean' | 'aurora' | 'ember' | 'sakura' | 'lavender' | 'citrus' | 'neon' | 'forest' | 'coffee'
@@ -74,6 +75,8 @@ export interface Settings {
   sfxPack: SfxPack
   /** How loud the sound effects are, 0–1. */
   sfxVolume: number
+  /** Which ads show, and where (settings → ads): all off, by kind, or by page. */
+  ads: AdPrefs
 }
 
 /** How small / large the lyrics can be made. */
@@ -110,6 +113,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sfx: true,
   sfxPack: 'studio',
   sfxVolume: 0.6,
+  ads: DEFAULT_AD_PREFS,
 }
 
 export interface SongPrefs {
@@ -173,6 +177,7 @@ export const persist = {
       layersVersion: LAYERS_VERSION,
       sfxPack: SFX_PACKS.includes(saved.sfxPack as SfxPack) ? saved.sfxPack! : 'studio',
       sfxVolume: typeof saved.sfxVolume === 'number' ? Math.min(1, Math.max(0, saved.sfxVolume)) : DEFAULT_SETTINGS.sfxVolume,
+      ads: cleanAdPrefs(saved.ads),
     }
   },
   /** fromCloud: it came from your account — save it here without sending it back */

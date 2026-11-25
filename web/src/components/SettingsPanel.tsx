@@ -5,13 +5,15 @@ import { sfx } from '../lib/sfx'
 import { WiecodesCredit } from './Credit'
 import { go } from '../pages/router'
 import { Btn, Choice, cx, Modal, Section, Tabs, Tip, useStudio } from './ui'
+import { AD_KIND_LABELS, AD_PAGE_LABELS, type AdKind, type AdPage, type AdPrefs } from '../lib/ads'
 
-type Tab = 'look' | 'scoring' | 'sound'
+export type SettingsTab = 'look' | 'scoring' | 'sound' | 'ads'
+type Tab = SettingsTab
 
-export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: () => void; onCalibrate: () => void; onTutorial: () => void }) {
+export function SettingsPanel({ onClose, onCalibrate, onTutorial, initialTab = 'look' }: { onClose: () => void; onCalibrate: () => void; onTutorial: () => void; initialTab?: SettingsTab }) {
   const s = useStudio()
   const st = s.settings
-  const [tab, setTab] = useState<Tab>('look')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const auto = Math.round(studio.latencySec * 1000)
   // each tab starts at the top
   useEffect(() => {
@@ -24,7 +26,7 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
       onClose={onClose}
       tabs={
         <Tabs<Tab> value={tab} onChange={setTab}
-          options={[{ value: 'look', label: 'look' }, { value: 'scoring', label: 'scoring' }, { value: 'sound', label: 'sound' }]} />
+          options={[{ value: 'look', label: 'look' }, { value: 'scoring', label: 'scoring' }, { value: 'sound', label: 'sound' }, { value: 'ads', label: 'ads' }]} />
       }
     >
       <div key={tab} className="fade-in">
@@ -141,6 +143,8 @@ export function SettingsPanel({ onClose, onCalibrate, onTutorial }: { onClose: (
           </Section>
         </>
       )}
+
+      {tab === 'ads' && <AdSettings ads={st.ads} />}
       </div>
       <div className="mt-8 pt-4 border-t border-line flex justify-center">
         <WiecodesCredit />
@@ -189,4 +193,48 @@ const SWATCH: Record<ThemeName, { mood: string; dark: Swatch; light: Swatch }> =
   neon: { mood: 'Neon — a retro arcade, magenta and cyan.', dark: { bg: '#131216', main: '#ff63d4', main2: '#5ff0ff', text: '#f1eafc' }, light: { bg: '#f2f1f4', main: '#b0218c', main2: '#0b7189', text: '#1a1424' } },
   forest: { mood: 'Forest — moss and fireflies, lime and leaf.', dark: { bg: '#121412', main: '#c6e27c', main2: '#7fd093', text: '#e8efe6' }, light: { bg: '#f1f3f0', main: '#506c10', main2: '#2a7444', text: '#151b16' } },
   coffee: { mood: 'Coffee — espresso and cream, caramel and cocoa.', dark: { bg: '#141211', main: '#e0bf9f', main2: '#c4916d', text: '#efe6de' }, light: { bg: '#f4f2ef', main: '#7e5230', main2: '#965834', text: '#1f1814' } },
+}
+
+/** Settings → ads: every ad can be turned off — all of them, one kind, or on one page. */
+function AdSettings({ ads }: { ads: AdPrefs }) {
+  const set = (next: Partial<AdPrefs>) => studio.updateSettings({ ads: { ...ads, ...next } })
+  const kinds = Object.keys(AD_KIND_LABELS) as AdKind[]
+  const pages = Object.keys(AD_PAGE_LABELS) as AdPage[]
+  return (
+    <>
+      <Section title="ads" hint="Ads from Google keep Lemody free. They only sit where they don't get in the way — beside the page on big screens, at the end of a page, and one screen when a song ends — and never while you sing. Turn off any of them here.">
+        <Choice value={ads.on ? 'on' : 'off'} onChange={(v) => set({ on: v === 'on' })}
+          options={[{ value: 'on', label: 'show ads' }, { value: 'off', label: 'no ads' }]} />
+      </Section>
+      {ads.on ? (
+        <>
+          <Section title="kinds of ads" hint="beside the page: big screens only, in the empty space left and right. end of pages: one banner under a page, above its links. when a song ends: one screen between the song and your results, at most every few minutes.">
+            {kinds.map((k) => (
+              <Toggle key={k} on={ads.kinds[k]} label={AD_KIND_LABELS[k]} onChange={(on) => set({ kinds: { ...ads.kinds, [k]: on } })} />
+            ))}
+          </Section>
+          <Section title="pages with ads" hint="the pages that may show ads beside them or at their end. a song open for singing never shows any.">
+            {pages.map((p) => (
+              <Toggle key={p} on={ads.pages[p]} label={AD_PAGE_LABELS[p]} onChange={(on) => set({ pages: { ...ads.pages, [p]: on } })} />
+            ))}
+          </Section>
+        </>
+      ) : (
+        <p className="text-xs text-sub py-4">No ads anywhere — Google's ad script isn't loaded either (from the next time you open Lemody).</p>
+      )}
+      <Section title="personalised ads" hint="Google may choose ads based on your visits to this and other sites. You can turn that off with Google, and in Europe and the UK you're asked first.">
+        <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="text-xs text-main hover:underline">Google ad settings</a>
+        <a href="/privacy" onClick={go} className="text-xs text-main hover:underline ml-1">privacy policy</a>
+      </Section>
+    </>
+  )
+}
+
+function Toggle({ on, label, onChange }: { on: boolean; label: string; onChange: (on: boolean) => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)}
+      className={cx('px-3 py-1.5 rounded-md text-xs transition-colors inline-flex items-center gap-1.5', on ? 'bg-main text-bg font-medium' : 'surface text-sub hover:text-text line-through decoration-sub/50')}>
+      {label}
+    </button>
+  )
 }

@@ -1134,3 +1134,12 @@ input[type='range'].fx-range::-moz-range-thumb { width: 16px; height: 16px; back
 @media (prefers-reduced-motion: reduce) {
   .rec-pulse { animation: none; }
 }
+
+/* ---- ads (components/Ads.tsx): nothing shows until Google fills the slot; an empty one is gone */
+.ad-unit .ad-label { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--sub); opacity: .7; text-align: center; margin-bottom: 4px; }
+.ad-unit.ad-waiting .ad-label { visibility: hidden; }
+.ad-unit[data-status='unfilled'], .ad-unit[data-status='unfilled'] + .ad-note { display: none; }
+ins.adsbygoogle[data-ad-status='unfilled'] { display: none !important; }
+aside:has(> .ad-unit.ad-waiting) > .ad-note { visibility: hidden; }
+.ad-unit ins.adsbygoogle { transition: opacity .3s ease; }
+.ad-unit.ad-waiting ins.adsbygoogle { opacity: 0; }

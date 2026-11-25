@@ -5,8 +5,8 @@
 
 export const SITE = 'https://www.lemodysounds.online'
 export const EMAIL = 'wiecodes@gmail.com'
-export const UPDATED = '25 November 2026'
-export const UPDATED_ISO = '2026-11-25'
+export const UPDATED = '26 November 2026'
+export const UPDATED_ISO = '2026-11-26'
 
 const mail = `<a href="mailto:${EMAIL}">${EMAIL}</a>`
 
@@ -36,6 +36,8 @@ const HELP_FAQ = [
   ['Can I challenge a friend?', 'Yes. After a test, press share: you get a picture of your score and a link to the same song. Your friend sees the score to beat while they sing.'],
   ['What’s on my profile?', 'Sign in and your profile shows the days you sang, your time singing, your tests and a chart of your scores. Others can see your name, picture, numbers and activity at your public profile — never which songs you sang, and never your voice.'],
   ['Can I keep a recording of my singing?', 'If a take makes today’s top and you’re signed in, you can play it back and download your cover from there. Other takes stay only in your device’s memory until you close the page.'],
+  ['Can I turn off the ads?', 'Yes, any of them. Open Settings → ads: turn all ads off, turn off one kind (beside the page, at the end of pages, or the screen when a song ends), or turn them off on certain pages only (the start screen, today’s top, profiles, coming soon, guides). Your choice is saved to your account. Ads never show while you sing.'],
+  ['Can I change how Lemody looks?', 'Yes. Settings → look has fifteen themes, five calm ones and ten colourful ones (sunset, ocean, aurora, …), each in dark or light. You can also show the melody as a line or as blocks, and turn on disco lights that pulse with the beat.'],
   ['Which browsers work?', 'Recent Chrome, Edge, Safari and Firefox, on phones and computers.'],
 ]
 
@@ -71,6 +73,8 @@ export const ARTICLES = [
 <li>Hear yourself next to the original on any phrase, with breath marks and a metronome to lean on.</li>
 <li>Lyrics that follow the singer’s own voice, a lyrics-only view you can pinch bigger, and a lyrics editor for fixes.</li>
 <li>Find a song by a line of its lyrics, spelled any way.</li>
+<li>Fifteen themes in dark or light, and disco lights that pulse with the beat.</li>
+<li>When the last line is sung, the lyrics fade away and the song’s name and singer appear.</li>
 </ul>
 <h2>A singing course</h2>
 <p>Never sung before? The <a href="/learn-to-sing">singing course</a> teaches the most important skill first: hitting a note and holding it in tune. Twelve short lessons add one note at a time, like a typing course adds one key. Lemody plays the note, listens, and shows whether you’re high or low until you land it. Write the notes as Do Re Mi, Sa Re Ga, C D E or 1 2 3, and the course sets itself to your own voice.</p>
@@ -84,6 +88,8 @@ export const ARTICLES = [
 <p>Over a thousand songs: Hindi and Bollywood, English, Punjabi, Haryanvi, Garhwali, Urdu and Bengali, and Indonesian, Japanese, Korean, Spanish, French, Italian, Portuguese, German, Vietnamese, Filipino, Malay, Thai and more. See <a href="/songs">all songs</a>, paste a YouTube link to add any song, or ask for one on <a href="/coming">coming soon</a>.</p>
 <h2>Learn as you go</h2>
 <p>Short <a href="/guides">guides</a> explain how to read the pitch graph, build a daily practice routine, find your vocal range and improve your singing voice.</p>
+<h2>Free, with ads you control</h2>
+<p>Lemody is free because it shows a few ads from Google. They only sit where they don’t get in the way: beside the page on big screens, at the end of a page, and one screen when a song ends (at most every few minutes). Never while you sing. In Settings → ads you can turn off all of them, one kind, or the ads on certain pages.</p>
 <h2>Who makes it</h2>
 <p>Lemody is made by <a href="https://wiecodes.com/about">Wiecodes</a>, a small independent studio. Write to us any time at ${mail}.</p>`,
   },
@@ -118,7 +124,7 @@ ${faqHtml(HELP_FAQ)}
 
 <h2>What we store</h2>
 <ul>
-<li>Your settings (theme, scoring options and so on).</li>
+<li>Your settings (theme, scoring options, which ads you allow and so on).</li>
 <li>Your song list, liked songs, lyric edits, breath marks and scores.</li>
 </ul>
 <p>This is kept in our database (Google Firebase) so it follows you across devices. Your browser keeps a small copy of your settings so the app works smoothly.</p>
@@ -147,7 +153,8 @@ ${faqHtml(HELP_FAQ)}
 <p>You can clear or block cookies in your browser settings. Blocking essential storage may sign you out.</p>
 
 <h2>Advertising (Google AdSense)</h2>
-<p>Lemody is free because it shows ads served by Google AdSense.</p>
+<p>Lemody is free because it shows ads served by Google AdSense. Ads appear beside the page on big screens, at the end of some pages, and on one screen after a song ends. They never appear while you sing.</p>
+<p><b>Your choice:</b> in Settings → ads you can turn off all ads, one kind of ad, or the ads on certain pages. With all ads off, Google’s ad script isn’t loaded at all (from the next time you open Lemody). Your choice is saved in this browser and, when you’re signed in, in your account.</p>
 <ul>
 <li>Third-party vendors, including Google, use cookies to serve ads based on your earlier visits to this and other websites.</li>
 <li>Google’s advertising cookies let Google and its partners serve ads to you based on your visits to Lemody and/or other sites on the internet.</li>
@@ -193,7 +200,7 @@ ${faqHtml(HELP_FAQ)}
 <h2>What you share</h2>
 <p>If you share a take on today’s top, other signed-in singers can see it (and hear it, if you allow). Don’t share anything offensive or that isn’t yours.</p>
 <h2>Ads</h2>
-<p>Lemody shows ads to stay free. Ads come from third parties; we aren’t responsible for what they offer.</p>
+<p>Lemody shows ads to stay free. You can turn them off, fully or in part, in Settings → ads. Ads come from third parties; we aren’t responsible for what they offer.</p>
 <h2>Scores</h2>
 <p>Scores are an automatic practice guide. They can be wrong, and they are not a judgement of your voice or ability.</p>
 <h2>Availability</h2>
@@ -237,7 +244,7 @@ ${faqHtml(HELP_FAQ)}
     seoTitle: 'Free online karaoke with lyrics and scores · no sign-up | Lemody',
     description: 'Sing karaoke online free: songs in 24 languages, Hindi, English, Punjabi and more, with synced lyrics, your pitch live on the melody and a score. No sign-up.',
     faq: [
-      ['Is it really free?', 'Yes. Lemody is free and runs in your browser. Ads keep it that way.'],
+      ['Is it really free?', 'Yes. Lemody is free and runs in your browser. A few ads from Google keep it that way, and you can turn them off in Settings → ads.'],
       ['Do I need to download an app?', 'No. It works in Chrome, Safari, Edge and Firefox, on phones and computers.'],
       ['Which languages can I sing in?', 'Over a thousand songs in 24 languages: Hindi and Bollywood, English, Punjabi, Haryanvi, Garhwali, Indonesian, Japanese, Korean, Spanish, French and more. Paste a YouTube link to add any song.'],
       ['I’ve never sung before. Where do I start?', 'Start with the free <a href="/learn-to-sing">singing course</a>: short lessons that teach you to hit and hold a note in tune before you take on a whole song.'],

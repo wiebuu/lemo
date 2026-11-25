@@ -352,20 +352,22 @@ def public_requests(uid: str, since: float) -> dict:
     pending = _q(
         """SELECT r.song_id, MIN(r.url) AS url, MAX(r.title) AS title, MAX(r.artist) AS artist, COUNT(*) AS people,
                   MIN(r.requested_at) AS first_at, array_agg(COALESCE(u.name, 'a singer') ORDER BY r.requested_at) AS names,
-                  bool_or(r.uid = %s) AS mine
+                  array_agg(u.username ORDER BY r.requested_at) AS usernames, bool_or(r.uid = %s) AS mine
            FROM lemo_requests r JOIN lemo_users u ON u.uid = r.uid
            WHERE r.done_at IS NULL GROUP BY r.song_id ORDER BY COUNT(*) DESC, MIN(r.requested_at)""", (uid,))
     added = _q(
         """SELECT r.song_id, MAX(COALESCE(r.target_id, CASE WHEN r.song_id LIKE 'yt-%%' THEN r.song_id END)) AS target,
                   MAX(r.title) AS title, MAX(r.artist) AS artist, COUNT(*) AS people, MAX(r.done_at) AS done_at,
-                  array_agg(COALESCE(u.name, 'a singer') ORDER BY r.requested_at) AS names, MAX(h.name) AS helper
+                  array_agg(COALESCE(u.name, 'a singer') ORDER BY r.requested_at) AS names,
+                  array_agg(u.username ORDER BY r.requested_at) AS usernames, MAX(h.name) AS helper, MAX(h.username) AS helper_username
            FROM lemo_requests r JOIN lemo_users u ON u.uid = r.uid LEFT JOIN lemo_users h ON h.uid = r.helper_uid
            WHERE r.done_at > %s GROUP BY r.song_id ORDER BY MAX(r.done_at) DESC""", (since,))
     return {
         "pending": [{"songId": r["song_id"], "url": r["url"], "title": r["title"], "artist": r["artist"], "people": int(r["people"]),
-                     "firstAt": r["first_at"], "names": r["names"], "mine": r["mine"]} for r in pending],
+                     "firstAt": r["first_at"], "names": r["names"], "usernames": r["usernames"], "mine": r["mine"]} for r in pending],
         "added": [{"songId": r["song_id"], "target": r["target"], "title": r["title"], "artist": r["artist"], "people": int(r["people"]),
-                   "doneAt": r["done_at"], "names": r["names"], "helper": r["helper"]} for r in added],
+                   "doneAt": r["done_at"], "names": r["names"], "usernames": r["usernames"], "helper": r["helper"],
+                   "helperUsername": r["helper_username"]} for r in added],
     }
 
 

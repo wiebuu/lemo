@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { early } from '../lib/staleBuild'
 import { ExternalLink, Link2, Play, Plus, Upload, X } from 'lucide-react'
 import { analyzer, type RequestBoard } from '../api/analyzer'
@@ -7,6 +7,7 @@ import { songLink } from '../lib/songLinks'
 import { tidyTitle } from '../lib/titles'
 import { studio } from '../state/studio'
 import { cx, InfoTip, Pager, usePaged } from '../components/ui'
+import { SingerName } from '../components/SingerName'
 import { navigate } from './router'
 import { noteRequested, notifications } from '../state/notifications'
 
@@ -21,10 +22,22 @@ function ago(at: number): string {
 }
 
 /** "Alice", "Alice and Bob", "Alice, Bob and 3 others" — first names only. */
-function who(names: string[]): string {
-  const first = names.map((n) => n.trim().split(/\s+/)[0] || 'a singer')
-  if (first.length <= 2) return first.join(' and ')
-  return `${first.slice(0, 2).join(', ')} and ${first.length - 2} ${first.length === 3 ? 'other' : 'others'}`
+/** Who asked: the first two by name (each opening their profile), then "and 3 others". */
+function Who({ names, usernames }: { names: string[]; usernames?: (string | null)[] }) {
+  const people = names.map((n, i) => ({ name: n.trim().split(/\s+/)[0] || 'a singer', username: usernames?.[i] ?? null }))
+  const shown = people.length <= 2 ? people : people.slice(0, 2)
+  const rest = people.length - shown.length
+  return (
+    <>
+      {shown.map((p, i) => (
+        <Fragment key={i}>
+          {i > 0 && (rest ? ', ' : ' and ')}
+          <SingerName name={p.name} username={p.username} />
+        </Fragment>
+      ))}
+      {rest > 0 && ` and ${rest} ${rest === 1 ? 'other' : 'others'}`}
+    </>
+  )
 }
 
 function site(url: string): string {
@@ -130,7 +143,7 @@ export function ComingPage() {
                         {t.title || site(r.url)}{t.artist && <span className="text-sub"> · {t.artist}</span>}
                       </span>
                       <span className="block text-[11px] sm:text-xs text-sub truncate">
-                        asked by {who(r.names)}{r.mine && <span className="text-main"> (you)</span>} · {ago(r.firstAt)} · {' '}
+                        asked by <Who names={r.names} usernames={r.usernames} />{r.mine && <span className="text-main"> (you)</span>} · {ago(r.firstAt)} · {' '}
                         <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5">{site(r.url)} <ExternalLink size={10} /></a>
                       </span>
                     </span>
@@ -174,7 +187,8 @@ export function ComingPage() {
                       <span className="flex-1 min-w-0 leading-tight">
                         <span className="block text-text truncate text-[13px] sm:text-[15px]">{t.title || 'a song'}{t.artist && <span className="text-sub"> · {t.artist}</span>}</span>
                         <span className="block text-[11px] sm:text-xs text-sub truncate">
-                          asked by {who(r.names)} · added {ago(r.doneAt)}{r.helper ? ` by ${who([r.helper])} 💛` : ''}
+                          asked by <Who names={r.names} usernames={r.usernames} /> · added {ago(r.doneAt)}
+                          {r.helper && <> by <Who names={[r.helper]} usernames={[r.helperUsername ?? null]} /> 💛</>}
                         </span>
                       </span>
                       {r.target && (

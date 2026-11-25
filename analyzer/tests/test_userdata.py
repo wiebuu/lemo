@@ -174,6 +174,7 @@ class UserDataTests(unittest.TestCase):
         board = self.call("GET", "/api/requests/all", who="b").json()
         [p] = board["pending"]
         self.assertEqual((p["title"], p["people"], p["names"], p["mine"]), ("Kesariya", 2, ["Alice", "Bob"], True))
+        self.assertEqual(p["usernames"], ["alice", "bob"])  # each name links to their profile
         self.assertEqual(board["added"], [])
         # Bob analyses his own copy on his device: it's stored as an upload, then given to everyone who asked
         target = "up-1234567890abcdef"

@@ -141,8 +141,8 @@ async function json<T>(res: Response): Promise<T> {
 
 /** The "coming soon" page: songs people asked for, and the ones added this week. */
 export interface RequestBoard {
-  pending: { songId: string; url: string; title: string | null; artist: string | null; people: number; firstAt: number; names: string[]; mine: boolean }[]
-  added: { songId: string; target: string | null; title: string | null; artist: string | null; people: number; doneAt: number; names: string[]; helper: string | null }[]
+  pending: { songId: string; url: string; title: string | null; artist: string | null; people: number; firstAt: number; names: string[]; usernames?: (string | null)[]; mine: boolean }[]
+  added: { songId: string; target: string | null; title: string | null; artist: string | null; people: number; doneAt: number; names: string[]; usernames?: (string | null)[]; helper: string | null; helperUsername?: string | null }[]
 }
 
 /** One place in today's top: a singer's best take of one song today. */

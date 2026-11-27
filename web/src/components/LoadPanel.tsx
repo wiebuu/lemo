@@ -20,7 +20,7 @@ const AnalyseChoice = lazy(early(() => import('./DeviceAnalysis').then((m) => ({
 const DeviceRun = lazy(early(() => import('./DeviceAnalysis').then((m) => ({ default: m.DeviceRun }))))
 const TooWeak = lazy(early(() => import('./DeviceAnalysis').then((m) => ({ default: m.TooWeak }))))
 import { FeaturedShelf } from './FeaturedShelf'
-import { shelfOrder, visitorHome } from '../lib/region'
+import { shelfLanguages, visitorHome } from '../lib/region'
 import { LikeButton } from './Like'
 import { Plays, PreviewButton, useLyricHits, usePreview, withLyricHits } from './SongSearch'
 import { SongSearch } from './SongSearch'
@@ -449,8 +449,10 @@ const HOME = visitorHome()
 /** at most this many songs on the visitor's own-language shelf, and at least this many to show it */
 const LOCAL_MAX = 30
 const LOCAL_MIN = 4
-/** a featured song's shelf; songs in other languages (Japanese, French …) have none of these three, so they never land on english */
-const groupOf = (f: FeaturedItem) => f.group ?? (f.lang === 'gw' ? 'garhwali' : f.lang === 'hi' ? 'hindi' : f.lang === 'en' || !f.lang ? 'english' : `lang:${f.lang}`)
+/** a featured song's language (the old curated groups had none written down) */
+const langOf = (f: FeaturedItem) => f.lang ?? (f.group === 'garhwali' ? 'gw' : f.group === 'hindi' ? 'hi' : 'en')
+/** curated groups that belong on their language's shelf (others, like an artist's own, don't) */
+const SHELF_GROUPS = new Set(['garhwali', 'hindi', 'english'])
 /** Explore: 15 songs to a page, the most sung first (of the language picked); the page buttons go further */
 const EXPLORE_TOP = 15
 
@@ -532,7 +534,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
   const langs = useMemo(() => {
     const all = languagesIn(catalog)
     if (HOME === 'india') return all
-    const lead = [HOME, 'en'].filter((c): c is string => !!c)
+    const lead = shelfLanguages(HOME, (c) => all.some((l) => l.code === c)) // the same languages as the shelves, first
     return [...lead.flatMap((c) => all.filter((l) => l.code === c)), ...all.filter((l) => !lead.includes(l.code))]
   }, [catalog])
   const shownLang = lang && langs.some((l) => l.code === lang) ? lang : null // one with no songs (any more) isn't offered
@@ -554,22 +556,32 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
     }), sort),
     [featured, byId, shownLang, sort],
   )
-  // a shelf of the visitor's own language (Japanese in Japan…), from every song Lemody has in it
-  const localShelf = useMemo(() => {
-    if (!HOME || HOME === 'india' || (shownLang && shownLang !== HOME)) return []
-    const songs = sortSongs(catalog.filter((c) => c.lang === HOME), sort === 'lemody' ? 'popular' : sort).slice(0, LOCAL_MAX)
-    return songs.length < LOCAL_MIN ? [] : songs.map((c): FeaturedItem => ({
-      id: c.id, title: c.title, artist: c.artist ?? undefined, lang: c.lang ?? undefined, group: 'local',
-      duration: c.duration ?? null, ready: true, stage: null, progress: 1,
-    }))
-  }, [catalog, shownLang, sort])
-  // a language picked that has no shelf of its own (Japanese, French … outside their country): its own shelf
-  const pickedShelf = shownLang && !['en', 'hi', 'gw'].includes(shownLang) && !localShelf.length ? [`lang:${shownLang}`] : []
-  const shelves = [...shelfOrder(HOME), ...pickedShelf].map((id) => ({
-    id,
-    label: id === 'local' ? languageName(HOME!).toLowerCase() : id.startsWith('lang:') ? languageName(id.slice(5)).toLowerCase() : id,
-    items: id === 'local' ? localShelf : featuredShown.filter((f) => groupOf(f) === id && !(localShelf.length && f.lang === HOME)),
-  }))
+  // The featured shelves: three languages — the visitor's own country's first (Indonesian,
+  // English, Malay in Indonesia), filled with English and Spanish; India: garhwali, hindi,
+  // english. A language chip picked: just that language's shelf.
+  const songsIn = useMemo(() => {
+    const n = new Map<string, number>()
+    for (const c of catalog) if (c.lang) n.set(c.lang, (n.get(c.lang) ?? 0) + 1)
+    for (const f of featured) n.set(langOf(f), Math.max(n.get(langOf(f)) ?? 0, 1))
+    return n
+  }, [catalog, featured])
+  const shelfLangs = useMemo(
+    () => (shownLang ? [shownLang] : shelfLanguages(HOME, (c) => (songsIn.get(c) ?? 0) >= LOCAL_MIN)),
+    [shownLang, songsIn],
+  )
+  const shelves = useMemo(() => shelfLangs.map((code) => {
+    // its featured songs first (Lemody's picks), then — when there are few — the most sung of
+    // the rest (India's shelves are Lemody's picks only, as always)
+    const picks = featuredShown.filter((f) => langOf(f) === code && (!f.group || SHELF_GROUPS.has(f.group)))
+    const seen = new Set(picks.map((f) => f.id))
+    const more = picks.length >= LOCAL_MAX || HOME === 'india' ? [] : sortSongs(catalog.filter((c) => c.lang === code && !seen.has(c.id)), sort === 'lemody' ? 'popular' : sort)
+      .slice(0, LOCAL_MAX - picks.length)
+      .map((c): FeaturedItem => ({
+        id: c.id, title: c.title, artist: c.artist ?? undefined, lang: c.lang ?? undefined,
+        duration: c.duration ?? null, ready: true, stage: null, progress: 1,
+      }))
+    return { id: code, label: languageName(code).toLowerCase(), items: [...picks, ...more] }
+  }), [shelfLangs, featuredShown, catalog, sort])
   const ownLyrics = useLyricHits(tab === 'mine' ? find : '')
   const ownShown: ((typeof own)[number] & { line?: string })[] = find.trim() ? withLyricHits(searchSongs(own, find, 500), own, ownLyrics.hits) : own
   // your songs, a page at a time: songs you asked for first (not while searching), then yours
@@ -641,7 +653,7 @@ function SongList({ featured, catalog, online, canPrepare, requests, onCancelReq
             {shelves.map((g) => g.items.length ? (
               <FeaturedShelf key={g.id} label={g.label} items={g.items} counts={byId} opening={opening} preview={preview} onOpen={(id) => { preview.stop(); onOpen(id) }} />
             ) : null)}
-            {!featuredShown.length && !localShelf.length && shownLang && (
+            {!shelves.some((g) => g.items.length) && shownLang && (
               <div className="text-xs text-sub py-2 px-2">
                 no featured {languageName(shownLang)} songs —{' '}
                 <button type="button" onClick={() => setTab('explore')} className="text-main underline underline-offset-2">see the most sung in explore</button>

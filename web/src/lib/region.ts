@@ -59,12 +59,31 @@ export function visitorHome(): string | null {
   return homeLanguage(zone, typeof navigator === 'undefined' ? [] : navigator.languages ?? [navigator.language])
 }
 
+/** The languages people sing in, by country (from its home language), most spoken first. */
+const SPOKEN: Record<string, string[]> = {
+  india: ['gw', 'hi', 'en'],
+  ja: ['ja', 'en', 'ko'],
+  id: ['id', 'en', 'ms'],
+  ms: ['ms', 'en', 'id'],
+  tl: ['tl', 'en'],
+  vi: ['vi', 'en'],
+  th: ['th', 'en'],
+  ur: ['ur', 'pa', 'en'],
+  bn: ['bn', 'en'],
+  ko: ['ko', 'en', 'ja'],
+  pt: ['pt', 'en', 'es'],
+  es: ['es', 'en', 'pt'],
+}
+/** How many featured shelves there are. */
+export const SHELVES = 3
+
 /**
- * The featured shelves, in the order this visitor should see them: India keeps garhwali,
- * hindi, english. Anyone else gets their own language first (when Lemody has songs in it),
- * then english, then the rest.
+ * The featured shelves' languages, in order: the visitor's own country's languages first
+ * (those Lemody has songs in), filled up with English and then Spanish — never Garhwali or
+ * Hindi outside India (few sing them there). India keeps garhwali, hindi, english.
  */
-export function shelfOrder(home: string | null): string[] {
-  if (home === 'india') return ['garhwali', 'hindi', 'english']
-  return [...(home ? ['local'] : []), 'english', 'hindi', 'garhwali']
+export function shelfLanguages(home: string | null, has: (code: string) => boolean): string[] {
+  if (home === 'india') return SPOKEN.india
+  const own = home ? (SPOKEN[home] ?? [home, 'en']) : ['en']
+  return [...new Set([...own, 'en', 'es'])].filter(has).slice(0, SHELVES)
 }

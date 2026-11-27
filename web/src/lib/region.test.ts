@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { homeLanguage, shelfOrder } from './region'
+import { homeLanguage, shelfLanguages } from './region'
 
 describe('visitor region', () => {
   it('finds the country from the time zone', () => {
@@ -28,9 +28,21 @@ describe('visitor region', () => {
     expect(homeLanguage('Asia/Dubai', ['xx'])).toBeNull()
     expect(homeLanguage(undefined, [])).toBeNull()
   })
-  it('own language first, then english; India keeps its order', () => {
-    expect(shelfOrder('ja')).toEqual(['local', 'english', 'hindi', 'garhwali'])
-    expect(shelfOrder(null)).toEqual(['english', 'hindi', 'garhwali'])
-    expect(shelfOrder('india')).toEqual(['garhwali', 'hindi', 'english'])
+  it('three shelves: the country’s own languages first, then english and spanish; India keeps its order', () => {
+    const all = () => true
+    expect(shelfLanguages('id', all)).toEqual(['id', 'en', 'ms'])
+    expect(shelfLanguages('ja', all)).toEqual(['ja', 'en', 'ko'])
+    expect(shelfLanguages('fr', all)).toEqual(['fr', 'en', 'es'])
+    expect(shelfLanguages(null, all)).toEqual(['en', 'es'])
+    expect(shelfLanguages('india', all)).toEqual(['gw', 'hi', 'en'])
+    // a language Lemody has (almost) no songs in is skipped
+    expect(shelfLanguages('ru', (c) => c !== 'ru')).toEqual(['en', 'es'])
+    expect(shelfLanguages('ur', (c) => c !== 'pa')).toEqual(['ur', 'en', 'es'])
+    // never garhwali or hindi outside India
+    for (const home of [null, 'id', 'ja', 'fr', 'de', 'tl', 'es', 'pt', 'ru', 'bn', 'ur']) {
+      expect(shelfLanguages(home, all)).not.toContain('hi')
+      expect(shelfLanguages(home, all)).not.toContain('gw')
+      expect(shelfLanguages(home, all).length).toBeLessThanOrEqual(3)
+    }
   })
 })
